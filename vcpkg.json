@@ -1,5 +1,3 @@
 {
-  "dependencies": [
-    "daxa"
-  ]
+  "dependencies": ["daxa", "glfw3"]
 }

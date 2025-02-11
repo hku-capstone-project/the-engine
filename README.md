@@ -39,3 +39,45 @@ bootstrap.bat
 ```bash
 build.bat
 ```
+
+## Guidelines for development using vscode
+
+### Recommended extensions
+
+- `command-runner`: to run customized commands from command line
+
+  In `.vscode/settings.json`, you may want to setup some build commands as shortcuts:
+
+  ```plaintext
+    "command-runner.commands": {
+    "build windows release": "build.bat",
+    "build windows debug": "build.bat --debug"
+  }
+  ```
+
+- `C/C++`: only for debugging, disable the IntelliSense feature
+
+- `clangd`: C/C++ completion, navigation, and insights, faster than the `C/C++` extension, especially in larger codebases
+
+  Here's a typical configuration you may want to use inside `.vscode/settings.json`
+
+  ```plaintext
+  "clangd.arguments": [
+  // number of async workers used by clangd. background index also uses this many workers
+  "-j=8",
+
+  // specify a path to look for compile_commands.json
+  "--compile-commands-dir=.vscode/",
+
+  // never insert headers automatically
+  "--header-insertion=never",
+
+  // load pre compiled headers from memory, this is faster than loading from disk
+  "--pch-storage=memory",
+
+  // enable clang tidy
+  "--clang-tidy"
+  ],
+  ```
+
+- `Clang-Format`: code formatting
