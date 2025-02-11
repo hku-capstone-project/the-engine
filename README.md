@@ -1,10 +1,10 @@
 # Environment setup
 
+_Note: this setup guide is currently for Windows exclusively_
+
 ## Bootstrapping
 
 For initializing submodules & setup vcpkg, a package manager for our project to use.
-
-Windows
 
 ```bash
 bootstrap.bat
@@ -18,14 +18,24 @@ bootstrap.bat
 
 ### Ninja
 
-- Download the newest pre-compiled version of ninja from [here](https://github.com/ninja-build/ninja/releases), and copy the executable somewhere on your disk
+- Download the newest pre-compiled version of ninja from [here](https://github.com/ninja-build/ninja/releases)
 
-  For example:
+- create a folder named `Ninja` under `C:\Program Files\`
 
-  - create a folder named `Ninja` under `C:\Program Files\`
+- copy `ninja.exe` under `C:\Program Files\Ninja`
 
-  - copy `ninja.exe` under `C:\Program Files\Ninja`
+- add `C:\Program Files\Ninja` to PATH
 
-  - add `C:\Program Files\Ninja` to PATH
+### Ccache
 
-https://github.com/ccache/ccache/releases/tag/v4.10.2
+- Download the latest pre-compiled version of ccache from [here](https://github.com/ccache/ccache/releases/tag/v4.10.2)
+
+- Copy the entire folder under `C:\Program Files\`
+
+- add `C:\Program Files\ccache-your.version.here-windows-x86_64` to PATH
+
+## Build the project
+
+```bash
+build.bat
+```
