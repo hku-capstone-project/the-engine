@@ -1,3 +1,14 @@
 {
-  "dependencies": ["daxa", "glfw3"]
+  "dependencies": [
+    {
+      "name": "daxa",
+      "features": [
+        "utils-imgui",
+        "utils-mem",
+        "utils-pipeline-manager-glslang",
+        "utils-task-graph"
+      ]
+    },
+    "glfw3"
+  ]
 }

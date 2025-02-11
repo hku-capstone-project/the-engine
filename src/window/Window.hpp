@@ -34,6 +34,14 @@ public:
 
   GLFWwindow *get_glfw_window() const;
 
+  bool is_swapchain_out_of_date() const { return swapchain_out_of_date; }
+
+  void set_swapchain_out_of_date(bool value) { swapchain_out_of_date = value; }
+
+  bool is_minimized() const { return minimized; }
+
+  void set_minimized(bool value) { minimized = value; }
+
 private:
   // Window-related properties and methods will go here
   GLFWwindow *glfw_window_ptr;        // Pointer to the GLFW window object
