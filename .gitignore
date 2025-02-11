@@ -37,5 +37,4 @@ cmake-build-release/
 build/
 imgui.ini
 
-.vscode/.cache
-.vscode/compile_commands.json
+.vscode/
