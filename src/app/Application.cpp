@@ -1,15 +1,16 @@
 #include "Application.hpp"
-#include "window/Window.hpp"
 #include "config/RootDir.h"
+#include "window/Window.hpp"
+
 
 #include <daxa/daxa.hpp>
 #include <daxa/utils/pipeline_manager.hpp>
 #include <daxa/utils/task_graph.hpp>
 
 #include <memory>
+#include <iostream>
 
 #include "shader/shared.inl"
-
 
 void upload_vertex_data_task(daxa::TaskGraph &tg, daxa::TaskBufferView vertices) {
   tg.add_task({
