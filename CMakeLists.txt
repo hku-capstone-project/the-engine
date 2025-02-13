@@ -1,5 +1,5 @@
 # cmake guidelines: https://cliutils.gitlab.io/modern-cmake/
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.10.0)
 project(the_engine)
 set(CMAKE_CXX_STANDARD 20)
 

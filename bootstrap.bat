@@ -9,6 +9,7 @@ if not exist dep/vcpkg/vcpkg.exe (
     cd dep/vcpkg
     bootstrap-vcpkg.bat
     cd ../..
+    echo vcpkg bootstrapped successfully!
 ) else (
-    echo vcpkg already bootstrapped.
+    echo vcpkg already bootstrapped!
 )
