@@ -16,7 +16,8 @@ set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
 cmake --preset %BUILD_TYPE% ^
     -D CMAKE_TOOLCHAIN_FILE="../../dep/vcpkg/scripts/buildsystems/vcpkg.cmake" ^
     -D VCPKG_MANIFEST_INSTALL=ON ^
-    -D WITH_PORTABLE_RESOURCES=%WITH_PORTABLE_RESOURCES%
+    -D WITH_PORTABLE_RESOURCES=%WITH_PORTABLE_RESOURCES% ^
+    -D CMAKE_MAKE_PROGRAM=Ninja
 
 if !errorlevel! neq 0 (
    echo cmake config failed
