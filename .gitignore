@@ -41,7 +41,10 @@ imgui.ini
 .vscode/*
 !.vscode/settings.json.template
 
-# ignore clangd cache folder, wherever it is
-**/.cache/
+# ignore clangd cache folder
+.cache/
+
+compile_commands.json
 
 src/config/RootDir.h
+
