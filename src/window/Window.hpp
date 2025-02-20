@@ -1,51 +1,111 @@
 #pragma once
 
-#include <daxa/daxa.hpp>
-using namespace daxa::types; // For types like `u32`
+#include "GLFW/glfw3.h"
 
-#include <GLFW/glfw3.h>
-
-#if defined(_WIN32)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_NATIVE_INCLUDE_NONE
-using HWND = void *;
-#elif defined(__linux__)
-#define GLFW_EXPOSE_NATIVE_X11
-#define GLFW_EXPOSE_NATIVE_WAYLAND
+#ifdef APIENTRY
+#undef APIENTRY
 #endif
 
-#include <GLFW/glfw3native.h> // Platform-specific GLFW functions
+#include "volk.h"
 
-class AppWindow {
+#include "CursorInfo.hpp"
+#include "KeyboardInfo.hpp"
+
+#include <functional>
+#include <vector>
+
+enum class WindowStyle { kNone, kFullScreen, kMaximized, kHover };
+
+class Logger;
+class Window {
 public:
-  AppWindow(char const *window_name, u32 sx = 800, u32 sy = 600);
+  Window(WindowStyle windowStyle, Logger *logger, int widthIfWindowed = 400,
+         int heightIfWindowed = 300);
+  ~Window();
 
-  ~AppWindow();
+  // disable move and copy
+  Window(const Window &)            = delete;
+  Window &operator=(const Window &) = delete;
+  Window(Window &&)                 = delete;
+  Window &operator=(Window &&)      = delete;
 
-  daxa::NativeWindowHandle get_native_handle() const;
+  [[nodiscard]] GLFWwindow *getGlWindow() const { return _window; }
+  [[nodiscard]] GLFWmonitor *getMonitor() const { return _monitor; }
 
-  static daxa::NativeWindowPlatform get_native_platform();
+  [[nodiscard]] WindowStyle getWindowStyle() const { return _windowStyle; }
+  [[nodiscard]] CursorState getCursorState() const { return _cursorInfo.cursorState; }
 
-  void set_mouse_capture(bool should_capture) const;
+  // do take the window dimention and the frame buffer dimention differently! apple's retina display
+  // doubles the framebuffer size of a non-fullscreen (exclusive) window than the original window
+  // dimension, for glfw-releated function, use this function to query for the window dimension
+  // for windows, getWindowDimension and getFrameBufferDimension are the same
+  void getWindowDimension(int &width, int &height) const {
+    glfwGetWindowSize(_window, &width, &height);
+  }
 
-  bool should_close() const;
+  void getFrameBufferDimension(int &width, int &height) const {
+    glfwGetFramebufferSize(_window, &width, &height);
+  }
 
-  void update() const;
+  [[nodiscard]] int getCursorXPos() const {
+    double xPos = 0.F;
+    double yPos = 0.F;
+    glfwGetCursorPos(_window, &xPos, &yPos);
+    return static_cast<int>(xPos);
+  }
 
-  GLFWwindow *get_glfw_window() const;
+  [[nodiscard]] int getCursorYPos() const {
+    double xPos = 0.F;
+    double yPos = 0.F;
+    glfwGetCursorPos(_window, &xPos, &yPos);
+    return static_cast<int>(yPos);
+  }
 
-  bool is_swapchain_out_of_date() const { return swapchain_out_of_date; }
+  void toggleWindowStyle();
 
-  void set_swapchain_out_of_date(bool value) { swapchain_out_of_date = value; }
+  void setWindowStyle(WindowStyle newStyle);
 
-  bool is_minimized() const { return minimized; }
+  void showCursor();
+  void hideCursor();
+  void toggleCursor();
 
-  void set_minimized(bool value) { minimized = value; }
+  void addCursorMoveCallback(std::function<void(CursorMoveInfo const &)> callback);
+  void addCursorButtonCallback(std::function<void(CursorInfo const &)> callback);
+  void addKeyboardCallback(std::function<void(KeyboardInfo const &)> callback);
+
+  CursorInfo getCursorInfo() const { return _cursorInfo; }
+  KeyboardInfo getKeyboardInfo() const { return _keyboardInfo; }
 
 private:
-  // Window-related properties and methods will go here
-  GLFWwindow *glfw_window_ptr;        // Pointer to the GLFW window object
-  u32 width, height;                  // Dimensions of the window
-  bool minimized             = false; // Tracks if the window is minimized
-  bool swapchain_out_of_date = false; // Tracks if the swapchain needs updating
+  WindowStyle _windowStyle = WindowStyle::kNone;
+
+  Logger *_logger;
+
+  int _widthIfWindowed;
+  int _heightIfWindowed;
+
+  GLFWwindow *_window   = nullptr;
+  GLFWmonitor *_monitor = nullptr;
+
+  CursorInfo _cursorInfo;
+  KeyboardInfo _keyboardInfo;
+
+  // these are used to restore maximized window to its original size and pos
+  int _titleBarHeight            = 0;
+  int _maximizedFullscreenWidth  = 0;
+  int _maximizedFullscreenHeight = 0;
+
+  std::vector<std::function<void(CursorMoveInfo)>> _cursorMoveCallbacks;
+  std::vector<std::function<void(CursorInfo)>> _cursorButtonCallbacks;
+  std::vector<std::function<void(KeyboardInfo)>> _keyboardCallbacks;
+
+  void _resetCursorDelta();
+
+  void _windowStyleToggleCallback(KeyboardInfo const &keyboardInfo);
+
+  // these functions are restricted to be static functions
+  static void _keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
+  static void _cursorPosCallback(GLFWwindow *window, double xPos, double yPos);
+  static void _mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
+  static void _frameBufferResizeCallback(GLFWwindow *window, int width, int height);
 };

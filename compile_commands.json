@@ -7,7 +7,55 @@
 },
 {
   "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
-  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o apps\\CMakeFiles\\run.dir\\main.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\apps\\main.cpp",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\utils\\event-dispatcher\\CMakeFiles\\src-utils-event-dispatcher.dir\\GlobalEventDispatcher.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\utils\\event-dispatcher\\GlobalEventDispatcher.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\utils\\event-dispatcher\\GlobalEventDispatcher.cpp",
+  "output": "src\\utils\\event-dispatcher\\CMakeFiles\\src-utils-event-dispatcher.dir\\GlobalEventDispatcher.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -DGLFW_DLL -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\window\\CMakeFiles\\src-window.dir\\Window.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\window\\Window.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\window\\Window.cpp",
+  "output": "src\\window\\CMakeFiles\\src-window.dir\\Window.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\app-context\\CMakeFiles\\src-app-context.dir\\VulkanApplicationContext.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\VulkanApplicationContext.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\VulkanApplicationContext.cpp",
+  "output": "src\\app-context\\CMakeFiles\\src-app-context.dir\\VulkanApplicationContext.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\DeviceCreator.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\DeviceCreator.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\DeviceCreator.cpp",
+  "output": "src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\DeviceCreator.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\InstanceCreator.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\InstanceCreator.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\InstanceCreator.cpp",
+  "output": "src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\InstanceCreator.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\SurfaceCreator.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\SurfaceCreator.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\SurfaceCreator.cpp",
+  "output": "src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\SurfaceCreator.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\SwapchainCreator.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\SwapchainCreator.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app-context\\context-creators\\SwapchainCreator.cpp",
+  "output": "src\\app-context\\CMakeFiles\\src-app-context.dir\\context-creators\\SwapchainCreator.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -IC:/Users/danny/Desktop/projects/the-engine/src -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\app\\CMakeFiles\\src-app.dir\\Application.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app\\Application.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\app\\Application.cpp",
+  "output": "src\\app\\CMakeFiles\\src-app.dir\\Application.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -IC:/Users/danny/Desktop/projects/the-engine/src -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o apps\\CMakeFiles\\run.dir\\main.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\apps\\main.cpp",
   "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\apps\\main.cpp",
   "output": "apps\\CMakeFiles\\run.dir\\main.cpp.obj"
 }

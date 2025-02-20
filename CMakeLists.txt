@@ -13,6 +13,9 @@ configure_file(${CMAKE_SOURCE_DIR}/src/config/RootDir.h.in ${CMAKE_SOURCE_DIR}/s
 # glfw
 find_package(glfw3 CONFIG REQUIRED)
 
+# EnTT::EnTT
+find_package(EnTT CONFIG REQUIRED)
+
 # spdlog::spdlog
 find_package(spdlog CONFIG REQUIRED)
 

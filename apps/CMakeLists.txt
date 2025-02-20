@@ -4,6 +4,5 @@ target_include_directories(run PRIVATE ${vcpkg_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/
 
 target_link_libraries(run PRIVATE
     src-utils-logger
-    volk::volk
-    volk::volk_headers
+    src-app
 )
