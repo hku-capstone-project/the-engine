@@ -1,14 +1,8 @@
 {
   "dependencies": [
-    {
-      "name": "daxa",
-      "features": [
-        "utils-imgui",
-        "utils-mem",
-        "utils-pipeline-manager-glslang",
-        "utils-task-graph"
-      ]
-    },
-    "glfw3"
+    "glfw3",
+    "volk",
+    "vulkan-headers",
+    "vulkan-memory-allocator"
   ]
 }

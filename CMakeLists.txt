@@ -13,12 +13,17 @@ configure_file(${CMAKE_SOURCE_DIR}/src/config/RootDir.h.in ${CMAKE_SOURCE_DIR}/s
 # glfw
 find_package(glfw3 CONFIG REQUIRED)
 
-find_package(daxa CONFIG REQUIRED)
+# volk::volk volk::volk_headers
+find_package(volk CONFIG REQUIRED)
+
+# Vulkan::Headers GPUOpen::VulkanMemoryAllocator
+find_package(VulkanHeaders CONFIG)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
 set(vcpkg_INCLUDE_DIR "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/")
 message(STATUS "vcpkg include dir: ${vcpkg_INCLUDE_DIR}")
 
-add_subdirectory(src/)
+# add_subdirectory(src/)
 add_subdirectory(apps/)
 
 # copy compile_commands.json to .vscode folder for clangd to use, this is because the build dir for debug and release mode is different
