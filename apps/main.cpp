@@ -1,6 +1,7 @@
-#include <iostream>
-int main(int argc, char const *argv[]) {
-  std::cout << "Hello, World!" << std::endl;
+#include "utils/logger/Logger.hpp"
 
+int main() {
+  Logger logger{};
+  logger.info("Hello, World!");
   return 0;
 }

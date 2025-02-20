@@ -59,26 +59,7 @@ build.bat
 
 - `clangd`: C/C++ completion, navigation, and insights, faster than the `C/C++` extension, especially in larger codebases
 
-  Here's a typical configuration you may want to use inside `.vscode/settings.json`
-
-  ```plaintext
-  "clangd.arguments": [
-  // number of async workers used by clangd. background index also uses this many workers
-  "-j=8",
-
-  // specify a path to look for compile_commands.json
-  "--compile-commands-dir=.vscode/",
-
-  // never insert headers automatically
-  "--header-insertion=never",
-
-  // load pre compiled headers from memory, this is faster than loading from disk
-  "--pch-storage=memory",
-
-  // enable clang tidy
-  "--clang-tidy"
-  ],
-  ```
+  There's a template settings.json file under `.vscode/`, you may want to refer to that one
 
 - `Clang-Format`: code formatting
 

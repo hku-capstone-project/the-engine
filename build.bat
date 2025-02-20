@@ -4,8 +4,6 @@ setlocal EnableDelayedExpansion
 set BUILD_TYPE=release
 set WITH_PORTABLE_RESOURCES=OFF
 
-if not exist .vscode/ mkdir .vscode
-
 FOR %%a IN (%*) DO (
     if [%%a] == [--debug] set BUILD_TYPE=debug
 )

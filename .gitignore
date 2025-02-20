@@ -37,6 +37,11 @@ cmake-build-release/
 build/
 imgui.ini
 
-.vscode/
+# ignore all files inside .vscode folder except settings.json.template, this is for the user to configure their own settings
+.vscode/*
+!.vscode/settings.json.template
+
+# ignore clangd cache folder, wherever it is
+**/.cache/
 
 src/config/RootDir.h

@@ -1,0 +1,14 @@
+[
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o src\\utils\\logger\\CMakeFiles\\src-utils-logger.dir\\Logger.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\utils\\logger\\Logger.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\src\\utils\\logger\\Logger.cpp",
+  "output": "src\\utils\\logger\\CMakeFiles\\src-utils-logger.dir\\Logger.cpp.obj"
+},
+{
+  "directory": "C:/Users/danny/Desktop/projects/the-engine/build/Debug",
+  "command": "C:\\PROGRA~1\\LLVM\\bin\\CLANG_~1.EXE -IC:/Users/danny/Desktop/projects/the-engine/src -isystem C:/Users/danny/Desktop/projects/the-engine/build/Debug/vcpkg_installed/x64-windows/include -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -std=gnu++20 -o apps\\CMakeFiles\\run.dir\\main.cpp.obj -c C:\\Users\\danny\\Desktop\\projects\\the-engine\\apps\\main.cpp",
+  "file": "C:\\Users\\danny\\Desktop\\projects\\the-engine\\apps\\main.cpp",
+  "output": "apps\\CMakeFiles\\run.dir\\main.cpp.obj"
+}
+]
