@@ -1,0 +1,84 @@
+# It is not recommended to modify this file directly. 
+# You should create CustomConfig.toml in the same directory and override the values there.
+
+title = "default config"
+
+[Application]
+framesInFlight = 2
+isFramerateLimited = true
+
+[Camera]
+initHeight = 0.8
+initYaw = 270.0
+initPitch = 0.0
+vFov = 60.0
+movementSpeed = 0.2
+movementSpeedBoost = 3.0
+mouseSensitivity = 0.08
+
+[ShadowMapCamera]
+range = 1.0
+
+[Brush]
+size = 0.1
+strength = 0.001
+
+[ImguiManager]
+fontSize = 20
+fpsGuiColor = [ 126, 37, 83 ]
+menuBarBackgroundColor = [ 126, 37, 83 ]
+popupBackgroundColor = [ 29, 43, 83]
+
+[Terrain]
+# the voxel dimension within a chunk
+chunkVoxelDim = 256
+chunkDim = [ 8, 1, 8 ]
+
+[SvoTracer]
+aTrousSizeMax = 5
+beamResolution = 8
+taaSamplingOffsetSize = 64
+shadowMapResolution = 1024
+upscaleRatio = 2.0
+
+[AtmosInfo]
+sunAltitude = 4.15
+sunAzimuth = 0.0
+rayleighScatteringBase = [ 5.802, 13.558, 33.1 ]
+mieScatteringBase = 3.996
+mieAbsorptionBase = 4.4
+# ozoneAbsorptionBase = [ 0.650, 1.881, 0.085 ]
+ozoneAbsorptionBase = [ 0.650, 3.0, 0.085 ]
+sunLuminance = 1.0
+atmosLuminance = 1.0
+sunSize = 0.5
+rayleighDropoffFac = 0.125
+# mieDropoffFac = 0.833
+mieDropoffFac = 0.625
+
+[DebugInfo]
+debugB1 = false
+debugF1 = 0.0
+debugI1 = 0
+debugC1 = [ 0.0, 0.26, 0.84 ]
+
+[PostProcessingInfo]
+temporalAlpha = 0.04
+temporalPositionPhi = 0.99
+aTrousIterationCount = 3
+phiC = 0.75
+phiN = 20.0 
+phiP = 0.05
+minPhiZ = 0.35
+maxPhiZ = 0.62
+phiZStableSampleCount = 0.05
+changingLuminancePhi = true
+taa = false
+explosure = 15.0
+
+[TracingInfo]
+visualizeChunks = false
+visualizeOctree = false
+beamOptimization = true
+traceIndirectRay = true
+

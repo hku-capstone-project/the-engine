@@ -1,9 +1,15 @@
 {
   "dependencies": [
-    "glfw3",
-    "entt",
-    "spdlog",
+    "glm",
     "volk",
+    "entt",
+    "glfw3",
+    "spdlog",
+    "imgui",
+    "implot",
+    "shaderc",
+    "pkgconf",
+    "tomlplusplus",
     "vulkan-headers",
     "vulkan-memory-allocator"
   ]

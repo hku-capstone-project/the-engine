@@ -1,7 +1,7 @@
 #define TOML_IMPLEMENTATION
 #include "TomlConfigReader.hpp"
 
-#include "utils/config/RootDir.h"
+#include "config/RootDir.h"
 
 static std::string const kDefaultConfigName = "DefaultConfig.toml";
 static std::string const kCustomConfigName  = "CustomConfig.toml";
