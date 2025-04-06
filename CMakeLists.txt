@@ -44,8 +44,10 @@ find_package(unofficial-shaderc CONFIG REQUIRED)
 set(vcpkg_INCLUDE_DIR "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/")
 message(STATUS "vcpkg include dir: ${vcpkg_INCLUDE_DIR}")
 
-add_subdirectory(src/)
-add_subdirectory(apps/)
+add_definitions(-DVENGINE_BUILD_DLL)
+add_subdirectory(vengine/src/)
+remove_definitions(-DVENGINE_BUILD_DLL)
+add_subdirectory(sandbox/)
 
 # copy compile_commands.json to .vscode folder for clangd to use, this is because the build dir for debug and release mode is different
 add_custom_target(copy-compile-commands ALL

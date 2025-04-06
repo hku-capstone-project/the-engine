@@ -84,3 +84,7 @@ build.bat
 [Daxa Tutorial](https://tutorial.daxa.dev/)
 
 [Vulkan Tutorial](https://vulkan-tutorial.com/)
+
+[Hazel Engine](https://github.com/TheCherno/Hazel?tab=readme-ov-file)
+
+[Hazel Engine Video Tutorial](https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT)

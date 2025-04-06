@@ -9,7 +9,7 @@ FOR %%a IN (%*) DO (
 )
 
 set BINARY_DIR=build/%BUILD_TYPE%/
-set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
+set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%sandbox/
  
 cmake --preset %BUILD_TYPE% ^
     -D CMAKE_TOOLCHAIN_FILE="dep/vcpkg/scripts/buildsystems/vcpkg.cmake" ^
@@ -47,4 +47,4 @@ if %WITH_PORTABLE_RESOURCES%==ON (
 @REM /wait blocks the terminal to wait for the application to exit
 @REM /b means to stay in the command line below, 
 @REM /d xxx specifies the startup directory
-start /wait /b /d "%PROJECT_EXECUTABLE_PATH%" run.exe
+start /wait /b /d "%PROJECT_EXECUTABLE_PATH%" sandbox.exe
