@@ -1,3 +1,19 @@
+# _The Engine_
+
+# Project Spec
+
+This project aims to develop a game development framework centered around high-performance rendering using the Vulkan API. The goal is to provide a comprehensive and accessible foundation for developers, enabling the rendering of thousands of 3D objects efficiently and accelerating the creation of high-quality 3D games and applications.
+
+**Key Features & Objectives:**
+
+1.  **High-Performance Vulkan Rendering:** Utilizes the Vulkan API as the backend to achieve efficient rendering, specifically targeting scenarios with a large number of on-screen 3D objects.
+2.  **Advanced Rendering Techniques:** Implements state-of-the-art rendering methods based on recent computer graphics research.
+3.  **Modern Architecture:** Employs an Entity Component System (ECS) architecture, inspired by data-oriented design principles for better performance and modularity.
+4.  **Scripting Integration:** Provides a C# scripting interface allowing users to implement custom game logic, initialize assets, manage game loops, and handle events.
+5.  **User-Centric & Flexible Framework:** Designed as a flexible base upon which developers can build their own game logic, supporting diverse and interactive experiences.
+6.  **Asset Management:** Features an asset pipeline for loading, processing, and managing game resources.
+7.  **Working Example:** The project includes the development of a simple interactive game to demonstrate the framework's capabilities.
+
 # Environment setup
 
 _Note: this setup guide is currently for Windows exclusively_
