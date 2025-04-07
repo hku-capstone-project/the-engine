@@ -4,3 +4,5 @@ add_subdirectory(shader-compiler/)
 add_subdirectory(toml-config/)
 add_subdirectory(fps-sink/)
 add_subdirectory(event-dispatcher/)
+
+add_subdirectory(vulkan-wrapper/)
