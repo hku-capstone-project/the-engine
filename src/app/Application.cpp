@@ -116,8 +116,7 @@ void Application::_onSwapchainResize() {
 void Application::_mainLoop() {
   static std::chrono::time_point fpsRecordLastTime = std::chrono::steady_clock::now();
 
-  bool isRunning = glfwWindowShouldClose(_window->getGlWindow()) == 0;
-  while (isRunning) {
+  while (glfwWindowShouldClose(_window->getGlWindow()) == 0) {
     glfwPollEvents();
 
     if (_blockStateBits != 0) {
