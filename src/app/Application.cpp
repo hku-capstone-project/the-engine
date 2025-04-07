@@ -30,15 +30,6 @@ Application::Application(Logger *logger) : _logger(logger) {
   settings.isFramerateLimited = _configContainer->applicationInfo->isFramerateLimited;
   _appContext->init(_logger, _window->getGlWindow(), &settings);
 
-  // _svoBuilder =
-  //     std::make_unique<SvoBuilder>(_appContext.get(), _logger, _shaderCompiler.get(),
-  //                                  _shaderFileWatchListener.get(), _configContainer.get());
-
-  // _svoTracer = std::make_unique<SvoTracer>(
-  //     _appContext.get(), _logger, _configContainer->applicationInfo->framesInFlight,
-  //     _window.get(), _shaderCompiler.get(), _shaderFileWatchListener.get(),
-  //     _configContainer.get());
-
   _imguiManager = std::make_unique<ImguiManager>(_appContext.get(), _window.get(), _logger,
                                                  _configContainer.get());
 
