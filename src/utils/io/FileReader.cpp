@@ -4,7 +4,7 @@
 
 #include <fstream>
 
-namespace ShaderFileReader {
+namespace FileReader {
 std::string readShaderSourceCode(const std::string &fullPathToFile, Logger *logger) {
   std::ifstream file(fullPathToFile);
   if (!file.is_open()) {
