@@ -50,6 +50,17 @@ bootstrap.bat
 
 - add `C:\Program Files\ccache-your.version.here-windows-x86_64` to PATH
 
+### LLVM
+
+- _Notice: LLVM version 18 is the highest supported version for this project (from spdlog compatibility issue)_
+
+- For the clang compiler, that is used to compile this project, download it from [here](https://github.com/llvm/llvm-project/releases/tag/llvmorg-18.1.8)
+
+### Vulkan SDK
+
+- This is required in order to support vulkan validation layer.
+- Just download and install the latest version from [here](https://vulkan.lunarg.com/)
+
 ## Build the project
 
 ```bash
