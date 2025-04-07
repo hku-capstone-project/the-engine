@@ -3,6 +3,7 @@
 #include "app-context/VulkanApplicationContext.hpp"
 #include "utils/event-types/EventType.hpp"
 #include "utils/logger/Logger.hpp"
+#include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "window/KeyboardInfo.hpp"
 
 #include <memory>
@@ -40,6 +41,7 @@ private:
   // std::unique_ptr<Renderer> _renderer             = nullptr;
   std::unique_ptr<ImguiManager> _imguiManager = nullptr;
   std::unique_ptr<FpsSink> _fpsSink           = nullptr;
+  std::unique_ptr<Model> _model = nullptr;
 
   // semaphores and fences for synchronization
   std::vector<VkSemaphore> _imageAvailableSemaphores{};

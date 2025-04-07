@@ -81,6 +81,7 @@ ModelAttributes ModelLoader::loadModelFromPath(const std::string &filePath, Logg
   };
   processNode(scene->mRootNode);
   logger->info( "New Model Loaded: {}", filePath);
+  logger->info("Vertices size: {}", vertices.size());
   return { vertices, indices };
 }
 

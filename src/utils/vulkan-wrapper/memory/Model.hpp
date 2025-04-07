@@ -13,7 +13,7 @@ class Model {
 public:
   Model(VulkanApplicationContext *appContext, Logger *logger, const std::string& filePath);
   ~Model();
-  // disable move and copy
+
   Model(const Model &) = delete;
   Model &operator=(const Model &) = delete;
   Model(Model &&) = delete;
