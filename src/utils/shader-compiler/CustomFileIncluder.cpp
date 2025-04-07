@@ -71,7 +71,7 @@ shaderc_include_result *CustomFileIncluder::GetInclude(const char *requested_sou
     _includeCallback(fullPath);
   }
 
-  std::string content = ShaderFileReader::readShaderSourceCode(fullPath, _logger);
+  std::string content = FileReader::readShaderSourceCode(fullPath, _logger);
   // store the pointer created in a pointer for destroying later on, eww!
   auto *info = new FileInfo{fullPath, content};
   return new shaderc_include_result{fullPath.c_str(), fullPath.size(), info->content.c_str(),

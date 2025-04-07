@@ -26,7 +26,8 @@ ComputePipeline::~ComputePipeline() = default;
 
 bool ComputePipeline::compileAndCacheShaderModule() {
   auto const sourceCode =
-      ShaderFileReader::readShaderSourceCode(_fullPathToShaderSourceCode, _logger);
+
+      FileReader::readShaderSourceCode(_fullPathToShaderSourceCode, _logger);
   auto const compiledCode =
       _shaderCompiler->compileComputeShader(_fullPathToShaderSourceCode, sourceCode);
 
