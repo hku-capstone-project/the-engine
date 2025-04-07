@@ -41,6 +41,9 @@ find_package(PkgConfig REQUIRED)
 # unofficial::shaderc::shaderc
 find_package(unofficial-shaderc CONFIG REQUIRED)
 
+# assimp::assimp
+find_package(assimp CONFIG REQUIRED)
+
 set(vcpkg_INCLUDE_DIR "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/")
 message(STATUS "vcpkg include dir: ${vcpkg_INCLUDE_DIR}")
 

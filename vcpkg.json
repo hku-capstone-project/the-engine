@@ -11,6 +11,8 @@
     "pkgconf",
     "tomlplusplus",
     "vulkan-headers",
-    "vulkan-memory-allocator"
+    "vulkan-memory-allocator",
+    "stb",
+    "assimp"
   ]
 }
