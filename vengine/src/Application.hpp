@@ -17,4 +17,7 @@ public:
   void run();
 };
 
+// To be defined in CLIENT
+Application *createApplication(int argc, char **argv);
+
 } // namespace VEngine

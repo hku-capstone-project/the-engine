@@ -87,4 +87,6 @@ build.bat
 
 [Hazel Engine](https://github.com/TheCherno/Hazel?tab=readme-ov-file)
 
+[Calling C++ from C#](https://www.youtube.com/watch?v=J7sWEsVVaAA&t=1923s)
+
 [Hazel Engine Video Tutorial](https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT)
