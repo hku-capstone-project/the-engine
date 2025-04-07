@@ -1,4 +1,4 @@
-#include "ShaderFileReader.hpp"
+#include "FileReader.hpp"
 
 #include "utils/logger/Logger.hpp"
 

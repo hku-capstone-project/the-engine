@@ -1,7 +1,7 @@
 #pragma once
 
 #include "shaderc/shaderc.hpp"
-#include "utils/io/ShaderFileReader.hpp"
+#include "utils/io/FileReader.hpp"
 
 #include <cstdint>
 #include <functional>

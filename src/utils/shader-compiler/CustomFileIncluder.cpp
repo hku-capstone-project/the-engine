@@ -1,6 +1,6 @@
 #include "CustomFileIncluder.hpp"
 
-#include "utils/io/ShaderFileReader.hpp"
+#include "utils/io/FileReader.hpp"
 #include "utils/logger/Logger.hpp"
 
 #include <sstream>

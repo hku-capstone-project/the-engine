@@ -3,7 +3,7 @@
 #include "app-context/VulkanApplicationContext.hpp"
 
 #include "../descriptor-set/DescriptorSetBundle.hpp"
-#include "utils/io/ShaderFileReader.hpp"
+#include "utils/io/FileReader.hpp"
 #include "utils/logger/Logger.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 
