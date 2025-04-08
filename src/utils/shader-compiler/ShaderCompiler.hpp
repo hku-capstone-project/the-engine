@@ -22,7 +22,7 @@ enum class ShaderStage : uint32_t {
 class ShaderCompiler : public shaderc::Compiler {
 public:
   ShaderCompiler(Logger *logger,
-                 std::function<void(std::string const &)> includeCallback = nullptr);
+                 std::function<void(std::string const &)> &&includeCallback = nullptr);
 
   std::optional<std::vector<uint32_t>> compileShaderFromFile(ShaderStage shaderStage,
                                                              const std::string &fullPathToFile,

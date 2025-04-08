@@ -17,10 +17,12 @@ std::string _compressPath(std::string const &originalPath) {
   std::string token;
 
   while (std::getline(ss, token, '/')) {
-    if (token == "" || token == ".") {
+    if (token.empty() || token == ".") {
       // skip empty tokens and current directory markers
       continue;
-    } else if (token == "..") {
+    }
+
+    if (token == "..") {
       // go up one level if possible
       if (!pathStack.empty()) {
         pathStack.pop_back();
@@ -48,8 +50,8 @@ std::string _compressPath(std::string const &originalPath) {
 } // namespace
 
 CustomFileIncluder::CustomFileIncluder(Logger *logger,
-                                       std::function<void(std::string const &)> includeCallback)
-    : _logger(logger), _includeCallback(includeCallback) {}
+                                       std::function<void(std::string const &)> &&includeCallback)
+    : _logger(logger), _includeCallback(std::move(includeCallback)) {}
 
 shaderc_include_result *MakeErrorIncludeResult(const char *message) {
   return new shaderc_include_result{"", 0, message, strlen(message)};

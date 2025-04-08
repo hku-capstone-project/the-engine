@@ -39,10 +39,10 @@ shaderc_shader_kind _getShaderKind(ShaderStage stage) {
 }; // namespace
 
 ShaderCompiler::ShaderCompiler(Logger *logger,
-                               std::function<void(std::string const &)> includeCallback)
+                               std::function<void(std::string const &)> &&includeCallback)
     : _logger(logger) {
   std::unique_ptr<CustomFileIncluder> fileIncluder =
-      std::make_unique<CustomFileIncluder>(logger, includeCallback);
+      std::make_unique<CustomFileIncluder>(logger, std::move(includeCallback));
 
   // _defaultOptions takes the ownership of fileIncluder, but doesn't provide a way to retrieve it,
   // so we need to store it as a raw pointer

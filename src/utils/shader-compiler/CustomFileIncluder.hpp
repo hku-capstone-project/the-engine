@@ -10,7 +10,7 @@ class Logger;
 class CustomFileIncluder : public shaderc::CompileOptions::IncluderInterface {
 public:
   CustomFileIncluder(Logger *logger,
-                     std::function<void(std::string const &)> includeCallback = nullptr);
+                     std::function<void(std::string const &)> &&includeCallback = nullptr);
 
   shaderc_include_result *GetInclude(const char *requested_source, shaderc_include_type type,
                                      const char *requesting_source, size_t include_depth) override;
