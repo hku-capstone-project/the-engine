@@ -11,11 +11,9 @@ static const std::map<VkShaderStageFlags, VkPipelineBindPoint> kShaderStageFlags
     {VK_SHADER_STAGE_FRAGMENT_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
     {VK_SHADER_STAGE_COMPUTE_BIT, VK_PIPELINE_BIND_POINT_COMPUTE}};
 
-Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger,
-                   std::string fullPathToShaderSourceCode, DescriptorSetBundle *descriptorSetBundle,
+Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger, DescriptorSetBundle *descriptorSetBundle,
                    VkShaderStageFlags shaderStageFlags)
     : _appContext(appContext), _logger(logger), _descriptorSetBundle(descriptorSetBundle),
-      _fullPathToShaderSourceCode(std::move(fullPathToShaderSourceCode)),
       _shaderStageFlags(shaderStageFlags) {}
 
 Pipeline::~Pipeline() {
@@ -34,11 +32,9 @@ void Pipeline::_cleanupPipelineAndLayout() {
   }
 }
 
-void Pipeline::_cleanupShaderModule() {
-  if (_cachedShaderModule != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(_appContext->getDevice(), _cachedShaderModule, nullptr);
-    _cachedShaderModule = VK_NULL_HANDLE;
-  }
+void Pipeline::init(std::string &path) {
+  compileAndCacheShaderModule(path);
+  build();
 }
 
 void Pipeline::updateDescriptorSetBundle(DescriptorSetBundle *descriptorSetBundle) {

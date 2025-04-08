@@ -10,18 +10,18 @@ struct WorkGroupSize {
 
 class ShaderCompiler;
 
-class ComputePipeline : public Pipeline {
+// GFX shaders should be placed in a folder and name as vert.glsl & frag.glsl
+class GfxPipeline: public Pipeline {
 public:
-  ComputePipeline(VulkanApplicationContext *appContext, Logger *logger, WorkGroupSize workGroupSize,
+  GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, WorkGroupSize workGroupSize,
                   DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler);
 
-  ~ComputePipeline() override;
+  ~GfxPipeline() override;
 
-  // disable copy and move
-  ComputePipeline(const ComputePipeline &)            = delete;
-  ComputePipeline &operator=(const ComputePipeline &) = delete;
-  ComputePipeline(ComputePipeline &&)                 = delete;
-  ComputePipeline &operator=(ComputePipeline &&)      = delete;
+  GfxPipeline(const GfxPipeline &)            = delete;
+  GfxPipeline &operator=(const GfxPipeline &) = delete;
+  GfxPipeline(GfxPipeline &&)                 = delete;
+  GfxPipeline &operator=(GfxPipeline &&)      = delete;
 
   void build() override;
   void compileAndCacheShaderModule(std::string &path) override;
@@ -33,9 +33,12 @@ public:
                              VkBuffer indirectBuffer);
 
 private:
-  VkShaderModule _cachedShaderModule = VK_NULL_HANDLE;
+  VkShaderModule _vertShaderModule = VK_NULL_HANDLE;
+  VkShaderModule _fragShaderModule = VK_NULL_HANDLE;
   WorkGroupSize _workGroupSize;
   ShaderCompiler *_shaderCompiler;
+  VkPipelineCache _pipelineCache;
+  VkRenderPass _renderPass;
 
   void _cleanupShaderModule() override;
 };

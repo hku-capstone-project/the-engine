@@ -6,6 +6,7 @@ add_library(src-vulkan-wrapper STATIC
     memory/Image.cpp
     memory/Model.cpp
     pipeline/ComputePipeline.cpp
+    pipeline/GfxPipeline.cpp
     pipeline/Pipeline.cpp
     utils/SimpleCommands.cpp
 )

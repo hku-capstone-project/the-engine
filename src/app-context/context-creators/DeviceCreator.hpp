@@ -18,6 +18,8 @@ struct QueueSelection {
   VkQueue presentQueue;
   VkQueue computeQueue;
   VkQueue transferQueue;
+
+  VkSampleCountFlagBits msaaSamples;
 };
 
 void createDevice(Logger *logger, VkPhysicalDevice &physicalDevice, VkDevice &device,

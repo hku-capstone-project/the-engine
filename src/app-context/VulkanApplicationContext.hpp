@@ -76,6 +76,8 @@ public:
     return _queueFamilyIndices;
   }
 
+  [[nodiscard]] const VkSampleCountFlagBits &getMsaaSample() const { return _msaaSamples; }
+
 private:
   // stores the indices of the each queue family, they might not overlap
   ContextCreator::QueueFamilyIndices _queueFamilyIndices;
@@ -112,6 +114,8 @@ private:
 
   std::vector<VkImage> _swapchainImages;
   std::vector<VkImageView> _swapchainImageViews;
+
+  VkSampleCountFlagBits _msaaSamples;
 
   void _initWindow(uint8_t windowSize);
 

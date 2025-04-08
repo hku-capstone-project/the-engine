@@ -79,6 +79,8 @@ void VulkanApplicationContext::init(Logger *logger, GLFWwindow *window,
   _computeQueue  = queueSelection.computeQueue;
   _transferQueue = queueSelection.transferQueue;
 
+  _msaaSamples = queueSelection.msaaSamples;
+
   _createSwapchain(settings->isFramerateLimited);
   _createAllocator();
   _createCommandPool();

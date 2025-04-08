@@ -8,35 +8,26 @@
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 
 ComputePipeline::ComputePipeline(VulkanApplicationContext *appContext, Logger *logger,
-                                 std::string fullPathToShaderSourceCode,
                                  WorkGroupSize workGroupSize,
                                  DescriptorSetBundle *descriptorSetBundle,
                                  ShaderCompiler *shaderCompiler)
-    : Pipeline(appContext, logger, std::move(fullPathToShaderSourceCode), descriptorSetBundle,
+    : Pipeline(appContext, logger, descriptorSetBundle,
                VK_SHADER_STAGE_COMPUTE_BIT),
-      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {
-  if (!compileAndCacheShaderModule()) {
-    _logger->error("pipeline: {} is failed to compile!");
-    exit(0);
-  }
-  build();
-}
+      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) { }
 
 ComputePipeline::~ComputePipeline() = default;
 
-bool ComputePipeline::compileAndCacheShaderModule() {
-  auto const sourceCode =
-
-      FileReader::readShaderSourceCode(_fullPathToShaderSourceCode, _logger);
-  auto const compiledCode = _shaderCompiler->compileShaderFromFile(
-      ShaderStage::kCompute, _fullPathToShaderSourceCode, sourceCode);
+void ComputePipeline::compileAndCacheShaderModule(std::string &path) {
+  auto const sourceCode = FileReader::readShaderSourceCode(path, _logger);
+  auto const compiledCode = _shaderCompiler->compileShaderFromFile(ShaderStage::kCompute, path, sourceCode);
 
   if (compiledCode.has_value()) {
     _cleanupShaderModule();
     _cachedShaderModule = _createShaderModule(compiledCode.value());
-    return true;
+  } else {
+    _logger->error("Failed to compile shader: {}", path);
+    exit(0);
   }
-  return false;
 }
 
 // the shader module must be cached before this step
@@ -50,11 +41,6 @@ void ComputePipeline::build() {
   pipelineLayoutInfo.pSetLayouts = &_descriptorSetBundle->getDescriptorSetLayout();
 
   vkCreatePipelineLayout(_appContext->getDevice(), &pipelineLayoutInfo, nullptr, &_pipelineLayout);
-
-  if (_cachedShaderModule == VK_NULL_HANDLE) {
-    _logger->error("failed to build the pipeline because of a null shader module: {}",
-                   _fullPathToShaderSourceCode);
-  }
 
   VkPipelineShaderStageCreateInfo shaderStageInfo{};
   shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -86,4 +72,11 @@ void ComputePipeline::recordIndirectCommand(VkCommandBuffer commandBuffer, uint3
                                             VkBuffer indirectBuffer) {
   _bind(commandBuffer, currentFrame);
   vkCmdDispatchIndirect(commandBuffer, indirectBuffer, 0);
+}
+
+void ComputePipeline::_cleanupShaderModule() {
+  if (_cachedShaderModule != VK_NULL_HANDLE) {
+    vkDestroyShaderModule(_appContext->getDevice(), _cachedShaderModule, nullptr);
+    _cachedShaderModule = VK_NULL_HANDLE;
+  }
 }

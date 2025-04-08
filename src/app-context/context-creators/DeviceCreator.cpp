@@ -250,6 +250,17 @@ void ContextCreator::createDevice(Logger *logger, VkPhysicalDevice &physicalDevi
     vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data());
 
     physicalDevice = selectBestDevice(logger, physicalDevices, surface, requiredDeviceExtensions);
+
+    // find msaaSamples
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+    VkSampleCountFlags counts = properties.limits.framebufferColorSampleCounts & properties.limits.framebufferDepthSampleCounts;
+    if (counts & VK_SAMPLE_COUNT_64_BIT) queueSelection.msaaSamples = VK_SAMPLE_COUNT_64_BIT;
+    if (counts & VK_SAMPLE_COUNT_32_BIT) queueSelection.msaaSamples = VK_SAMPLE_COUNT_32_BIT;
+    if (counts & VK_SAMPLE_COUNT_16_BIT) queueSelection.msaaSamples = VK_SAMPLE_COUNT_16_BIT;
+    if (counts & VK_SAMPLE_COUNT_8_BIT) queueSelection.msaaSamples = VK_SAMPLE_COUNT_8_BIT;
+    if (counts & VK_SAMPLE_COUNT_4_BIT) queueSelection.msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+    if (counts & VK_SAMPLE_COUNT_2_BIT) queueSelection.msaaSamples = VK_SAMPLE_COUNT_2_BIT;
   }
 
   // create logical device from the physical device we've picked

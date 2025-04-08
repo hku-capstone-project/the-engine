@@ -14,8 +14,7 @@ class DescriptorSetBundle;
 
 class Pipeline {
 public:
-  Pipeline(VulkanApplicationContext *appContext, Logger *logger,
-           std::string fullPathToShaderSourceCode, DescriptorSetBundle *descriptorSetBundle,
+  Pipeline(VulkanApplicationContext *appContext, Logger *logger, DescriptorSetBundle *descriptorSetBundle,
            VkShaderStageFlags shaderStageFlags);
   virtual ~Pipeline();
 
@@ -26,24 +25,19 @@ public:
   Pipeline &operator=(Pipeline &&)      = delete;
 
   virtual void build() = 0;
+  void init(std::string &path);
 
   // build the shader module and cache it
   // returns of the shader has been compiled and cached correctly
-  virtual bool compileAndCacheShaderModule() = 0;
+  virtual void compileAndCacheShaderModule(std::string &path) = 0;
 
   void updateDescriptorSetBundle(DescriptorSetBundle *descriptorSetBundle);
-
-  [[nodiscard]] std::string getFullPathToShaderSourceCode() const {
-    return _fullPathToShaderSourceCode;
-  }
 
 protected:
   VulkanApplicationContext *_appContext;
   Logger *_logger;
-  VkShaderModule _cachedShaderModule = VK_NULL_HANDLE;
 
   DescriptorSetBundle *_descriptorSetBundle;
-  std::string _fullPathToShaderSourceCode;
 
   std::vector<BufferBundle *> _uniformBufferBundles; // buffer bundles for uniform data
   std::vector<BufferBundle *> _storageBufferBundles; // buffer bundles for storage data
@@ -55,7 +49,7 @@ protected:
   VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
 
   void _cleanupPipelineAndLayout();
-  void _cleanupShaderModule();
+  virtual void _cleanupShaderModule() = 0;
 
   VkShaderModule _createShaderModule(const std::vector<uint32_t> &code);
   void _bind(VkCommandBuffer commandBuffer, size_t currentFrame);
