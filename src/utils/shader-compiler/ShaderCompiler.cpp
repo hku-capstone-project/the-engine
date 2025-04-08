@@ -23,6 +23,19 @@ PathInfo _getFullDirAndFileName(const std::string &fullPath, Logger *logger) {
   }
   return {dirName, fileName};
 }
+
+shaderc_shader_kind _getShaderKind(ShaderStage stage) {
+  switch (stage) {
+  case ShaderStage::kInferFromSource:
+    return shaderc_glsl_infer_from_source;
+  case ShaderStage::kCompute:
+    return shaderc_glsl_compute_shader;
+  case ShaderStage::kFrag:
+    return shaderc_glsl_fragment_shader;
+  case ShaderStage::kVert:
+    return shaderc_glsl_vertex_shader;
+  }
+}
 }; // namespace
 
 ShaderCompiler::ShaderCompiler(Logger *logger,
@@ -42,14 +55,14 @@ ShaderCompiler::ShaderCompiler(Logger *logger,
 }
 
 std::optional<std::vector<uint32_t>>
-ShaderCompiler::compileComputeShader(const std::string &fullPathToFile,
-                                     std::string const &sourceCode) {
+ShaderCompiler::compileShaderFromFile(ShaderStage shaderStage, const std::string &fullPathToFile,
+                                      std::string const &sourceCode) {
   auto const fullDirAndFileName = _getFullDirAndFileName(fullPathToFile, _logger);
 
   _fileIncluder->setIncludeDir(fullDirAndFileName.fullPathToDir);
 
   std::optional<std::vector<uint32_t>> res = std::nullopt;
-  shaderc_shader_kind const kind           = shaderc_glsl_compute_shader;
+  shaderc_shader_kind const kind           = _getShaderKind(shaderStage);
 
   // from shaderc's doc:
   // the input_file_name is used as a tag to identify the source string in cases like emitting error

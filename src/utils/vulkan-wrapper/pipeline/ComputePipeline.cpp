@@ -28,8 +28,8 @@ bool ComputePipeline::compileAndCacheShaderModule() {
   auto const sourceCode =
 
       FileReader::readShaderSourceCode(_fullPathToShaderSourceCode, _logger);
-  auto const compiledCode =
-      _shaderCompiler->compileComputeShader(_fullPathToShaderSourceCode, sourceCode);
+  auto const compiledCode = _shaderCompiler->compileShaderFromFile(
+      ShaderStage::kCompute, _fullPathToShaderSourceCode, sourceCode);
 
   if (compiledCode.has_value()) {
     _cleanupShaderModule();
