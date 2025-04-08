@@ -37,5 +37,5 @@ private:
   WorkGroupSize _workGroupSize;
   ShaderCompiler *_shaderCompiler;
 
-  void _cleanupShaderModule() override;
+  void _cleanupShaderModules() override;
 };

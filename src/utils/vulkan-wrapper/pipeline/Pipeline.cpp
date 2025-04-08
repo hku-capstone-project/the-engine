@@ -17,8 +17,12 @@ Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger, Descrip
       _shaderStageFlags(shaderStageFlags) {}
 
 Pipeline::~Pipeline() {
-  _cleanupShaderModule();
+  _doCleanupShaderModules();
   _cleanupPipelineAndLayout();
+}
+
+void Pipeline::_doCleanupShaderModules() {
+  _cleanupShaderModules();
 }
 
 void Pipeline::_cleanupPipelineAndLayout() {

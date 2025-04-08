@@ -37,8 +37,8 @@ private:
   VkShaderModule _fragShaderModule = VK_NULL_HANDLE;
   WorkGroupSize _workGroupSize;
   ShaderCompiler *_shaderCompiler;
-  VkPipelineCache _pipelineCache;
-  VkRenderPass _renderPass;
+  VkPipelineCache _pipelineCache = VK_NULL_HANDLE;
+  VkRenderPass _renderPass = VK_NULL_HANDLE;
 
-  void _cleanupShaderModule() override;
+  void _cleanupShaderModules() override;
 };

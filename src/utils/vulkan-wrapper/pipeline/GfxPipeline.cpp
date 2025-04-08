@@ -5,7 +5,7 @@
 #include "../descriptor-set/DescriptorSetBundle.hpp"
 #include "utils/io/FileReader.hpp"
 #include "utils/logger/Logger.hpp"
-#include "utils/vulkan-wrapper/memory/Model.hpp"
+#include "utils/model-loader/ModelLoader.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 
 GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, WorkGroupSize workGroupSize, DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler)
@@ -21,7 +21,7 @@ void GfxPipeline::compileAndCacheShaderModule(std::string &path) {
   auto const compiledFragCode = _shaderCompiler->compileShaderFromFile(ShaderStage::kFrag, path, sourceFragCode);
 
   if (compiledVertCode.has_value() && compiledFragCode.has_value()) {
-    _cleanupShaderModule();
+    _cleanupShaderModules();
     _vertShaderModule = _createShaderModule(compiledVertCode.value());
     _fragShaderModule = _createShaderModule(compiledFragCode.value());
   } else {
@@ -167,7 +167,7 @@ void GfxPipeline::recordIndirectCommand(VkCommandBuffer commandBuffer, uint32_t 
   vkCmdDispatchIndirect(commandBuffer, indirectBuffer, 0);
 }
 
-void GfxPipeline::_cleanupShaderModule() {
+void GfxPipeline::_cleanupShaderModules() {
   if (_vertShaderModule != VK_NULL_HANDLE) {
     vkDestroyShaderModule(_appContext->getDevice(), _vertShaderModule, nullptr);
     _vertShaderModule = VK_NULL_HANDLE;

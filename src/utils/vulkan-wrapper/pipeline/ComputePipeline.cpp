@@ -22,7 +22,7 @@ void ComputePipeline::compileAndCacheShaderModule(std::string &path) {
   auto const compiledCode = _shaderCompiler->compileShaderFromFile(ShaderStage::kCompute, path, sourceCode);
 
   if (compiledCode.has_value()) {
-    _cleanupShaderModule();
+    _cleanupShaderModules();
     _cachedShaderModule = _createShaderModule(compiledCode.value());
   } else {
     _logger->error("Failed to compile shader: {}", path);
@@ -74,7 +74,7 @@ void ComputePipeline::recordIndirectCommand(VkCommandBuffer commandBuffer, uint3
   vkCmdDispatchIndirect(commandBuffer, indirectBuffer, 0);
 }
 
-void ComputePipeline::_cleanupShaderModule() {
+void ComputePipeline::_cleanupShaderModules() {
   if (_cachedShaderModule != VK_NULL_HANDLE) {
     vkDestroyShaderModule(_appContext->getDevice(), _cachedShaderModule, nullptr);
     _cachedShaderModule = VK_NULL_HANDLE;
