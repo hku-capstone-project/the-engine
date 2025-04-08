@@ -1,7 +1,7 @@
 #include "Image.hpp"
 
 #include "app-context/VulkanApplicationContext.hpp"
-
+#include "utils/logger/Logger.hpp"
 #include "../utils/SimpleCommands.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -34,19 +34,22 @@ static const std::unordered_map<VkFormat, int> kVkFormatBytesPerPixelMap{
 };
 
 namespace {
-unsigned char *_loadImageFromPath(const std::string &path, int &width, int &height, int &channels) {
+unsigned char *_loadImageFromPath(const std::string &path, int &width, int &height, int &channels, Logger *logger) {
   unsigned char *imageData = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-  assert(imageData != nullptr && "Failed to load texture image");
+  if (imageData == nullptr) {
+    logger->error("Failed to load image: {}", path);
+  }
+  logger->info("New Image Loaded: {}", path);
   return imageData;
 }
 
 void _freeImageData(unsigned char *imageData) { stbi_image_free(imageData); }
 } // namespace
 
-Image::Image(VulkanApplicationContext *appContext, ImageDimensions dimensions, VkFormat format,
+Image::Image(VulkanApplicationContext *appContext, Logger *logger, ImageDimensions dimensions, VkFormat format,
              VkImageUsageFlags usage, VkSampler sampler, VkImageLayout initialImageLayout,
              VkSampleCountFlagBits numSamples, VkImageTiling tiling, VkImageAspectFlags aspectFlags)
-    : _appContext(appContext), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
+    : _appContext(appContext), _logger(logger), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
       _layerCount(1), _format(format), _dimensions(dimensions) {
   _createImage(numSamples, tiling, usage);
 
@@ -57,16 +60,16 @@ Image::Image(VulkanApplicationContext *appContext, ImageDimensions dimensions, V
                                  _dimensions.depth, _layerCount);
 }
 
-Image::Image(VulkanApplicationContext *appContext, const std::string &filename,
+Image::Image(VulkanApplicationContext *appContext, Logger *logger, const std::string &filename,
              VkImageUsageFlags usage, VkSampler sampler, VkImageLayout initialImageLayout,
              VkSampleCountFlagBits numSamples, VkImageTiling tiling, VkImageAspectFlags aspectFlags)
-    : _appContext(appContext), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
+    : _appContext(appContext), _logger(logger), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
       _layerCount(1), _format(VK_FORMAT_R8G8B8A8_UNORM) {
   // load image from path
   int width       = 0;
   int height      = 0;
   int channels    = 0;
-  auto *imageData = _loadImageFromPath(filename, width, height, channels);
+  auto *imageData = _loadImageFromPath(filename, width, height, channels, _logger);
 
   _dimensions = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
 
@@ -91,10 +94,10 @@ Image::Image(VulkanApplicationContext *appContext, const std::string &filename,
                                  _dimensions.depth, _layerCount);
 }
 
-Image::Image(VulkanApplicationContext *appContext, const std::vector<std::string> &filenames,
+Image::Image(VulkanApplicationContext *appContext, Logger *logger, const std::vector<std::string> &filenames,
              VkImageUsageFlags usage, VkSampler sampler, VkImageLayout initialImageLayout,
              VkSampleCountFlagBits numSamples, VkImageTiling tiling, VkImageAspectFlags aspectFlags)
-    : _appContext(appContext), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
+    : _appContext(appContext), _logger(logger), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
       _layerCount(static_cast<uint32_t>(filenames.size())), _format(VK_FORMAT_R8G8B8A8_UNORM) {
   std::vector<unsigned char *> imageDatas{};
 
@@ -103,7 +106,7 @@ Image::Image(VulkanApplicationContext *appContext, const std::vector<std::string
   int channels = 0;
   for (std::string const &filename : filenames) {
     // load image from path
-    auto *imageData = _loadImageFromPath(filename, width, height, channels);
+    auto *imageData = _loadImageFromPath(filename, width, height, channels, logger);
     imageDatas.push_back(imageData);
   }
 

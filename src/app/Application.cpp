@@ -35,8 +35,8 @@ Application::Application(Logger *logger) : _logger(logger) {
 
   _fpsSink = std::make_unique<FpsSink>();
 
-  _model = std::make_unique<Model>(_appContext.get(), _logger,
-                                   "./../../../resources/models/sci_sword/sword.gltf");
+  _model = std::make_unique<Model>(_appContext.get(), _logger, "./../../../resources/models/sci_sword/sword.gltf");
+  _images.baseColor = std::make_unique<Image>(_appContext.get(), _logger, "./../../../resources/models/sci_sword/textures/blade_baseColor.png", VK_IMAGE_USAGE_SAMPLED_BIT);
 
   _init();
 

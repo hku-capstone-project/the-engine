@@ -3,6 +3,7 @@
 #include "app-context/VulkanApplicationContext.hpp"
 #include "utils/event-types/EventType.hpp"
 #include "utils/logger/Logger.hpp"
+#include "utils/vulkan-wrapper/memory/Image.hpp"
 #include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "window/KeyboardInfo.hpp"
 
@@ -42,6 +43,11 @@ private:
   std::unique_ptr<ImguiManager> _imguiManager = nullptr;
   std::unique_ptr<FpsSink> _fpsSink           = nullptr;
   std::unique_ptr<Model> _model = nullptr;
+  struct {
+    std::unique_ptr<Image> baseColor;
+    std::unique_ptr<Image> normalMap;
+    std::unique_ptr<Image> metalRoughness;
+  } _images;
 
   // semaphores and fences for synchronization
   std::vector<VkSemaphore> _imageAvailableSemaphores{};
