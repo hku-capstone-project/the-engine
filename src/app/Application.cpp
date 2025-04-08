@@ -35,7 +35,8 @@ Application::Application(Logger *logger) : _logger(logger) {
 
   _fpsSink = std::make_unique<FpsSink>();
 
-  _model = std::make_unique<Model>(_appContext.get(), _logger, "./../../../resources/models/sci_sword/sword.gltf");
+  _model = std::make_unique<Model>(_appContext.get(), _logger,
+                                   "./../../../resources/models/sci_sword/sword.gltf");
 
   _init();
 
@@ -106,6 +107,8 @@ void Application::_waitForTheWindowToBeResumed() {
 
   while (windowWidth == 0 || windowHeight == 0) {
     glfwWaitEvents();
+
+    _window->getWindowDimension(windowWidth, windowHeight);
   }
 }
 
