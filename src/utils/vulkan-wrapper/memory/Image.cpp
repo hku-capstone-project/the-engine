@@ -136,7 +136,7 @@ Image::Image(VulkanApplicationContext *appContext, Logger *logger, const std::ve
 Image::~Image() {
   if (_vkImage != VK_NULL_HANDLE) {
     vkDestroyImageView(_appContext->getDevice(), _vkImageView, nullptr);
-    vkDestroyImage(_appContext->getDevice(), _vkImage, nullptr);
+    vmaDestroyImage(_appContext->getAllocator(), _vkImage, _allocation);
     vmaFreeMemory(_appContext->getAllocator(), _allocation);
   }
 }
