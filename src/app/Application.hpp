@@ -42,7 +42,7 @@ private:
   // std::unique_ptr<Renderer> _renderer             = nullptr;
   std::unique_ptr<ImguiManager> _imguiManager = nullptr;
   std::unique_ptr<FpsSink> _fpsSink           = nullptr;
-  std::unique_ptr<Model> _model = nullptr;
+  std::unique_ptr<Model> _model               = nullptr;
   struct {
     std::unique_ptr<Image> baseColor;
     std::unique_ptr<Image> normalMap;

@@ -11,13 +11,13 @@ class VulkanApplicationContext;
 
 class Model {
 public:
-  Model(VulkanApplicationContext *appContext, Logger *logger, const std::string& filePath);
+  Model(VulkanApplicationContext *appContext, Logger *logger, const std::string &filePath);
   ~Model();
 
-  Model(const Model &) = delete;
+  Model(const Model &)            = delete;
   Model &operator=(const Model &) = delete;
-  Model(Model &&) = delete;
-  Model &operator=(Model &&) = delete;
+  Model(Model &&)                 = delete;
+  Model &operator=(Model &&)      = delete;
 
 private:
   VulkanApplicationContext *_appContext;

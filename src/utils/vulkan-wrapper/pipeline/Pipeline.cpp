@@ -11,8 +11,8 @@ static const std::map<VkShaderStageFlags, VkPipelineBindPoint> kShaderStageFlags
     {VK_SHADER_STAGE_FRAGMENT_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
     {VK_SHADER_STAGE_COMPUTE_BIT, VK_PIPELINE_BIND_POINT_COMPUTE}};
 
-Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger, DescriptorSetBundle *descriptorSetBundle,
-                   VkShaderStageFlags shaderStageFlags)
+Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger,
+                   DescriptorSetBundle *descriptorSetBundle, VkShaderStageFlags shaderStageFlags)
     : _appContext(appContext), _logger(logger), _descriptorSetBundle(descriptorSetBundle),
       _shaderStageFlags(shaderStageFlags) {}
 
@@ -21,9 +21,7 @@ Pipeline::~Pipeline() {
   _cleanupPipelineAndLayout();
 }
 
-void Pipeline::_doCleanupShaderModules() {
-  _cleanupShaderModules();
-}
+void Pipeline::_doCleanupShaderModules() { _cleanupShaderModules(); }
 
 void Pipeline::_cleanupPipelineAndLayout() {
   if (_pipelineLayout != VK_NULL_HANDLE) {

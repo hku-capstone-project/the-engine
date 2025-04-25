@@ -14,8 +14,8 @@ class DescriptorSetBundle;
 
 class Pipeline {
 public:
-  Pipeline(VulkanApplicationContext *appContext, Logger *logger, DescriptorSetBundle *descriptorSetBundle,
-           VkShaderStageFlags shaderStageFlags);
+  Pipeline(VulkanApplicationContext *appContext, Logger *logger,
+           DescriptorSetBundle *descriptorSetBundle, VkShaderStageFlags shaderStageFlags);
   virtual ~Pipeline();
 
   // disable copy and move

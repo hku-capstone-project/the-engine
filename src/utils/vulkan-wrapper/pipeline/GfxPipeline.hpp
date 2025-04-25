@@ -11,10 +11,10 @@ struct WorkGroupSize {
 class ShaderCompiler;
 
 // GFX shaders should be placed in a folder and name as vert.glsl & frag.glsl
-class GfxPipeline: public Pipeline {
+class GfxPipeline : public Pipeline {
 public:
   GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, WorkGroupSize workGroupSize,
-                  DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler);
+              DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler);
 
   ~GfxPipeline() override;
 
@@ -38,7 +38,7 @@ private:
   WorkGroupSize _workGroupSize;
   ShaderCompiler *_shaderCompiler;
   VkPipelineCache _pipelineCache = VK_NULL_HANDLE;
-  VkRenderPass _renderPass = VK_NULL_HANDLE;
+  VkRenderPass _renderPass       = VK_NULL_HANDLE;
 
   void _cleanupShaderModules() override;
 };

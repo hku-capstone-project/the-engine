@@ -11,15 +11,15 @@ ComputePipeline::ComputePipeline(VulkanApplicationContext *appContext, Logger *l
                                  WorkGroupSize workGroupSize,
                                  DescriptorSetBundle *descriptorSetBundle,
                                  ShaderCompiler *shaderCompiler)
-    : Pipeline(appContext, logger, descriptorSetBundle,
-               VK_SHADER_STAGE_COMPUTE_BIT),
-      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) { }
+    : Pipeline(appContext, logger, descriptorSetBundle, VK_SHADER_STAGE_COMPUTE_BIT),
+      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {}
 
 ComputePipeline::~ComputePipeline() = default;
 
 void ComputePipeline::compileAndCacheShaderModule(std::string &path) {
   auto const sourceCode = FileReader::readShaderSourceCode(path, _logger);
-  auto const compiledCode = _shaderCompiler->compileShaderFromFile(ShaderStage::kCompute, path, sourceCode);
+  auto const compiledCode =
+      _shaderCompiler->compileShaderFromFile(ShaderStage::kCompute, path, sourceCode);
 
   if (compiledCode.has_value()) {
     _cleanupShaderModules();

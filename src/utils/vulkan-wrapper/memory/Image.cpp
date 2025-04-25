@@ -1,8 +1,9 @@
 #include "Image.hpp"
 
+#include "../utils/SimpleCommands.hpp"
 #include "app-context/VulkanApplicationContext.hpp"
 #include "utils/logger/Logger.hpp"
-#include "../utils/SimpleCommands.hpp"
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -34,7 +35,8 @@ static const std::unordered_map<VkFormat, int> kVkFormatBytesPerPixelMap{
 };
 
 namespace {
-unsigned char *_loadImageFromPath(const std::string &path, int &width, int &height, int &channels, Logger *logger) {
+unsigned char *_loadImageFromPath(const std::string &path, int &width, int &height, int &channels,
+                                  Logger *logger) {
   unsigned char *imageData = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
   if (imageData == nullptr) {
     logger->error("Failed to load image: {}", path);
@@ -46,11 +48,13 @@ unsigned char *_loadImageFromPath(const std::string &path, int &width, int &heig
 void _freeImageData(unsigned char *imageData) { stbi_image_free(imageData); }
 } // namespace
 
-Image::Image(VulkanApplicationContext *appContext, Logger *logger, ImageDimensions dimensions, VkFormat format,
-             VkImageUsageFlags usage, VkSampler sampler, VkImageLayout initialImageLayout,
-             VkSampleCountFlagBits numSamples, VkImageTiling tiling, VkImageAspectFlags aspectFlags)
-    : _appContext(appContext), _logger(logger), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-      _layerCount(1), _format(format), _dimensions(dimensions) {
+Image::Image(VulkanApplicationContext *appContext, Logger *logger, ImageDimensions dimensions,
+             VkFormat format, VkImageUsageFlags usage, VkSampler sampler,
+             VkImageLayout initialImageLayout, VkSampleCountFlagBits numSamples,
+             VkImageTiling tiling, VkImageAspectFlags aspectFlags)
+    : _appContext(appContext), _logger(logger), _vkSampler(sampler),
+      _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED), _layerCount(1), _format(format),
+      _dimensions(dimensions) {
   _createImage(numSamples, tiling, usage);
 
   if (initialImageLayout != VK_IMAGE_LAYOUT_UNDEFINED) {
@@ -63,8 +67,9 @@ Image::Image(VulkanApplicationContext *appContext, Logger *logger, ImageDimensio
 Image::Image(VulkanApplicationContext *appContext, Logger *logger, const std::string &filename,
              VkImageUsageFlags usage, VkSampler sampler, VkImageLayout initialImageLayout,
              VkSampleCountFlagBits numSamples, VkImageTiling tiling, VkImageAspectFlags aspectFlags)
-    : _appContext(appContext), _logger(logger), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-      _layerCount(1), _format(VK_FORMAT_R8G8B8A8_UNORM) {
+    : _appContext(appContext), _logger(logger), _vkSampler(sampler),
+      _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED), _layerCount(1),
+      _format(VK_FORMAT_R8G8B8A8_UNORM) {
   // load image from path
   int width       = 0;
   int height      = 0;
@@ -94,10 +99,12 @@ Image::Image(VulkanApplicationContext *appContext, Logger *logger, const std::st
                                  _dimensions.depth, _layerCount);
 }
 
-Image::Image(VulkanApplicationContext *appContext, Logger *logger, const std::vector<std::string> &filenames,
-             VkImageUsageFlags usage, VkSampler sampler, VkImageLayout initialImageLayout,
-             VkSampleCountFlagBits numSamples, VkImageTiling tiling, VkImageAspectFlags aspectFlags)
-    : _appContext(appContext), _logger(logger), _vkSampler(sampler), _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
+Image::Image(VulkanApplicationContext *appContext, Logger *logger,
+             const std::vector<std::string> &filenames, VkImageUsageFlags usage, VkSampler sampler,
+             VkImageLayout initialImageLayout, VkSampleCountFlagBits numSamples,
+             VkImageTiling tiling, VkImageAspectFlags aspectFlags)
+    : _appContext(appContext), _logger(logger), _vkSampler(sampler),
+      _currentImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
       _layerCount(static_cast<uint32_t>(filenames.size())), _format(VK_FORMAT_R8G8B8A8_UNORM) {
   std::vector<unsigned char *> imageDatas{};
 

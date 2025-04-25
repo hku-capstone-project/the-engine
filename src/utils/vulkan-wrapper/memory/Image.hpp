@@ -36,8 +36,8 @@ class VulkanApplicationContext;
 class Image {
 public:
   // create a blank image
-  Image(VulkanApplicationContext *appContext, Logger *logger, ImageDimensions dimensions, VkFormat format,
-        VkImageUsageFlags usage, VkSampler sampler = VK_NULL_HANDLE,
+  Image(VulkanApplicationContext *appContext, Logger *logger, ImageDimensions dimensions,
+        VkFormat format, VkImageUsageFlags usage, VkSampler sampler = VK_NULL_HANDLE,
         VkImageLayout initialImageLayout = VK_IMAGE_LAYOUT_GENERAL,
         VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT,
         VkImageTiling tiling             = VK_IMAGE_TILING_OPTIMAL,
@@ -45,8 +45,8 @@ public:
 
   // create an image from a file, VK_FORMAT_R8G8B8A8_UNORM is the only format that stb_image
   // supports, so the created image format is fixed, and only 2D images are supported.
-  Image(VulkanApplicationContext *appContext, Logger *logger, const std::string &filename, VkImageUsageFlags usage,
-        VkSampler sampler                = VK_NULL_HANDLE,
+  Image(VulkanApplicationContext *appContext, Logger *logger, const std::string &filename,
+        VkImageUsageFlags usage, VkSampler sampler = VK_NULL_HANDLE,
         VkImageLayout initialImageLayout = VK_IMAGE_LAYOUT_GENERAL,
         VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT,
         VkImageTiling tiling             = VK_IMAGE_TILING_OPTIMAL,
@@ -54,8 +54,9 @@ public:
 
   // create a texture array from a set of image files, all images should be in
   // the same dimension and the same format..
-  Image(VulkanApplicationContext *appContext, Logger *logger, const std::vector<std::string> &filenames,
-        VkImageUsageFlags usage, VkSampler sampler = VK_NULL_HANDLE,
+  Image(VulkanApplicationContext *appContext, Logger *logger,
+        const std::vector<std::string> &filenames, VkImageUsageFlags usage,
+        VkSampler sampler                = VK_NULL_HANDLE,
         VkImageLayout initialImageLayout = VK_IMAGE_LAYOUT_GENERAL,
         VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT,
         VkImageTiling tiling             = VK_IMAGE_TILING_OPTIMAL,
