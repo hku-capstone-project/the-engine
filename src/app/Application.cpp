@@ -1,15 +1,15 @@
 #include "Application.hpp"
 #include "BlockState.hpp"
+#include "config-container/ConfigContainer.hpp"
+#include "config-container/sub-config/ApplicationInfo.hpp"
 #include "imgui-manager/gui-manager/ImguiManager.hpp"
+#include "renderer/Renderer.hpp"
 #include "utils/event-dispatcher/GlobalEventDispatcher.hpp"
 #include "utils/event-types/EventType.hpp"
 #include "utils/fps-sink/FpsSink.hpp"
 #include "utils/logger/Logger.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 #include "window/Window.hpp"
-
-#include "config-container/ConfigContainer.hpp"
-#include "config-container/sub-config/ApplicationInfo.hpp"
 
 #include <memory>
 
@@ -31,12 +31,15 @@ Application::Application(Logger *logger) : _logger(logger) {
 
   _fpsSink = std::make_unique<FpsSink>();
 
-  _model = std::make_unique<Model>(_appContext.get(), _logger,
-                                   "./../../../resources/models/sci_sword/sword.gltf");
-  _images.baseColor =
-      std::make_unique<Image>(_appContext.get(), _logger,
-                              "./../../../resources/models/sci_sword/textures/blade_baseColor.png",
-                              VK_IMAGE_USAGE_SAMPLED_BIT);
+  // _model = std::make_unique<Model>(_appContext.get(), _logger,
+  //                                  "./../../../resources/models/sci_sword/sword.gltf");
+  // _images.baseColor =
+  //     std::make_unique<Image>(_appContext.get(), _logger,
+  //                             "./../../../resources/models/sci_sword/textures/blade_baseColor.png",
+  //                             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+  _renderer = std::make_unique<Renderer>(_appContext.get(), _logger, _shaderCompiler.get(),
+                                         _window.get(), _configContainer.get());
 
   _init();
 
@@ -193,7 +196,7 @@ void Application::_drawFrame() {
   _imguiManager->recordCommandBuffer(currentFrame, imageIndex);
   std::vector<VkCommandBuffer> submitCommandBuffers = {
       // _renderer->getTracingCommandBuffer(currentFrame),
-      // _renderer->getDeliveryCommandBuffer(imageIndex),
+      _renderer->getDeliveryCommandBuffer(imageIndex),
       _imguiManager->getCommandBuffer(currentFrame),
   };
 

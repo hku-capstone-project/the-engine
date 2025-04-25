@@ -14,7 +14,7 @@ struct ConfigContainer;
 class Logger;
 class Window;
 class FpsSink;
-// class Renderer;
+class Renderer;
 class ShaderCompiler;
 class ImguiManager;
 
@@ -36,13 +36,12 @@ private:
 
   std::unique_ptr<VulkanApplicationContext> _appContext = nullptr;
   std::unique_ptr<ConfigContainer> _configContainer     = nullptr;
-  // std::unique_ptr<ShaderChangeListener> _shaderFileWatchListener = nullptr;
-  std::unique_ptr<ShaderCompiler> _shaderCompiler = nullptr;
-  std::unique_ptr<Window> _window                 = nullptr;
-  // std::unique_ptr<Renderer> _renderer             = nullptr;
-  std::unique_ptr<ImguiManager> _imguiManager = nullptr;
-  std::unique_ptr<FpsSink> _fpsSink           = nullptr;
-  std::unique_ptr<Model> _model               = nullptr;
+  std::unique_ptr<ShaderCompiler> _shaderCompiler       = nullptr;
+  std::unique_ptr<Window> _window                       = nullptr;
+  std::unique_ptr<Renderer> _renderer                   = nullptr;
+  std::unique_ptr<ImguiManager> _imguiManager           = nullptr;
+  std::unique_ptr<FpsSink> _fpsSink                     = nullptr;
+  std::unique_ptr<Model> _model                         = nullptr;
   struct {
     std::unique_ptr<Image> baseColor;
     std::unique_ptr<Image> normalMap;
