@@ -4,7 +4,6 @@
 #include "app-context/VulkanApplicationContext.hpp"
 #include "utils/logger/Logger.hpp"
 
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 

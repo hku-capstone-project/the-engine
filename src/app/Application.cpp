@@ -16,13 +16,9 @@
 Application::Application(Logger *logger) : _logger(logger) {
   _appContext      = std::make_unique<VulkanApplicationContext>();
   _configContainer = std::make_unique<ConfigContainer>(_logger);
-  // _shaderFileWatchListener = std::make_unique<ShaderChangeListener>(_logger);
 
   _shaderCompiler = std::make_unique<ShaderCompiler>(
-      logger, [this](std::string const &fullPathToIncludedShaderFile) {
-        // _shaderFileWatchListener->appendShaderFileToLastWatchedPipeline(
-        //     fullPathToIncludedShaderFile);
-      });
+      logger, [this](std::string const &fullPathToIncludedShaderFile) {});
 
   _window = std::make_unique<Window>(WindowStyle::kMaximized, logger);
 
@@ -35,8 +31,12 @@ Application::Application(Logger *logger) : _logger(logger) {
 
   _fpsSink = std::make_unique<FpsSink>();
 
-  _model = std::make_unique<Model>(_appContext.get(), _logger, "./../../../resources/models/sci_sword/sword.gltf");
-  _images.baseColor = std::make_unique<Image>(_appContext.get(), _logger, "./../../../resources/models/sci_sword/textures/blade_baseColor.png", VK_IMAGE_USAGE_SAMPLED_BIT);
+  _model = std::make_unique<Model>(_appContext.get(), _logger,
+                                   "./../../../resources/models/sci_sword/sword.gltf");
+  _images.baseColor =
+      std::make_unique<Image>(_appContext.get(), _logger,
+                              "./../../../resources/models/sci_sword/textures/blade_baseColor.png",
+                              VK_IMAGE_USAGE_SAMPLED_BIT);
 
   _init();
 
