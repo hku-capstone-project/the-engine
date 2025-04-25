@@ -27,7 +27,7 @@ public:
   void drawFrame(size_t currentFrame);
   void processInput(double deltaTime);
 
-  // void onSwapchainResize();
+  void onSwapchainResize();
   // VkCommandBuffer getTracingCommandBuffer(size_t currentFrame) {
   //   return _tracingCommandBuffers[currentFrame];
   // }

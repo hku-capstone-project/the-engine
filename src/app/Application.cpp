@@ -31,12 +31,16 @@ Application::Application(Logger *logger) : _logger(logger) {
 
   _fpsSink = std::make_unique<FpsSink>();
 
-  // _model = std::make_unique<Model>(_appContext.get(), _logger,
-  //                                  "./../../../resources/models/sci_sword/sword.gltf");
-  // _images.baseColor =
-  //     std::make_unique<Image>(_appContext.get(), _logger,
-  //                             "./../../../resources/models/sci_sword/textures/blade_baseColor.png",
-  //                             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+  // for testing
+
+  _model = std::make_unique<Model>(_appContext.get(), _logger,
+                                   "./../../../resources/models/sci_sword/sword.gltf");
+  _images.baseColor =
+      std::make_unique<Image>(_appContext.get(), _logger,
+                              "./../../../resources/models/sci_sword/textures/blade_baseColor.png",
+                              VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+  // end of testing
 
   _renderer = std::make_unique<Renderer>(_appContext.get(), _logger, _shaderCompiler.get(),
                                          _window.get(), _configContainer.get());
@@ -116,9 +120,10 @@ void Application::_waitForTheWindowToBeResumed() {
 }
 
 void Application::_onSwapchainResize() {
+  _logger->info("Swapchain resized");
   _appContext->onSwapchainResize(_configContainer->applicationInfo->isFramerateLimited);
   _imguiManager->onSwapchainResize();
-  // _renderer->onSwapchainResize();
+  _renderer->onSwapchainResize();
 }
 
 void Application::_mainLoop() {
@@ -165,8 +170,12 @@ void Application::_mainLoop() {
 }
 
 void Application::_cleanup() {
-  _appContext.reset();
-  _window.reset();
+  _logger->info("application is cleaning up resources...");
+  for (size_t i = 0; i < _configContainer->applicationInfo->framesInFlight; i++) {
+    vkDestroySemaphore(_appContext->getDevice(), _renderFinishedSemaphores[i], nullptr);
+    vkDestroySemaphore(_appContext->getDevice(), _imageAvailableSemaphores[i], nullptr);
+    vkDestroyFence(_appContext->getDevice(), _framesInFlightFences[i], nullptr);
+  }
 }
 
 void Application::_drawFrame() {

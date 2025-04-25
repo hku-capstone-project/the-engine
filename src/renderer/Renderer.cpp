@@ -35,6 +35,10 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
 
 Renderer::~Renderer() = default;
 
+void Renderer::onSwapchainResize() {
+  // TODO:
+}
+
 void Renderer::drawFrame(size_t currentFrame) {}
 
 void Renderer::processInput(double deltaTime) {
