@@ -47,39 +47,30 @@ public:
   [[nodiscard]] inline const VkCommandPool &getCommandPool() const { return _commandPool; }
   [[nodiscard]] inline const VkCommandPool &getGuiCommandPool() const { return _guiCommandPool; }
   [[nodiscard]] inline const VmaAllocator &getAllocator() const { return _allocator; }
-  [[nodiscard]] inline const std::vector<VkImage> &getSwapchainImages() const {
-    return _swapchainImages;
-  }
-  [[nodiscard]] inline const std::vector<VkImageView> &getSwapchainImageViews() const {
-    return _swapchainImageViews;
-  }
+  [[nodiscard]] inline const std::vector<VkImage> &getSwapchainImages() const { return _swapchainImages; }
+  [[nodiscard]] inline const std::vector<VkImageView> &getSwapchainImageViews() const { return _swapchainImageViews; }
   [[nodiscard]] inline size_t getSwapchainImagesCount() const { return _swapchainImages.size(); }
-  [[nodiscard]] inline const VkFormat &getSwapchainImageFormat() const {
-    return _swapchainSurfaceFormat.format;
-  }
-  [[nodiscard]] inline const VkExtent2D &getSwapchainExtent() const { return _swapchainExtent; }
-  [[nodiscard]] inline uint32_t getSwapchainExtentWidth() const { return _swapchainExtent.width; }
-  [[nodiscard]] inline uint32_t getSwapchainExtentHeight() const { return _swapchainExtent.height; }
+  [[nodiscard]] inline const VkFormat &getSwapchainImageFormat() const { return _swapchainSurfaceFormat.format; }
+  [[nodiscard]] inline const VkExtent2D& getSwapchainExtent() const { return _swapchainExtent; }
   [[nodiscard]] inline const VkSwapchainKHR &getSwapchain() const { return _swapchain; }
 
-  [[nodiscard]] uint32_t getGraphicsQueueIndex() const { return _graphicsQueueIndex; }
-  [[nodiscard]] uint32_t getPresentQueueIndex() const { return _presentQueueIndex; }
-  [[nodiscard]] uint32_t getComputeQueueIndex() const { return _computeQueueIndex; }
-  [[nodiscard]] uint32_t getTransferQueueIndex() const { return _transferQueueIndex; }
+  [[nodiscard]] uint32_t inline getGraphicsQueueIndex() const { return _graphicsQueueIndex; }
+  [[nodiscard]] uint32_t inline getPresentQueueIndex() const { return _presentQueueIndex; }
+  [[nodiscard]] uint32_t inline getComputeQueueIndex() const { return _computeQueueIndex; }
+  [[nodiscard]] uint32_t inline getTransferQueueIndex() const { return _transferQueueIndex; }
 
-  [[nodiscard]] const VkQueue &getGraphicsQueue() const { return _graphicsQueue; }
-  [[nodiscard]] const VkQueue &getPresentQueue() const { return _presentQueue; }
-  [[nodiscard]] const VkQueue &getComputeQueue() const { return _computeQueue; }
-  [[nodiscard]] const VkQueue &getTransferQueue() const { return _transferQueue; }
+  [[nodiscard]] const inline VkQueue &getGraphicsQueue() const { return _graphicsQueue; }
+  [[nodiscard]] const inline VkQueue &getPresentQueue() const { return _presentQueue; }
+  [[nodiscard]] const inline VkQueue &getComputeQueue() const { return _computeQueue; }
+  [[nodiscard]] const inline VkQueue &getTransferQueue() const { return _transferQueue; }
 
-  [[nodiscard]] const ContextCreator::QueueFamilyIndices &getQueueFamilyIndices() const {
-    return _queueFamilyIndices;
-  }
+  [[nodiscard]] const ContextCreator::QueueFamilyIndices &getQueueFamilyIndices() const { return _queueFamilyIndices; }
 
   [[nodiscard]] const VkSampleCountFlagBits &getMsaaSample() const { return _msaaSamples; }
+  [[nodiscard]] const VkFormat &getDepthFormat() const { return _depthFormat; }
 
 private:
-  // stores the indices of the each queue family, they might not overlap
+  // stores the indices of each queue family, they might not overlap
   ContextCreator::QueueFamilyIndices _queueFamilyIndices;
 
   ContextCreator::SwapchainSupportDetails _swapchainSupportDetails;
@@ -116,6 +107,7 @@ private:
   std::vector<VkImageView> _swapchainImageViews;
 
   VkSampleCountFlagBits _msaaSamples;
+  VkFormat _depthFormat;
 
   void _initWindow(uint8_t windowSize);
 

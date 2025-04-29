@@ -196,8 +196,9 @@ void ImguiManager::_createFramebuffers() {
   // attachments are mSwapchainImageViews
   _guiFrameBuffers.resize(_appContext->getSwapchainImagesCount());
 
-  uint32_t const w = _appContext->getSwapchainExtentWidth();
-  uint32_t const h = _appContext->getSwapchainExtentHeight();
+  const VkExtent2D extent = _appContext->getSwapchainExtent();
+  uint32_t const w = extent.width;
+  uint32_t const h = extent.height;
 
   // Iterate through image views
   for (size_t i = 0; i < _appContext->getSwapchainImagesCount(); i++) {

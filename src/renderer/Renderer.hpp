@@ -4,11 +4,14 @@
 #include <memory>
 #include <vector>
 
+
+class GfxPipeline;
 class VulkanApplicationContext;
 class Logger;
 class ShaderCompiler;
 class Window;
 class ConfigContainer;
+class Model;
 class Image;
 class ImageForwardingPair;
 
@@ -28,13 +31,9 @@ public:
   void processInput(double deltaTime);
 
   void onSwapchainResize();
-  // VkCommandBuffer getTracingCommandBuffer(size_t currentFrame) {
-  //   return _tracingCommandBuffers[currentFrame];
-  // }
+   [[nodiscard]] inline VkCommandBuffer getTracingCommandBuffer(size_t currentFrame) { return _tracingCommandBuffers[currentFrame]; }
 
-  VkCommandBuffer getDeliveryCommandBuffer(size_t imageIndex) {
-    return _deliveryCommandBuffers[imageIndex];
-  }
+   [[nodiscard]] inline VkCommandBuffer getDeliveryCommandBuffer(size_t imageIndex) { return _deliveryCommandBuffers[imageIndex]; }
 
 private:
   VulkanApplicationContext *_appContext;
@@ -42,11 +41,30 @@ private:
   ShaderCompiler *_shaderCompiler;
   Window *_window;
   ConfigContainer *_configContainer;
+  std::unique_ptr<GfxPipeline> _pipeline = nullptr;
 
   std::vector<VkCommandBuffer> _deliveryCommandBuffers{};
+  std::vector<VkCommandBuffer> _tracingCommandBuffers{};
+  std::vector<VkFramebuffer> _frameBuffers{};
+  std::unique_ptr<Model> _model                         = nullptr;
+  struct {
+      std::unique_ptr<Image> baseColor;
+      std::unique_ptr<Image> normalMap;
+      std::unique_ptr<Image> metalRoughness;
+  } _images;
+
+  VkRenderPass _renderPass;
 
   std::unique_ptr<Image> _renderTargetImage = nullptr;
-  std::vector<std::unique_ptr<ImageForwardingPair>> _targetForwardingPairs;
+  struct {
+      VkImage image;
+      VkDeviceMemory memory;
+      VkImageView imageView;
+  } depthStencil;
 
   void _recordDeliveryCommandBuffers();
+  void _recordTracingCommandBuffers();
+  void _createRenderPass();
+  void _createFrameBuffers();
+  void _createDepthStencil();
 };

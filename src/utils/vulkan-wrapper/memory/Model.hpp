@@ -19,15 +19,15 @@ public:
   Model(Model &&)                 = delete;
   Model &operator=(Model &&)      = delete;
 
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    std::shared_ptr<Buffer> vertexBuffer;
+    uint32_t vertCnt;
+    std::shared_ptr<Buffer> indexBuffer;
+    uint32_t idxCnt;
+
 private:
   VulkanApplicationContext *_appContext;
-
-  std::vector<Vertex> _vertices;
-  std::vector<uint32_t> _indices;
-  std::shared_ptr<Buffer> _vertexBuffer;
-  int _vertCnt;
-  std::shared_ptr<Buffer> _indexBuffer;
-  int _idxCnt;
 
   Logger *_logger;
 };

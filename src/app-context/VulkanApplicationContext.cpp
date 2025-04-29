@@ -80,6 +80,20 @@ void VulkanApplicationContext::init(Logger *logger, GLFWwindow *window,
   _transferQueue = queueSelection.transferQueue;
 
   _msaaSamples = queueSelection.msaaSamples;
+  std::vector<VkFormat> formatList = {
+          VK_FORMAT_D32_SFLOAT_S8_UINT,
+          VK_FORMAT_D32_SFLOAT,
+          VK_FORMAT_D24_UNORM_S8_UINT,
+          };
+
+  for (auto format: formatList) {
+      VkFormatProperties properties;
+      vkGetPhysicalDeviceFormatProperties(_physicalDevice, format, &properties);
+      if ((properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+          _depthFormat =  format;
+          break;
+      }
+  }
 
   _createSwapchain(settings->isFramerateLimited);
   _createAllocator();

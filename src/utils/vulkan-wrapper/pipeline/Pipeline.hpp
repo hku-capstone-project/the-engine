@@ -33,6 +33,9 @@ public:
 
   void updateDescriptorSetBundle(DescriptorSetBundle *descriptorSetBundle);
 
+  [[nodiscard]] const inline VkPipeline& getPipeline() const { return _pipeline; }
+  [[nodiscard]] const inline VkPipelineLayout& getPipelineLayout() const { return _pipelineLayout; }
+
 protected:
   VulkanApplicationContext *_appContext;
   Logger *_logger;
