@@ -30,7 +30,8 @@ bootstrap.bat
 
 ### Cmake
 
-- Download the newest installer from [here](https://cmake.org/download/)
+- Download the 3.x installer from [here](https://cmake.org/download/)
+- CMake version 4.x (Newest) removed compatibility support for CMake < 3.5. 
 
 ### Ninja
 
