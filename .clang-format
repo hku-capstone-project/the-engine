@@ -4,6 +4,9 @@ Language: Cpp
 BasedOnStyle: LLVM
 AlignConsecutiveAssignments: Consecutive
 ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
 AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: true
 InsertNewlineAtEOF: true

@@ -19,46 +19,46 @@ class ShaderCompiler;
 class ImguiManager;
 
 class Application {
-public:
-  Application(Logger *logger);
-  ~Application();
+  public:
+    Application(Logger *logger);
+    ~Application();
 
-  // disable move and copy
-  Application(const Application &)            = delete;
-  Application &operator=(const Application &) = delete;
-  Application(Application &&)                 = delete;
-  Application &operator=(Application &&)      = delete;
+    // disable move and copy
+    Application(const Application &)            = delete;
+    Application &operator=(const Application &) = delete;
+    Application(Application &&)                 = delete;
+    Application &operator=(Application &&)      = delete;
 
-  void run();
+    void run();
 
-private:
-  Logger *_logger;
+  private:
+    Logger *_logger;
 
-  std::unique_ptr<VulkanApplicationContext> _appContext = nullptr;
-  std::unique_ptr<ConfigContainer> _configContainer     = nullptr;
-  std::unique_ptr<ShaderCompiler> _shaderCompiler       = nullptr;
-  std::unique_ptr<Window> _window                       = nullptr;
-  std::unique_ptr<Renderer> _renderer                   = nullptr;
-  std::unique_ptr<ImguiManager> _imguiManager           = nullptr;
-  std::unique_ptr<FpsSink> _fpsSink                     = nullptr;
+    std::unique_ptr<VulkanApplicationContext> _appContext = nullptr;
+    std::unique_ptr<ConfigContainer> _configContainer     = nullptr;
+    std::unique_ptr<ShaderCompiler> _shaderCompiler       = nullptr;
+    std::unique_ptr<Window> _window                       = nullptr;
+    std::unique_ptr<Renderer> _renderer                   = nullptr;
+    std::unique_ptr<ImguiManager> _imguiManager           = nullptr;
+    std::unique_ptr<FpsSink> _fpsSink                     = nullptr;
 
-  // semaphores and fences for synchronization
-  std::vector<VkSemaphore> _imageAvailableSemaphores{};
-  std::vector<VkSemaphore> _renderFinishedSemaphores{};
-  std::vector<VkFence> _framesInFlightFences{};
+    // semaphores and fences for synchronization
+    std::vector<VkSemaphore> _imageAvailableSemaphores{};
+    std::vector<VkSemaphore> _renderFinishedSemaphores{};
+    std::vector<VkFence> _framesInFlightFences{};
 
-  uint32_t _blockStateBits = 0;
+    uint32_t _blockStateBits = 0;
 
-  void _applicationKeyboardCallback(KeyboardInfo const &keyboardInfo);
+    void _applicationKeyboardCallback(KeyboardInfo const &keyboardInfo);
 
-  void _createSemaphoresAndFences();
-  void _onSwapchainResize();
-  void _waitForTheWindowToBeResumed();
-  void _drawFrame();
-  void _mainLoop();
-  void _init();
-  void _cleanup();
+    void _createSemaphoresAndFences();
+    void _onSwapchainResize();
+    void _waitForTheWindowToBeResumed();
+    void _drawFrame();
+    void _mainLoop();
+    void _init();
+    void _cleanup();
 
-  void _onRenderLoopBlockRequest(E_RenderLoopBlockRequest const &event);
-  void _buildScene();
+    void _onRenderLoopBlockRequest(E_RenderLoopBlockRequest const &event);
+    void _buildScene();
 };

@@ -9,17 +9,17 @@ class Logger;
 namespace ContextCreator {
 
 struct QueueSelection {
-  uint32_t graphicsQueueIndex;
-  uint32_t presentQueueIndex;
-  uint32_t computeQueueIndex;
-  uint32_t transferQueueIndex;
+    uint32_t graphicsQueueIndex;
+    uint32_t presentQueueIndex;
+    uint32_t computeQueueIndex;
+    uint32_t transferQueueIndex;
 
-  VkQueue graphicsQueue;
-  VkQueue presentQueue;
-  VkQueue computeQueue;
-  VkQueue transferQueue;
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
+    VkQueue computeQueue;
+    VkQueue transferQueue;
 
-  VkSampleCountFlagBits msaaSamples;
+    VkSampleCountFlagBits msaaSamples;
 };
 
 void createDevice(Logger *logger, VkPhysicalDevice &physicalDevice, VkDevice &device,
