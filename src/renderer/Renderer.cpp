@@ -24,7 +24,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
       VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
           VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-  _pipeline = std::make_unique<GfxPipeline>(appContext, logger, {0,0,0}, nullptr, shaderCompiler);
+  _pipeline = std::make_unique<GfxPipeline>(appContext, logger, glm::vec3(0, 0, 0), nullptr, shaderCompiler);
 
   _model = std::make_unique<Model>(_appContext, _logger,
                                      "./../../../resources/models/sci_sword/sword.gltf");

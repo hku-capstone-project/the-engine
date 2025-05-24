@@ -9,7 +9,7 @@
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 
 GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
-                         WorkGroupSize workGroupSize, DescriptorSetBundle *descriptorSetBundle,
+                         glm::vec3 workGroupSize, DescriptorSetBundle *descriptorSetBundle,
                          ShaderCompiler *shaderCompiler)
     : Pipeline(appContext, logger, descriptorSetBundle, VK_SHADER_STAGE_COMPUTE_BIT),
       _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {}

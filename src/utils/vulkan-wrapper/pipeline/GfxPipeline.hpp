@@ -1,19 +1,14 @@
 #pragma once
 
 #include "Pipeline.hpp"
-
-struct WorkGroupSize {
-  uint32_t x;
-  uint32_t y;
-  uint32_t z;
-};
+#include "glm/glm.hpp"
 
 class ShaderCompiler;
 
 // GFX shaders should be placed in a folder and name as vert.glsl & frag.glsl
 class GfxPipeline : public Pipeline {
 public:
-  GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, WorkGroupSize workGroupSize,
+  GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, glm::vec3 workGroupSize,
               DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler);
 
   ~GfxPipeline() override;
@@ -35,7 +30,7 @@ public:
 private:
   VkShaderModule _vertShaderModule = VK_NULL_HANDLE;
   VkShaderModule _fragShaderModule = VK_NULL_HANDLE;
-  WorkGroupSize _workGroupSize;
+  glm::vec3 _workGroupSize;
   ShaderCompiler *_shaderCompiler;
   VkPipelineCache _pipelineCache = VK_NULL_HANDLE;
   VkRenderPass _renderPass       = VK_NULL_HANDLE;
