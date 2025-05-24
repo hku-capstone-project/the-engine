@@ -7,8 +7,8 @@
 class TomlConfigReader;
 
 struct TerrainInfo {
-  uint32_t chunkVoxelDim{};
-  glm::uvec3 chunksDim{};
+    uint32_t chunkVoxelDim{};
+    glm::uvec3 chunksDim{};
 
-  void loadConfig(TomlConfigReader *tomlConfigReader);
+    void loadConfig(TomlConfigReader *tomlConfigReader);
 };

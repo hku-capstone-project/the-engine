@@ -1,6 +1,7 @@
 #pragma once
+#define VK_NO_PROTOTYPES
 
-#include ""
+#include "vma/vk_mem_alloc.h"
 #include "volk.h"
 #include <memory>
 #include <vector>
@@ -62,14 +63,12 @@ class Renderer {
     std::unique_ptr<Image> _renderTargetImage = nullptr;
     struct {
         VkImage image;
-        VkDeviceMemory memory;
         VkImageView imageView;
         VmaAllocation allocation;
     } depthStencil;
 
     struct {
         VkImage image;
-        VkDeviceMemory memory;
         VkImageView imageView;
         VmaAllocation allocation;
     } colorResources;

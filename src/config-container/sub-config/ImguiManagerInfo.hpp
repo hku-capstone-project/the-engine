@@ -5,10 +5,10 @@
 class TomlConfigReader;
 
 struct ImguiManagerInfo {
-  float fontSize;
-  Color fpsGuiColor;
-  Color menuBarBackgroundColor;
-  Color popupBackgroundColor;
+    float fontSize;
+    Color fpsGuiColor;
+    Color menuBarBackgroundColor;
+    Color popupBackgroundColor;
 
-  void loadConfig(TomlConfigReader *tomlConfigReader);
+    void loadConfig(TomlConfigReader *tomlConfigReader);
 };

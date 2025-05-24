@@ -5,10 +5,10 @@
 class TomlConfigReader;
 
 struct DebugInfo {
-  bool debugB1{};
-  float debugF1{};
-  int debugI1{};
-  glm::vec3 debugC1{};
+    bool debugB1{};
+    float debugF1{};
+    int debugI1{};
+    glm::vec3 debugC1{};
 
-  void loadConfig(TomlConfigReader *tomlConfigReader);
+    void loadConfig(TomlConfigReader *tomlConfigReader);
 };

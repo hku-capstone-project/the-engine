@@ -34,7 +34,9 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
     _createDepthStencil();
+    _createColorResources();
     _createRenderPass();
+    _createFrameBuffers();
     _recordTracingCommandBuffers();
     _recordDeliveryCommandBuffers();
 }
@@ -67,7 +69,7 @@ void Renderer::_createRenderPass() {
     attachments[2].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[2].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[2].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[2].finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     // Attachment Reference
     VkAttachmentReference colorAttachmentRef{};
@@ -131,12 +133,8 @@ void Renderer::_createDepthStencil() {
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage                   = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
     allocInfo.requiredFlags           = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    VkImage image;
-    VmaAllocation allocation;
-    vmaCreateImage(_appContext->getAllocator(), &imageInfo, &allocInfo, &image, &allocation,
+    vmaCreateImage(_appContext->getAllocator(), &imageInfo, &allocInfo, &depthStencil.image, &depthStencil.allocation,
                    nullptr);
-    depthStencil.image = image;
 
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -166,21 +164,11 @@ void Renderer::_createColorResources() {
     imageInfo.samples     = _appContext->getMsaaSample();
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VK_CHECK_RESULT(
-        vkCreateImage(vulkanDevice->logicalDevice, &imageInfo, nullptr, &colorResources.image));
-
-    VkMemoryRequirements memoryRequirements;
-    vkGetImageMemoryRequirements(vulkanDevice->logicalDevice, colorResources.image,
-                                 &memoryRequirements);
-    VkMemoryAllocateInfo allocateInfo{};
-    allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.allocationSize  = memoryRequirements.size;
-    allocateInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memoryRequirements.memoryTypeBits,
-                                                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VK_CHECK_RESULT(vkAllocateMemory(vulkanDevice->logicalDevice, &allocateInfo, nullptr,
-                                     &colorResources.memory));
-    VK_CHECK_RESULT(vkBindImageMemory(vulkanDevice->logicalDevice, colorResources.image,
-                                      colorResources.memory, 0));
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage                   = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    allocInfo.requiredFlags           = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    vmaCreateImage(_appContext->getAllocator(), &imageInfo, &allocInfo, &colorResources.image, &colorResources.allocation,
+                   nullptr);
 
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -193,7 +181,7 @@ void Renderer::_createColorResources() {
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount     = 1;
 
-    vkCreateImageView(vulkanDevice->logicalDevice, &viewInfo, nullptr, &colorResources.imageView);
+    vkCreateImageView(_appContext->getDevice(), &viewInfo, nullptr, &colorResources.imageView);
 }
 
 void Renderer::_createFrameBuffers() {
@@ -222,7 +210,25 @@ void Renderer::_createFrameBuffers() {
     }
 }
 
-Renderer::~Renderer() { vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr); }
+Renderer::~Renderer() {
+    vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr);
+    if (depthStencil.imageView != VK_NULL_HANDLE) {
+        vkDestroyImageView(_appContext->getDevice(), depthStencil.imageView, nullptr);
+        depthStencil.imageView = VK_NULL_HANDLE;
+    }
+    if (depthStencil.image != VK_NULL_HANDLE) {
+        vmaDestroyImage(_appContext->getAllocator(), depthStencil.image, depthStencil.allocation);
+        depthStencil.image = VK_NULL_HANDLE;
+    }
+    if (colorResources.imageView != VK_NULL_HANDLE) {
+        vkDestroyImageView(_appContext->getDevice(), colorResources.imageView, nullptr);
+        depthStencil.imageView = VK_NULL_HANDLE;
+    }
+    if (colorResources.image != VK_NULL_HANDLE) {
+        vmaDestroyImage(_appContext->getAllocator(), colorResources.image, colorResources.allocation);
+        depthStencil.image = VK_NULL_HANDLE;
+    }
+}
 
 void Renderer::onSwapchainResize() {
     // TODO:

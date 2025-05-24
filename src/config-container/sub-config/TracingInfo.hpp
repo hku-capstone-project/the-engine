@@ -5,10 +5,10 @@
 class TomlConfigReader;
 
 struct TracingInfo {
-  bool visualizeChunks{};
-  bool visualizeOctree{};
-  bool beamOptimization{};
-  bool traceIndirectRay{};
+    bool visualizeChunks{};
+    bool visualizeOctree{};
+    bool beamOptimization{};
+    bool traceIndirectRay{};
 
-  void loadConfig(TomlConfigReader *tomlConfigReader);
+    void loadConfig(TomlConfigReader *tomlConfigReader);
 };

@@ -3,8 +3,8 @@
 class TomlConfigReader;
 
 struct ApplicationInfo {
-  int framesInFlight{};
-  bool isFramerateLimited{};
+    int framesInFlight{};
+    bool isFramerateLimited{};
 
-  void loadConfig(TomlConfigReader *tomlConfigReader);
+    void loadConfig(TomlConfigReader *tomlConfigReader);
 };
