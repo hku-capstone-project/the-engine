@@ -15,6 +15,8 @@ class ConfigContainer;
 class Model;
 class Image;
 class ImageForwardingPair;
+class BufferBundle;
+class DescriptorSetBundle;
 
 class Renderer {
   public:
