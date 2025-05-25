@@ -162,31 +162,40 @@ int test_managed() {
         init((void *)&CreateEntity, (void *)&AddTransform);
     });
 
-    // benchmark 0: view / single invoke
+    // cs with view, single invoke
     // 2.95s
-    app.add_update_system([&](float dt) {
-        // for each entity-with-Transform, call the managed Update on a single component
-        auto view = app.registry.view<Transform>();
-        for (auto e : view) {
-            auto &t = view.get<Transform>(e);
-            update(dt, &t, 1);
-        }
-    });
-
-    // benchmark 1: single P/Invoke per frame
-    // 1.80s
     // app.add_update_system([&](float dt) {
-    //     // The dense array is guaranteed contiguous *and* stable for this frame
-    //     auto &storage = app.registry.storage<Transform>();
-
-    //     // NOTE: before EnTT 3.12 it's storage.raw(), afterwards data()
-    //     Transform **begin = storage.raw();
-    //     int count         = static_cast<int>(storage.size());
-
-    //     if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
+    //     // for each entity-with-Transform, call the managed Update on a single component
+    //     auto view = app.registry.view<Transform>();
+    //     for (auto e : view) {
+    //         auto &t = view.get<Transform>(e);
+    //         update(dt, &t, 1);
+    //     }
     // });
 
-    // benchmark 2: fully in C++
+    // C++ with view, single invoke
+    // 1.79s
+    // app.add_update_system([&](float dt) {
+    //     auto view = app.registry.view<Transform>();
+    //     for (auto e : view) {
+    //         auto &t = view.get<Transform>(e);
+    //         UpdateTransformsCpp(dt, &t, 1);
+    //     }
+    // });
+
+    // cs with storage, multi invoke
+    // 1.80s
+    app.add_update_system([&](float dt) {
+        // The dense array is guaranteed contiguous *and* stable for this frame
+        auto &storage = app.registry.storage<Transform>();
+
+        Transform **begin = storage.raw();
+        int count         = static_cast<int>(storage.size());
+
+        if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
+    });
+
+    // C++ with storage, multi invoke
     // 1.24s
     // app.add_update_system([&](float dt) {
     //     auto &storage    = app.registry.storage<Transform>();

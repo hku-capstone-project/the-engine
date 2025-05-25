@@ -154,6 +154,8 @@ build.bat
 
 ## Learning resources
 
-[Daxa Tutorial](https://tutorial.daxa.dev/)
-
 [Vulkan Tutorial](https://vulkan-tutorial.com/)
+
+[Bevy's ECS Design](https://bevyengine.org/learn/quick-start/getting-started/ecs/)
+
+[EnTT Crash Course](https://github.com/skypjack/entt/wiki/Crash-Course:-entity-component-system/465d90e0f5961adc460cd9d1e9358370987fbcd3)
