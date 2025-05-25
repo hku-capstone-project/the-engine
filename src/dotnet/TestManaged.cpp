@@ -1,5 +1,3 @@
-// TestManaged.cpp
-
 #include <Windows.h>
 #include <cassert>
 #include <filesystem>
@@ -9,7 +7,6 @@
 #include "MyStruct.hpp"
 #include "TestManaged.hpp"
 #include "config/RootDir.h"
-
 
 #include "coreclr_delegates.h"
 #include "hostfxr.h"

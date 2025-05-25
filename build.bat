@@ -11,7 +11,9 @@ FOR %%a IN (%*) DO (
 set BINARY_DIR=build/%BUILD_TYPE%/
 set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
 
-@REM publish the managed project in cs
+@REM 1. delete build/Managed folder
+if exist build\Managed rd /s /q build\Managed
+@REM 2. publish the managed project in cs
 cd managed
 dotnet publish -c Release -r win-x64 --self-contained false  -o ../build/Managed
 cd ..
