@@ -14,5 +14,6 @@ target_link_libraries(src-app PRIVATE
         src-utils-fps-sink
         src-utils-model-loader
         src-utils-shader-compiler
+        src-dotnet
         glm::glm
 )

@@ -10,11 +10,17 @@ FOR %%a IN (%*) DO (
 
 set BINARY_DIR=build/%BUILD_TYPE%/
 set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
- 
+
+@REM publish the managed project in cs
+cd managed
+dotnet publish -c Release -r win-x64 --self-contained false  -o ../build/Managed
+cd ..
+
 cmake --preset %BUILD_TYPE% ^
     -D CMAKE_TOOLCHAIN_FILE="dep/vcpkg/scripts/buildsystems/vcpkg.cmake" ^
     -D VCPKG_MANIFEST_INSTALL=ON ^
     -D WITH_PORTABLE_RESOURCES=%WITH_PORTABLE_RESOURCES% ^
+    -D DOTNET_HOSTING_DIR="dep/dotnet-runtime-8.0.16" ^
     -D CMAKE_MAKE_PROGRAM=Ninja
 
 if !errorlevel! neq 0 (
@@ -30,9 +36,10 @@ if !errorlevel! neq 0 (
    goto :eof
 )
 
-@REM this logic is moved to CMakeLists.txt for cross-platform compatibility
-@REM echo copy compile_commands.json to .vscode folder
-@REM robocopy %BINARY_DIR% .vscode/ compile_commands.json /NFL /NDL /NJH /NJS /nc /ns /np
+echo copy compile_commands.json to root folder
+robocopy %BINARY_DIR% . compile_commands.json /NFL /NDL /NJH /NJS /nc /ns /np
+
+@REM echo copy every dll insid
 
 if %WITH_PORTABLE_RESOURCES%==ON (
     echo:

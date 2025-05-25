@@ -11,9 +11,13 @@
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 #include "window/Window.hpp"
 
+#include "dotnet/TestManaged.hpp"
+
 #include <memory>
 
 Application::Application(Logger *logger) : _logger(logger) {
+    test_managed();
+
     _appContext      = std::make_unique<VulkanApplicationContext>();
     _configContainer = std::make_unique<ConfigContainer>(_logger);
 
