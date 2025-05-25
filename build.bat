@@ -11,12 +11,17 @@ FOR %%a IN (%*) DO (
 set BINARY_DIR=build/%BUILD_TYPE%/
 set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
 
-@REM 1. delete build/Managed folder
+@REM delete build/Managed folder if it exists
 if exist build\Managed rd /s /q build\Managed
-@REM 2. publish the managed project in cs
-cd managed
-dotnet publish -c Release -r win-x64 --self-contained false  -o ../build/Managed
-cd ..
+@REM publish the managed project in cs
+pushd managed
+dotnet publish -c Release -r win-x64 --self-contained false -o ../build/Managed
+if %ERRORLEVEL% neq 0 (
+    echo [Error] dotnet publish failed. Aborting.
+    popd
+    goto :eof
+)
+popd
 
 cmake --preset %BUILD_TYPE% ^
     -D CMAKE_TOOLCHAIN_FILE="dep/vcpkg/scripts/buildsystems/vcpkg.cmake" ^

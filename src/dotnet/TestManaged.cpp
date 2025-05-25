@@ -88,9 +88,6 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
     return (load_assembly_and_get_function_pointer_fn)fn;
 }
 
-//----------------------------------------------------------------------
-// your test entrypoint
-//----------------------------------------------------------------------
 int test_managed() {
     if (!load_hostfxr()) return -1;
 
