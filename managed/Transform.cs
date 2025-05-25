@@ -4,9 +4,8 @@ using System.Runtime.InteropServices;
 namespace HelloManaged
 {
     [StructLayout(LayoutKind.Sequential)]
-    public struct MyStruct
+    public struct Transform
     {
-        public int x;
-        public int y;
+        public float x, y, z;
     }
 }

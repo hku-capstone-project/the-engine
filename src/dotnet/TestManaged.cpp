@@ -4,8 +4,8 @@
 #include <iostream>
 #include <string>
 
-#include "MyStruct.hpp"
 #include "TestManaged.hpp"
+#include "Transform.hpp"
 #include "config/RootDir.h"
 
 #include "coreclr_delegates.h"
@@ -88,6 +88,10 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
     return (load_assembly_and_get_function_pointer_fn)fn;
 }
 
+// managed function pointers
+using InitFn   = void(__cdecl *)(void   */*createEntityPtr*/, void   */*addTransformPtr*/);
+using UpdateFn = void(__cdecl *)(float /*dt*/, Transform * /*ptr*/, int /*count*/);
+
 int test_managed() {
     if (!load_hostfxr()) return -1;
 
@@ -123,16 +127,19 @@ int test_managed() {
     }
 
     // NOW: allocate + initialize a native struct
-    MyStruct s;
-    s.x = 1;
-    s.y = 2;
-    std::cout << "[C++] Before call: (x,y)=(" << s.x << "," << s.y << ")\n";
+    Transform transform;
+    transform.x = 1;
+    transform.y = 2;
+    transform.z = 3;
+    std::cout << "[C++] Before call: (x,y,z)=(" << transform.x << "," << transform.y << ","
+              << transform.z << ")\n";
 
-    // call into C# and pass &s
-    mutator(&s);
+    // call into C# and pass &transform
+    mutator(&transform);
 
-    // after return, the C# code has changed s.x and s.y
-    std::cout << "[C++] After call:  (x,y)=(" << s.x << "," << s.y << ")\n";
+    // after return, the C# code has changed transform.x and transform.y
+    std::cout << "[C++] After call:  (x,y,z)=(" << transform.x << "," << transform.y << ","
+              << transform.z << ")\n";
 
     return 0;
 }
