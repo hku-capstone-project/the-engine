@@ -6,8 +6,10 @@
 #include <iostream>
 #include <string>
 
+#include "MyStruct.hpp"
 #include "TestManaged.hpp"
-#include "config/RootDir.h" // defines: extern const std::string kRootDir;
+#include "config/RootDir.h"
+
 
 #include "coreclr_delegates.h"
 #include "hostfxr.h"
@@ -36,12 +38,6 @@ static FARPROC get_export(HMODULE h, const char *name) {
     assert(p && "Failed to get hostfxr export");
     return p;
 }
-
-// void *get_export(void *h, const char *name) {
-//     void *f = GetProcAddress((HMODULE)h, name);
-//     assert(f && "Failed to get hostfxr export");
-//     return f;
-// }
 
 bool load_hostfxr() {
     char_t buffer[MAX_PATH];
@@ -101,42 +97,48 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
 int test_managed() {
     if (!load_hostfxr()) return -1;
 
-    // 1) compute absolute paths
+    // compute paths
     fs::path root    = fs::path(kRootDir);
     fs::path managed = root / "build" / "Managed";
     fs::path cfg     = managed / "HelloManaged.runtimeconfig.json";
     fs::path dll     = managed / "HelloManaged.dll";
 
-    // 2) sanity‐check on disk
-    std::cout << "runtimeconfig.json: " << cfg << std::endl;
-    std::cout << "managed DLL       : " << dll << std::endl;
     if (!fs::exists(cfg) || !fs::exists(dll)) {
-        std::cerr << "ERROR: Missing managed build files!" << std::endl;
+        std::cerr << "Managed files missing\n";
         return -1;
     }
 
-    // 3) pull in the delegate loader
+    // get the load_assembly_and_get_function_pointer
     auto load_fn = get_dotnet_load_assembly(cfg.wstring().c_str());
     if (!load_fn) return -1;
 
-    // 4) set up for Print()
-    using print_fn = void (*)();
+    // Prepare to bind Entrance.MutateStruct
+    using mutate_fn   = void(__cdecl *)(void *);
+    mutate_fn mutator = nullptr;
 
-    string_t type_name        = L"HelloManaged.Entrance, HelloManaged";
-    const char_t *method_name = L"Print";
-    print_fn print_ptr        = nullptr;
+    string_t type_name   = L"HelloManaged.Entrance, HelloManaged";
+    const char_t *method = L"MutateStruct";
 
-    // 5) ask CoreCLR to load & bind
-    int rc = load_fn(dll.wstring().c_str(), type_name.c_str(), method_name,
-                     UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&print_ptr);
+    int rc = load_fn(dll.wstring().c_str(), type_name.c_str(), method,
+                     UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
+                     nullptr, (void **)&mutator);
 
-    if (rc != 0 || print_ptr == nullptr) {
-        std::cerr << "load_assembly_and_get_function_pointer() failed: 0x" << std::hex << rc
-                  << std::endl;
+    if (rc != 0 || mutator == nullptr) {
+        std::cerr << "Failed to bind MutateStruct: 0x" << std::hex << rc << "\n";
         return -1;
     }
 
-    // 6) invoke!
-    print_ptr();
+    // NOW: allocate + initialize a native struct
+    MyStruct s;
+    s.x = 1;
+    s.y = 2;
+    std::cout << "[C++] Before call: (x,y)=(" << s.x << "," << s.y << ")\n";
+
+    // call into C# and pass &s
+    mutator(&s);
+
+    // after return, the C# code has changed s.x and s.y
+    std::cout << "[C++] After call:  (x,y)=(" << s.x << "," << s.y << ")\n";
+
     return 0;
 }
