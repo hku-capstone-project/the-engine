@@ -64,6 +64,31 @@ bootstrap.bat
 
 ## Environment Setup
 
+### Dotnet (_newly updated_)
+
+- Download .NET 8.0.16 with SDK 8.0.410 from [here](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.410-windows-x64-installer)
+- You can varify your installation by checking
+
+```shell
+dotnet --list-sdks
+```
+
+and you should at least find:
+
+```shell
+8.0.410 [C:\Program Files\dotnet\sdk]
+```
+
+```shell
+dotnet --list-runtimes
+```
+
+and you should at least find:
+
+```shell
+Microsoft.NETCore.App 8.0.16 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+```
+
 ### Cmake
 
 - Download the 3.x installer from [here](https://cmake.org/download/)
