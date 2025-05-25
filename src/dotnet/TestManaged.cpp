@@ -8,6 +8,8 @@
 #include "Transform.hpp"
 #include "config/RootDir.h"
 
+#include "Engine.hpp"
+
 #include "coreclr_delegates.h"
 #include "hostfxr.h"
 #include "nethost.h"
@@ -92,6 +94,22 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
 using InitFn   = void(__cdecl *)(void   */*createEntityPtr*/, void   */*addTransformPtr*/);
 using UpdateFn = void(__cdecl *)(float /*dt*/, Transform * /*ptr*/, int /*count*/);
 
+// Single‐instance App
+App &AppSingleton() {
+    static App app;
+    return app;
+}
+
+// forward C ABI for CreateEntity/AddTransform
+extern "C" {
+__declspec(dllexport) uint32_t __cdecl CreateEntity() {
+    return (uint32_t)AppSingleton().registry.create();
+}
+__declspec(dllexport) void __cdecl AddTransform(uint32_t e, Transform t) {
+    AppSingleton().registry.emplace<Transform>(entt::entity{e}, t);
+}
+}
+
 int test_managed() {
     if (!load_hostfxr()) return -1;
 
@@ -107,39 +125,46 @@ int test_managed() {
     }
 
     // get the load_assembly_and_get_function_pointer
-    auto load_fn = get_dotnet_load_assembly(cfg.wstring().c_str());
-    if (!load_fn) return -1;
+    auto load_asm = get_dotnet_load_assembly(cfg.wstring().c_str());
+    if (!load_asm) return -1;
 
-    // Prepare to bind Entrance.MutateStruct
-    using mutate_fn   = void(__cdecl *)(void *);
-    mutate_fn mutator = nullptr;
+    // using mutate_fn   = void(__cdecl *)(void *);
+    // mutate_fn mutator = nullptr;
+    InitFn init     = nullptr;
+    UpdateFn update = nullptr;
 
-    string_t type_name   = L"HelloManaged.Entrance, HelloManaged";
-    const char_t *method = L"MutateStruct";
-
-    int rc = load_fn(dll.wstring().c_str(), type_name.c_str(), method,
-                     UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
-                     nullptr, (void **)&mutator);
-
-    if (rc != 0 || mutator == nullptr) {
-        std::cerr << "Failed to bind MutateStruct: 0x" << std::hex << rc << "\n";
+    int rc = load_asm(dll.wstring().c_str(), L"HelloManaged.GameScript, HelloManaged", L"Init",
+                      UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
+                      nullptr, (void **)&init);
+    if (rc != 0 || init == nullptr) {
+        std::cerr << "Failed to bind Init: 0x" << std::hex << rc << "\n";
         return -1;
     }
 
-    // NOW: allocate + initialize a native struct
-    Transform transform;
-    transform.x = 1;
-    transform.y = 2;
-    transform.z = 3;
-    std::cout << "[C++] Before call: (x,y,z)=(" << transform.x << "," << transform.y << ","
-              << transform.z << ")\n";
+    rc = load_asm(dll.wstring().c_str(), L"HelloManaged.GameScript, HelloManaged", L"Update",
+                  UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
+                  nullptr, (void **)&update);
+    if (rc != 0 || update == nullptr) {
+        std::cerr << "Failed to bind Update: 0x" << std::hex << rc << "\n";
+        return -1;
+    }
 
-    // call into C# and pass &transform
-    mutator(&transform);
+    App &app = AppSingleton();
+    app.add_startup_system([&]() {
+        // tell C# how to spawn entities & add transforms
+        init((void *)&CreateEntity, (void *)&AddTransform);
+    });
 
-    // after return, the C# code has changed transform.x and transform.y
-    std::cout << "[C++] After call:  (x,y,z)=(" << transform.x << "," << transform.y << ","
-              << transform.z << ")\n";
+    app.add_update_system([&](float dt) {
+        // for each entity-with-Transform, call the managed Update on a single component
+        auto view = app.registry.view<Transform>();
+        for (auto e : view) {
+            auto &t = view.get<Transform>(e);
+            update(dt, &t, 1);
+        }
+    });
 
+    // finally run
+    app.run();
     return 0;
 }
