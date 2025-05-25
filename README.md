@@ -1,4 +1,6 @@
-# _The Engine_
+# _VulkanECS-Engine_
+
+A hybrid C++ + C# game engine framework with a data-oriented ECS core, GPU-instanced Vulkan rendering, and embedded .NET runtime for gameplay scripting. Designed to render thousands of 3D objects with minimal draw calls and provide a productive C# authoring experience.
 
 # Project Spec
 
@@ -14,7 +16,41 @@ This project aims to develop a game development framework centered around high-p
 6.  **Asset Management:** Features an asset pipeline for loading, processing, and managing game resources.
 7.  **Working Example:** The project includes the development of a simple interactive game to demonstrate the framework's capabilities.
 
-# Environment setup
+## Features
+
+- **Vulkan GPU Instancing**  
+  Single draw-call per mesh+material, indirect draws, compute-shader culling.
+- **Data-Oriented ECS**  
+  C++ archetype storage, SoA layout, ultrafast queries, minimal GC pressure.
+- **Embedded .NET (CoreCLR)**  
+  High-quality JIT, AOT/ReadyToRun support, server GC, AssemblyLoadContext hot-reload.
+- **C# Scripting API**  
+  `Engine.CreateEntity()`, `world.AddComponent<T>()`, `[System]` classes with `OnUpdate(Span<T>...)`.
+- **Asset Pipeline**  
+  Load/serialize meshes, textures, shaders; auto-watch & reload.
+- **Sample Game**  
+  “Instanced Quads” demo showing 10 000+ moving sprites.
+
+## Architecture Overview
+
+1. **C++ Native Core**
+
+   - Vulkan setup, windowing (GLFW), input, audio.
+   - ECS storage & scheduler (entity creation, component SoA buffers).
+   - GPUInstancingSystem: batches entities by (mesh,material), issues `vkCmdDrawIndexedIndirect`.
+
+2. **.NET Runtime Host**
+
+   - Embeds CoreCLR via Hosting API.
+   - Loads & (AOT) compiles C# assemblies.
+   - Exposes a C ABI: register components, create entities, query archetypes, invoke system delegates.
+
+3. **C# Scripting Layer**
+   - Define `[Component] struct Position { ... }` & `[System] class MoveSystem { OnUpdate(...) }`.
+   - `GameBootstrap.Init()` registers components & scans systems.
+   - Per-frame, native core passes `Span<T>` over unmanaged memory to C# for high-speed loops.
+
+# For developers
 
 _Note: this setup guide is currently for Windows exclusively_
 
@@ -26,12 +62,37 @@ For initializing submodules & setup vcpkg, a package manager for our project to 
 bootstrap.bat
 ```
 
-## Env setup
+## Environment Setup
+
+### Dotnet (_newly updated_)
+
+- Download .NET 8.0.16 with SDK 8.0.410 from [here](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.410-windows-x64-installer)
+- You can varify your installation by checking
+
+```shell
+dotnet --list-sdks
+```
+
+and you should at least find:
+
+```shell
+8.0.410 [C:\Program Files\dotnet\sdk]
+```
+
+```shell
+dotnet --list-runtimes
+```
+
+and you should at least find:
+
+```shell
+Microsoft.NETCore.App 8.0.16 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+```
 
 ### Cmake
 
 - Download the 3.x installer from [here](https://cmake.org/download/)
-- CMake version 4.x (Newest) removed compatibility support for CMake < 3.5. 
+- CMake version 4.x (Newest) removed compatibility support for CMake < 3.5.
 
 ### Ninja
 
@@ -93,7 +154,8 @@ build.bat
 
 ## Learning resources
 
-[Daxa Tutorial](https://tutorial.daxa.dev/)
-
 [Vulkan Tutorial](https://vulkan-tutorial.com/)
 
+[Bevy's ECS Design](https://bevyengine.org/learn/quick-start/getting-started/ecs/)
+
+[EnTT Crash Course](https://github.com/skypjack/entt/wiki/Crash-Course:-entity-component-system/465d90e0f5961adc460cd9d1e9358370987fbcd3)

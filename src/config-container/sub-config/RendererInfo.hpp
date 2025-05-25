@@ -4,5 +4,5 @@ class TomlConfigReader;
 
 struct RendererInfo {
 
-  void loadConfig(TomlConfigReader *tomlConfigReader);
+    void loadConfig(TomlConfigReader *tomlConfigReader);
 };
