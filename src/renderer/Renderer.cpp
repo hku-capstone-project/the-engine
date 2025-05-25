@@ -28,9 +28,9 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
                                               shaderCompiler);
 
     _model            = std::make_unique<Model>(_appContext, _logger,
-                                                "./../../../resources/models/sci_sword/sword.gltf");
+                                                "./resources/models/sci_sword/sword.gltf");
     _images.baseColor = std::make_unique<Image>(
-        _appContext, _logger, "./../../../resources/models/sci_sword/textures/blade_baseColor.png",
+        _appContext, _logger, "./resources/models/sci_sword/textures/blade_baseColor.png",
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
     _createDepthStencil();
@@ -157,7 +157,7 @@ void Renderer::_createColorResources() {
                                _appContext->getSwapchainExtent().height, 1};
     imageInfo.mipLevels     = 1;
     imageInfo.arrayLayers   = 1;
-    imageInfo.format        = _appContext->getDepthFormat();
+    imageInfo.format        = VK_FORMAT_B8G8R8A8_UNORM;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -174,7 +174,7 @@ void Renderer::_createColorResources() {
     viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image                           = colorResources.image;
     viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format                          = VK_FORMAT_B8G8R8A8_SRGB;
+    viewInfo.format                          = VK_FORMAT_B8G8R8A8_UNORM;
     viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.baseMipLevel   = 0;
     viewInfo.subresourceRange.levelCount     = 1;
@@ -237,13 +237,29 @@ void Renderer::onSwapchainResize() {
 void Renderer::drawFrame(size_t currentFrame) {
     ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
 
+    // 更新MVP矩阵
+    _rotation += 0.01f;
+    _mvp.model = glm::rotate(glm::mat4(1.0f), _rotation, glm::vec3(0.0f, 1.0f, 0.0f));
+    _mvp.model = glm::scale(_mvp.model, glm::vec3(0.5f)); // 缩小模型尺寸
+    
+    // 调整相机位置
+    _camera.position = glm::vec3(0.0f, 1.0f, 3.0f);
+    _camera.front = glm::vec3(0.0f, 0.0f, -1.0f);
+    _camera.up = glm::vec3(0.0f, 1.0f, 0.0f);
+    
+    _mvp.view = _camera.getViewMatrix();
+    _mvp.proj = glm::perspective(glm::radians(45.0f), 
+        static_cast<float>(imgDimensions.width) / static_cast<float>(imgDimensions.height),
+        0.1f, 100.0f);
+    _mvp.proj[1][1] *= -1; // 翻转Y轴以匹配Vulkan坐标系
+
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
     cmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cmdBufferBeginInfo.flags            = 0;
+    cmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     cmdBufferBeginInfo.pInheritanceInfo = nullptr;
 
     std::array<VkClearValue, 2> clear_vals = {};
-    clear_vals[0].color                    = {{0.025f, 0.025f, 0.025f, 1.0f}};
+    clear_vals[0].color                    = {{0.1f, 0.1f, 0.1f, 1.0f}}; // 稍微亮一点的背景色
     clear_vals[1].depthStencil             = {1.0f, 0};
 
     VkRenderPassBeginInfo rdrPassBeginInfo{};
@@ -279,12 +295,39 @@ void Renderer::drawFrame(size_t currentFrame) {
 
     vkCmdBindPipeline(_tracingCommandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS,
                       _pipeline->getPipeline());
-    // vkCmdBindDescriptorSets(_tracingCommandBuffers[currentFrame],
-    // VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1, &descriptorSet, 0,
-    // nullptr);
+
+    // 更新MVP矩阵
+    _pipeline->updateMVP(_mvp);
 
     vkCmdDrawIndexed(_tracingCommandBuffers[currentFrame], _model->idxCnt, 1, 0, 0, 0);
     vkCmdEndRenderPass(_tracingCommandBuffers[currentFrame]);
+
+    // 添加渲染完成后的图像布局转换
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = _appContext->getSwapchainImages()[currentFrame];
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barrier.dstAccessMask = 0;
+
+    vkCmdPipelineBarrier(
+        _tracingCommandBuffers[currentFrame],
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+    );
+
     vkEndCommandBuffer(_tracingCommandBuffers[currentFrame]);
 }
 
@@ -324,4 +367,40 @@ void Renderer::_recordDeliveryCommandBuffers() {
     allocInfo.commandBufferCount = static_cast<uint32_t>(_deliveryCommandBuffers.size());
 
     vkAllocateCommandBuffers(_appContext->getDevice(), &allocInfo, _deliveryCommandBuffers.data());
+
+    // 记录命令
+    for (size_t i = 0; i < _deliveryCommandBuffers.size(); i++) {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        vkBeginCommandBuffer(_deliveryCommandBuffers[i], &beginInfo);
+
+        // 转换图像布局
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = _appContext->getSwapchainImages()[i];
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        vkCmdPipelineBarrier(
+            _deliveryCommandBuffers[i],
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier
+        );
+
+        vkEndCommandBuffer(_deliveryCommandBuffers[i]);
+    }
 }

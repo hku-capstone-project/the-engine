@@ -5,8 +5,10 @@
 #include "volk.h"
 #include <memory>
 #include <vector>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 
-class GfxPipeline;
 class VulkanApplicationContext;
 class Logger;
 class ShaderCompiler;
@@ -15,6 +17,23 @@ class ConfigContainer;
 class Model;
 class Image;
 class ImageForwardingPair;
+
+class Camera {
+public:
+    Camera() {
+        position = glm::vec3(0.0f, 0.0f, 5.0f);
+        front = glm::vec3(0.0f, 0.0f, -1.0f);
+        up = glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+
+    glm::mat4 getViewMatrix() {
+        return glm::lookAt(position, position + front, up);
+    }
+
+    glm::vec3 position;
+    glm::vec3 front;
+    glm::vec3 up;
+};
 
 class Renderer {
   public:
@@ -72,6 +91,10 @@ class Renderer {
         VkImageView imageView;
         VmaAllocation allocation;
     } colorResources;
+
+    Camera _camera;
+    MVP _mvp;
+    float _rotation = 0.0f;
 
     void _recordDeliveryCommandBuffers();
     void _recordTracingCommandBuffers();

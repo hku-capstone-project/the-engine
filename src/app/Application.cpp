@@ -53,7 +53,6 @@ void Application::run() {
 }
 
 void Application::_init() {
-    // _renderer->init();
     _imguiManager->init();
     _createSemaphoresAndFences();
 

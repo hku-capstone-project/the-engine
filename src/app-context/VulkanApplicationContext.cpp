@@ -81,9 +81,9 @@ void VulkanApplicationContext::init(Logger *logger, GLFWwindow *window,
 
     _msaaSamples                     = queueSelection.msaaSamples;
     std::vector<VkFormat> formatList = {
-        VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D16_UNORM,
     };
 
     for (auto format : formatList) {

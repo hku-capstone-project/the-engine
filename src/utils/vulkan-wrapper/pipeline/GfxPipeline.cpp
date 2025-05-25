@@ -12,9 +12,28 @@ GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
                          glm::vec3 workGroupSize, DescriptorSetBundle *descriptorSetBundle,
                          ShaderCompiler *shaderCompiler)
     : Pipeline(appContext, logger, descriptorSetBundle, VK_SHADER_STAGE_COMPUTE_BIT),
-      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {}
+      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {
 
-GfxPipeline::~GfxPipeline() = default;
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = sizeof(MVP);
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    vmaCreateBuffer(_appContext->getAllocator(), &bufferInfo, &allocInfo, &_mvpBuffer, &_mvpBufferAllocation, nullptr);
+    vmaMapMemory(_appContext->getAllocator(), _mvpBufferAllocation, &_mvpBufferMapped);
+}
+
+GfxPipeline::~GfxPipeline() {
+    vmaUnmapMemory(_appContext->getAllocator(), _mvpBufferAllocation);
+    vmaDestroyBuffer(_appContext->getAllocator(), _mvpBuffer, _mvpBufferAllocation);
+    vkDestroyPipeline(_appContext->getDevice(), _pipeline, nullptr);
+    vkDestroyPipelineLayout(_appContext->getDevice(), _pipelineLayout, nullptr);
+}
 
 void GfxPipeline::compileAndCacheShaderModule(std::string &path) {
     auto const sourceVertCode = FileReader::readShaderSourceCode(path + "/vert.glsl", _logger);
@@ -65,7 +84,7 @@ void GfxPipeline::build() {
     VkPipelineRasterizationStateCreateInfo rasterizeInfo{};
     rasterizeInfo.sType            = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizeInfo.polygonMode      = VK_POLYGON_MODE_FILL;
-    rasterizeInfo.cullMode         = VK_CULL_MODE_FRONT_BIT;
+    rasterizeInfo.cullMode         = VK_CULL_MODE_BACK_BIT;
     rasterizeInfo.frontFace        = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizeInfo.flags            = 0;
     rasterizeInfo.depthClampEnable = VK_FALSE;
@@ -96,7 +115,7 @@ void GfxPipeline::build() {
     depthStencilState.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencilState.depthTestEnable  = VK_TRUE;
     depthStencilState.depthWriteEnable = VK_TRUE;
-    depthStencilState.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
+    depthStencilState.depthCompareOp   = VK_COMPARE_OP_LESS;
     depthStencilState.depthBoundsTestEnable = VK_FALSE;
     depthStencilState.stencilTestEnable     = VK_FALSE;
     depthStencilState.minDepthBounds        = 0.0f;
@@ -183,4 +202,8 @@ void GfxPipeline::_cleanupShaderModules() {
         vkDestroyShaderModule(_appContext->getDevice(), _fragShaderModule, nullptr);
         _fragShaderModule = VK_NULL_HANDLE;
     }
+}
+
+void GfxPipeline::updateMVP(const MVP& mvp) {
+    memcpy(_mvpBufferMapped, &mvp, sizeof(MVP));
 }
