@@ -12,7 +12,7 @@ set BINARY_DIR=build/%BUILD_TYPE%/
 set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
 
 @REM delete build/Managed folder if it exists
-if exist build\Managed rd /s /q build\Managed
+if exist build/Managed rd /s /q build/Managed
 @REM publish the managed project in cs
 pushd managed
 dotnet publish -c Release -r win-x64 --self-contained false -o ../build/Managed
@@ -46,7 +46,8 @@ if !errorlevel! neq 0 (
 echo copy compile_commands.json to root folder
 robocopy %BINARY_DIR% . compile_commands.json /NFL /NDL /NJH /NJS /nc /ns /np
 
-@REM echo copy every dll insid
+echo copy every dll inside dep/dotnet-runtime-8.0.16/ folder to PROJECT_EXECUTABLE_PATH
+robocopy "dep/dotnet-runtime-8.0.16/" "%PROJECT_EXECUTABLE_PATH%" *.dll /NFL /NDL /NJH /NJS /nc /ns /np
 
 if %WITH_PORTABLE_RESOURCES%==ON (
     echo:

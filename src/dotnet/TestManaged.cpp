@@ -110,6 +110,13 @@ __declspec(dllexport) void __cdecl AddTransform(uint32_t e, Transform t) {
 }
 }
 
+static void UpdateTransformsCpp(float dt, Transform *ptr, int count) {
+    for (int i = 0; i < count; ++i) {
+        auto &t = ptr[i];
+        t.z     = std::sin((t.x + t.y) + dt * 3.0f) * 0.5f;
+    }
+}
+
 int test_managed() {
     if (!load_hostfxr()) return -1;
 
@@ -155,6 +162,8 @@ int test_managed() {
         init((void *)&CreateEntity, (void *)&AddTransform);
     });
 
+    // benchmark 0: view / single invoke
+    // 2.95s
     app.add_update_system([&](float dt) {
         // for each entity-with-Transform, call the managed Update on a single component
         auto view = app.registry.view<Transform>();
@@ -163,6 +172,28 @@ int test_managed() {
             update(dt, &t, 1);
         }
     });
+
+    // benchmark 1: single P/Invoke per frame
+    // 1.80s
+    // app.add_update_system([&](float dt) {
+    //     // The dense array is guaranteed contiguous *and* stable for this frame
+    //     auto &storage = app.registry.storage<Transform>();
+
+    //     // NOTE: before EnTT 3.12 it's storage.raw(), afterwards data()
+    //     Transform **begin = storage.raw();
+    //     int count         = static_cast<int>(storage.size());
+
+    //     if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
+    // });
+
+    // benchmark 2: fully in C++
+    // 1.24s
+    // app.add_update_system([&](float dt) {
+    //     auto &storage    = app.registry.storage<Transform>();
+    //     Transform **data = storage.raw();
+    //     int count        = static_cast<int>(storage.size());
+    //     if (count > 0) UpdateTransformsCpp(dt, *data, count);
+    // });
 
     // finally run
     app.run();
