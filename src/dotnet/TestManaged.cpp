@@ -96,10 +96,35 @@ App &AppSingleton() {
     return app;
 }
 
-using RegisterAllFn      = void(__cdecl *)(void *);
-using ManagedPerEntityFn = void (*)(float, void *);
+using RegisterAllFn = void(__cdecl *)(void *);
 
-static ManagedPerEntityFn g_perEntityFn = nullptr;
+// signature of your managed callback:
+using ManagedPerEntityFn = void (*)(float dt, void **components);
+
+// A getter that, given (registry,entity), returns pointer to that component:
+using GetterFn = void *(*)(entt::registry &, entt::entity);
+
+// A storage‐iterator that, given a runtime_view&, calls .iterate(storage<T>())
+using IteratorFn = std::function<void(entt::runtime_view &)>;
+
+// ----------------------------------------------------------------------------
+// 1) Extend the maps for every component type you have.
+//    When you add a new T component, insert here in BOTH maps.
+// ----------------------------------------------------------------------------
+static const std::unordered_map<std::string, GetterFn> g_getters = {
+    {"Transform",
+     +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Transform>(e); }},
+    {"Velocity", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Velocity>(e); }},
+    // … add your other Component types here …
+};
+
+static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
+    {"Transform",
+     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Transform>()); }},
+    {"Velocity",
+     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Velocity>()); }},
+    // … and here as well …
+};
 
 void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
 
@@ -111,16 +136,41 @@ void AddTransform(uint32_t e, Transform t) {
     AppSingleton().registry.emplace_or_replace<Transform>(entt::entity{e}, t);
 }
 
-void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn) {
-    g_perEntityFn = fn;
-    AppSingleton().add_update_system([](float dt) {
-        if (!g_perEntityFn) return;
-        // for each Transform in the registry:
-        auto view = AppSingleton().registry.view<Transform>();
+void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
+    assert(fn && count > 0);
+
+    // build per‐system vectors of getters + storage‐iterators:
+    std::vector<GetterFn> getters;
+    getters.reserve(count);
+    std::vector<IteratorFn> iters;
+    iters.reserve(count);
+
+    for (int i = 0; i < count; ++i) {
+        auto &nm = names[i];
+        auto git = g_getters.find(nm);
+        auto iit = g_storage_iterators.find(nm);
+        assert(git != g_getters.end() && "Unknown component for getter");
+        assert(iit != g_storage_iterators.end() && "Unknown component for iterator");
+        getters.push_back(git->second);
+        iters.push_back(iit->second);
+    }
+
+    // register one native update‐system lambda
+    AppSingleton().add_update_system([=](float dt) {
+        // 1) build the dynamic view
+        entt::runtime_view view{};
+        for (auto &iter : iters) {
+            iter(view);
+        }
+
+        // 2) per‐entity call
+        std::vector<void *> ptrs(count);
         for (auto e : view) {
-            auto &t = view.get<Transform>(e);
-            // call into managed code, passing address of each component:
-            g_perEntityFn(dt, &t);
+            for (int i = 0; i < count; ++i) {
+                ptrs[i] = getters[i](AppSingleton().registry, e);
+            }
+            // single P/Invoke for this entity
+            fn(dt, ptrs.data());
         }
     });
 }

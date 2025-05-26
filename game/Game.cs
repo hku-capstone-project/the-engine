@@ -4,106 +4,166 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection.Emit;
 
 namespace Game
 {
+
+    // -------------------------------------------------------------------
+    // Plugin Bootstrap
+    // -------------------------------------------------------------------
     public static unsafe class PluginBootstrap
     {
-        // host exports:
+        // host exports
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate IntPtr HostGetProcDel([MarshalAs(UnmanagedType.LPStr)] string name);
+        public delegate IntPtr HostGetProcDel(
+          [MarshalAs(UnmanagedType.LPStr)] string name
+        );
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void HostRegStartupDel(IntPtr fn);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void HostRegUpdateDel(IntPtr fn);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void HostRegPerEntDel(IntPtr fn);
 
-        // your engine callbacks:
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate uint CreateEntityDel();
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void AddTransformDel(uint e, Transform t);
+        public delegate void HostRegPerEntDel(
+          IntPtr fnPtr,
+          int count,
+          [MarshalAs(UnmanagedType.LPArray, ArraySubType=UnmanagedType.LPStr)]
+      string[]      names
+        );
 
-        // generic marker—the real delegates are built dynamically:
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void ManagedPerEntityDel();
+        // your shared engine callbacks are declared *once* in GameScript
+        // we will refer to GameScript.CreateEntityDel and AddTransformDel
 
-        // keep alive
-        static List<Delegate> _pinned = new();
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public unsafe delegate void NativePerEntityDel(
+            float dt,
+            void* componentsPtr
+        );
+
+        // keep shims & pinned delegates alive
+        static List<DynamicMethod> _shims = new();
+        static List<NativePerEntityDel> _pinnedShims = new();
 
         [UnmanagedCallersOnly]
-        public static void RegisterAll(
-          IntPtr hostGetProcPtr
-        )
+        public static void RegisterAll(IntPtr hostGetPtr)
         {
-            var hostGet = Marshal.GetDelegateForFunctionPointer<HostGetProcDel>(hostGetProcPtr);
+            var hostGet = Marshal.GetDelegateForFunctionPointer<HostGetProcDel>(hostGetPtr);
+            var hostStartup = Marshal.GetDelegateForFunctionPointer<HostRegStartupDel>(
+                                hostGet("HostRegisterStartup"));
+            var hostPerEnt = Marshal.GetDelegateForFunctionPointer<HostRegPerEntDel>(
+                                hostGet("HostRegisterPerEntityUpdate"));
 
-            var hostStartup = Marshal.GetDelegateForFunctionPointer<HostRegStartupDel>(hostGet("HostRegisterStartup"));
-            var hostUpdate = Marshal.GetDelegateForFunctionPointer<HostRegUpdateDel>(hostGet("HostRegisterUpdate"));
-            var hostPerEnt = Marshal.GetDelegateForFunctionPointer<HostRegPerEntDel>(hostGet("HostRegisterPerEntityUpdate"));
+            // bind CreateEntity/AddTransform into GameScript:
+            GameScript.CreateEntity = Marshal.GetDelegateForFunctionPointer<GameScript.CreateEntityDel>(
+                                         hostGet("CreateEntity"));
+            GameScript.AddTransform = Marshal.GetDelegateForFunctionPointer<GameScript.AddTransformDel>(
+                                         hostGet("AddTransform"));
 
-            // bind your engine callbacks into GameScript:
-            GameScript.CreateEntity =
-              Marshal.GetDelegateForFunctionPointer<GameScript.CreateEntityDel>(
-                hostGet("CreateEntity"));
-            GameScript.AddTransform =
-              Marshal.GetDelegateForFunctionPointer<GameScript.AddTransformDel>(
-                hostGet("AddTransform"));
-
-            // scan for systems
+            // scan all static methods for systems
             foreach (var m in Assembly.GetExecutingAssembly()
-                                     .GetTypes()
-                                     .SelectMany(t => t.GetMethods(
+                                      .GetTypes()
+                                      .SelectMany(t => t.GetMethods(
                                          BindingFlags.Static |
                                          BindingFlags.Public |
                                          BindingFlags.NonPublic)))
             {
-                // --- STARTUP ---
+                // ---- STARTUP ----
                 if (m.GetCustomAttribute<StartupSystemAttribute>() != null
-                    && m.ReturnType == typeof(void)
-                    && m.GetParameters().Length == 0)
+                 && m.ReturnType == typeof(void)
+                 && m.GetParameters().Length == 0)
                 {
-                    var del = (ManagedPerEntityDel)Delegate.CreateDelegate(
-                                typeof(ManagedPerEntityDel), m);
-                    _pinned.Add(del);
-                    hostStartup(Marshal.GetFunctionPointerForDelegate(del));
+                    // make a tiny stub: void stub() { real(); }
+                    var stub = new DynamicMethod(
+                      "stub_" + m.Name,
+                      typeof(void),
+                      Type.EmptyTypes,
+                      typeof(PluginBootstrap),
+                      skipVisibility: true
+                    );
+                    var il = stub.GetILGenerator();
+                    il.Emit(OpCodes.Call, m);
+                    il.Emit(OpCodes.Ret);
+                    _shims.Add(stub);
+
+                    // bind to host
+                    var ptr = stub.CreateDelegate(typeof(GameScript.ManagedStartupDel));
+                    var fnp = Marshal.GetFunctionPointerForDelegate((GameScript.ManagedStartupDel)ptr);
+                    hostStartup(fnp);
                 }
 
-                // --- PER-ENTITY UPDATE ---
+                // ---- PER‐ENTITY UPDATE ----
                 if (m.GetCustomAttribute<UpdateSystemAttribute>() != null)
                 {
                     var query = m.GetCustomAttribute<QueryAttribute>()
-                             ?? throw new InvalidOperationException($"[UpdateSystem] {m.Name} needs [Query]");
+                             ?? throw new InvalidOperationException($"{m.Name} missing [Query]");
                     var comps = query.Components;
-                    var pars = m.GetParameters();
 
-                    // expect signature: (float dt, C1* p1, C2* p2, ..., Cn* pn)
-                    if (pars.Length != 1 + comps.Length || pars[0].ParameterType != typeof(float))
-                        throw new InvalidOperationException($"{m.Name} signature mismatch");
+                    // for brevity demo only 1‐component here
+                    if (comps.Length == 1)
+                    {
+                        var compType = comps[0];
+                        var compName = compType.Name;
 
-                    // build delegate type: (float, C1*, C2*,..., void)
-                    var types = pars.Select(p => p.ParameterType)
-                                     .Concat(new[] { typeof(void) })
-                                     .ToArray();
-                    var delType = Expression.GetDelegateType(types);
-                    var del = Delegate.CreateDelegate(delType, m);
-                    _pinned.Add(del);
+                        // emit: void shim(float dt, void* comps)
+                        var shim = new DynamicMethod(
+                          "shim_" + m.Name,
+                          typeof(void),
+                          new[] { typeof(float), typeof(void*) },
+                          typeof(PluginBootstrap),
+                          skipVisibility: true
+                        );
+                        var il = shim.GetILGenerator();
 
-                    var fnPtr = Marshal.GetFunctionPointerForDelegate(del);
-                    hostPerEnt(fnPtr);
+                        // push dt
+                        il.Emit(OpCodes.Ldarg_0);
+
+                        // load components[0]
+                        il.Emit(OpCodes.Ldarg_1);    // void*
+                        il.Emit(OpCodes.Ldc_I4_0);   // index 0
+                        il.Emit(OpCodes.Conv_I);     // native int
+                        il.Emit(OpCodes.Add);
+                        il.Emit(OpCodes.Ldind_I);    // read ptr
+                        il.Emit(OpCodes.Conv_U);     // native ptr
+
+                        // call real system: (float, T*)
+                        il.EmitCall(OpCodes.Call, m, null);
+                        il.Emit(OpCodes.Ret);
+
+                        _shims.Add(shim);
+
+                        // wrap the DynamicMethod in our Cdecl delegate
+                        var nativeDel = (NativePerEntityDel)
+                            shim.CreateDelegate(typeof(NativePerEntityDel));
+                        _pinnedShims.Add(nativeDel);
+
+                        // now get a real Cdecl function-pointer
+                        var fnPtr = Marshal.GetFunctionPointerForDelegate(nativeDel);
+
+                        // register it (count=1, just the one component name)
+                        hostPerEnt(fnPtr, 1, new[] { compName });
+
+                        continue;
+                    }
+
+                    throw new NotSupportedException(
+                      $"Only 1‐component queries supported; saw {comps.Length}"
+                    );
                 }
             }
         }
     }
-
     public static unsafe class GameScript
     {
+        // engine → managed callbacks
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate uint CreateEntityDel();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddTransformDel(uint e, Transform t);
+
+        // startup signature
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void ManagedStartupDel();
 
         public static CreateEntityDel CreateEntity;
         public static AddTransformDel AddTransform;
@@ -111,21 +171,16 @@ namespace Game
         [StartupSystem]
         public static void InitGameObjects()
         {
-            // spawn a 16×16 grid of entities
             const int N = 16;
             for (int x = 0; x < N; x++)
-            {
                 for (int y = 0; y < N; y++)
                 {
                     uint e = CreateEntity();
-
-                    Transform t = new Transform
+                    AddTransform(e, new Transform
                     {
-                        position = new System.Numerics.Vector3(x * 1.0f, y * 1.0f, 0)
-                    };
-                    AddTransform(e, t);
+                        position = new System.Numerics.Vector3(x, y, 0)
+                    });
                 }
-            }
         }
 
         [UpdateSystem, Query(typeof(Transform))]
