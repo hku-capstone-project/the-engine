@@ -79,6 +79,10 @@ class VulkanApplicationContext {
     [[nodiscard]] const VkSampleCountFlagBits &getMsaaSample() const { return _msaaSamples; }
     [[nodiscard]] const VkFormat &getDepthFormat() const { return _depthFormat; }
 
+    [[nodiscard]] inline const VkSemaphore &getImageAvailableSemaphore(size_t index) const { return _imageAvailableSemaphores[index]; }
+    [[nodiscard]] inline const VkSemaphore &getRenderFinishedSemaphore(size_t index) const { return _renderFinishedSemaphores[index]; }
+    [[nodiscard]] inline const VkFence &getInFlightFence(size_t index) const { return _framesInFlightFences[index]; }
+
   private:
     // stores the indices of each queue family, they might not overlap
     ContextCreator::QueueFamilyIndices _queueFamilyIndices;
@@ -119,11 +123,16 @@ class VulkanApplicationContext {
     VkSampleCountFlagBits _msaaSamples;
     VkFormat _depthFormat;
 
+    std::vector<VkSemaphore> _imageAvailableSemaphores;
+    std::vector<VkSemaphore> _renderFinishedSemaphores;
+    std::vector<VkFence> _framesInFlightFences;
+
     void _initWindow(uint8_t windowSize);
 
     void _createSwapchain(bool isFramerateLimited);
     void _createAllocator();
     void _createCommandPool();
+    void _createSyncObjects();
 
     static std::vector<const char *> _getRequiredInstanceExtensions();
     void _checkDeviceSuitable(VkSurfaceKHR surface, VkPhysicalDevice physicalDevice);

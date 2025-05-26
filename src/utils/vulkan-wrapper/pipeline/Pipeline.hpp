@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <memory>
 
 class Logger;
 class Image;
@@ -14,8 +15,7 @@ class DescriptorSetBundle;
 
 class Pipeline {
   public:
-    Pipeline(VulkanApplicationContext *appContext, Logger *logger,
-             DescriptorSetBundle *descriptorSetBundle, VkShaderStageFlags shaderStageFlags);
+    Pipeline(VulkanApplicationContext *appContext, Logger *logger, VkShaderStageFlags shaderStageFlags);
     virtual ~Pipeline();
 
     // disable copy and move
@@ -42,7 +42,7 @@ class Pipeline {
     VulkanApplicationContext *_appContext;
     Logger *_logger;
 
-    DescriptorSetBundle *_descriptorSetBundle;
+    std::shared_ptr<DescriptorSetBundle> _descriptorSetBundle;
 
     std::vector<BufferBundle *> _uniformBufferBundles; // buffer bundles for uniform data
     std::vector<BufferBundle *> _storageBufferBundles; // buffer bundles for storage data

@@ -188,11 +188,11 @@ void Application::_drawFrame() {
         _logger->error("resizing is not allowed!");
     }
 
-    // _renderer->drawFrame(currentFrame);
+    _renderer->drawFrame(currentFrame);
 
     _imguiManager->recordCommandBuffer(currentFrame, imageIndex);
     std::vector<VkCommandBuffer> submitCommandBuffers = {
-        // _renderer->getTracingCommandBuffer(currentFrame),
+        _renderer->getTracingCommandBuffer(currentFrame),
         _renderer->getDeliveryCommandBuffer(imageIndex),
         _imguiManager->getCommandBuffer(currentFrame),
     };

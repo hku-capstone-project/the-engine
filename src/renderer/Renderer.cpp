@@ -24,14 +24,15 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, glm::vec3(0, 0, 0), nullptr,
-                                              shaderCompiler);
-
     _model            = std::make_unique<Model>(_appContext, _logger,
                                                 "./resources/models/sci_sword/sword.gltf");
     _images.baseColor = std::make_unique<Image>(
         _appContext, _logger, "./resources/models/sci_sword/textures/blade_baseColor.png",
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, glm::vec3(0, 0, 0),
+        _model.get(), _images.baseColor.get(), shaderCompiler, _renderPass
+    );
 
     _createDepthStencil();
     _createColorResources();

@@ -4,7 +4,11 @@
 #include "glm/glm.hpp"
 #include "vma/vk_mem_alloc.h"
 
+#include <memory>
+
+class Model;
 class ShaderCompiler;
+class Buffer;
 
 struct MVP {
     glm::mat4 model;
@@ -16,7 +20,7 @@ struct MVP {
 class GfxPipeline : public Pipeline {
   public:
     GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, glm::vec3 workGroupSize,
-                DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler);
+                Model* model, Image* baseColor, ShaderCompiler *shaderCompiler, VkRenderPass renderPass);
 
     ~GfxPipeline() override;
 
@@ -42,11 +46,10 @@ class GfxPipeline : public Pipeline {
     glm::vec3 _workGroupSize;
     ShaderCompiler *_shaderCompiler;
     VkPipelineCache _pipelineCache = VK_NULL_HANDLE;
-    VkRenderPass _renderPass       = VK_NULL_HANDLE;
 
-    VkBuffer _mvpBuffer = VK_NULL_HANDLE;
+    std::unique_ptr<Buffer> _mvpBuffer = VK_NULL_HANDLE;
     VmaAllocation _mvpBufferAllocation = VK_NULL_HANDLE;
-    void* _mvpBufferMapped = nullptr;
+    VkRenderPass _renderPass;
 
     void _cleanupShaderModules() override;
 };

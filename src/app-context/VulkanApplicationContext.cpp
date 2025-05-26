@@ -29,6 +29,12 @@ VulkanApplicationContext::~VulkanApplicationContext() {
 
     vkDestroySurfaceKHR(_vkInstance, _surface, nullptr);
 
+    for (size_t i = 0; i < 2; i++) {
+        vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
+        vkDestroyFence(_device, _framesInFlightFences[i], nullptr);
+    }
+
     // this step destroys allocated VkDestroyMemory allocated by VMA when creating
     // buffers and images, by destroying the global allocator
     vmaDestroyAllocator(_allocator);
@@ -99,6 +105,7 @@ void VulkanApplicationContext::init(Logger *logger, GLFWwindow *window,
     _createSwapchain(settings->isFramerateLimited);
     _createAllocator();
     _createCommandPool();
+    _createSyncObjects();
 }
 
 void VulkanApplicationContext::onSwapchainResize(bool isFramerateLimited) {
