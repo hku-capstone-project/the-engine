@@ -222,27 +222,6 @@ int test_managed() {
 
     App &app = AppSingleton();
 
-    // cs with view, single invoke
-    // app.add_update_system([&](float dt) {
-    //     // for each entity-with-Transform, call the managed Update on a single component
-    //     auto view = app.registry.view<Transform>();
-    //     for (auto e : view) {
-    //         auto &t = view.get<Transform>(e);
-    //         update(dt, &t, 1);
-    //     }
-    // });
-
-    // cs with storage, multi invoke
-    // app.add_update_system([&](float dt) {
-    //     // The dense array is guaranteed contiguous *and* stable for this frame
-    //     auto &storage = app.registry.storage<Transform>();
-
-    //     Transform **begin = storage.raw();
-    //     int count         = static_cast<int>(storage.size());
-
-    //     if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
-    // });
-
     // finally run
     app.run();
     return 0;
