@@ -42,21 +42,21 @@ bool load_hostfxr() {
     char_t buffer[MAX_PATH];
     size_t buf_len = sizeof(buffer) / sizeof(char_t);
 
-    // 1) ask nethost for the hostfxr path
+    // ask nethost for the hostfxr path
     int rc = get_hostfxr_path(buffer, &buf_len, nullptr);
     if (rc != 0) {
         std::cerr << "get_hostfxr_path() failed: 0x" << std::hex << rc << std::endl;
         return false;
     }
 
-    // 2) load hostfxr.dll
+    // load hostfxr.dll
     HMODULE lib = ::LoadLibraryW(buffer);
     if (!lib) {
         std::cerr << "LoadLibraryW failed\n";
         return false;
     }
 
-    // 2) reinterpret_cast the FARPROC to each function-pointer type:
+    // reinterpret_cast the FARPROC to each function-pointer type:
     init_fptr = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(
         get_export(lib, "hostfxr_initialize_for_runtime_config"));
     get_delegate_fptr = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(
@@ -90,9 +90,7 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
     return (load_assembly_and_get_function_pointer_fn)fn;
 }
 
-// managed function pointers
-using InitFn   = void(__cdecl *)(void   */*createEntityPtr*/, void   */*addTransformPtr*/);
-using UpdateFn = void(__cdecl *)(float /*dt*/, Transform * /*ptr*/, int /*count*/);
+using RegisterAll = void(__cdecl *)(void *, void *, void *);
 
 // Single‐instance App
 App &AppSingleton() {
@@ -100,18 +98,45 @@ App &AppSingleton() {
     return app;
 }
 
-// forward C ABI for CreateEntity/AddTransform
-extern "C" {
-__declspec(dllexport) uint32_t __cdecl CreateEntity() {
-    return (uint32_t)AppSingleton().registry.create();
-}
-__declspec(dllexport) void __cdecl AddTransform(uint32_t e, Transform t) {
+// host calls this to add a startup system
+void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
+// host calls this to add an update system
+void HostRegisterUpdate(void (*sys)(float)) { AppSingleton().add_update_system(sys); }
+uint32_t CreateEntity() { return (uint32_t)AppSingleton().registry.create(); }
+void AddTransform(uint32_t e, Transform t) {
     AppSingleton().registry.emplace<Transform>(entt::entity{e}, t);
+}
+void *HostGetTransformBuffer() {
+    // entt::storage<Transform> has a .raw() -> Transform*
+    auto &storage = AppSingleton().registry.storage<Transform>();
+    return storage.raw();
+}
+
+int HostGetTransformCount() {
+    auto &storage = AppSingleton().registry.storage<Transform>();
+    return static_cast<int>(storage.size());
+}
+
+extern "C" {
+
+__declspec(dllexport) void *__cdecl HostGetProcAddress(char const *name) {
+    if (std::strcmp(name, "CreateEntity") == 0) return (void *)&CreateEntity;
+    if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
+    if (std::strcmp(name, "HostRegisterStartup") == 0) return (void *)&HostRegisterStartup;
+    if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
+    if (std::strcmp(name, "HostGetTransformBuffer") == 0) return (void *)&HostGetTransformBuffer;
+    if (std::strcmp(name, "HostGetTransformCount") == 0) return (void *)&HostGetTransformCount;
+    return nullptr;
 }
 }
 
+// forward C ABI for CreateEntity/AddTransform
+extern "C" {}
+
 int test_managed() {
-    if (!load_hostfxr()) return -1;
+    if (!load_hostfxr()) {
+        return -1;
+    }
 
     // compute paths
     fs::path root = fs::path(kRootDir);
@@ -128,49 +153,36 @@ int test_managed() {
     auto load_asm = get_dotnet_load_assembly(cfg.wstring().c_str());
     if (!load_asm) return -1;
 
-    // using mutate_fn   = void(__cdecl *)(void *);
-    // mutate_fn mutator = nullptr;
-    InitFn init     = nullptr;
-    UpdateFn update = nullptr;
+    RegisterAll register_all_fn = nullptr;
 
-    int rc = load_asm(dll.wstring().c_str(), L"Game.GameScript, Game", L"Init",
-                      UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
-                      nullptr, (void **)&init);
-    if (rc != 0 || init == nullptr) {
-        std::cerr << "Failed to bind Init: 0x" << std::hex << rc << "\n";
+    int rc = load_asm(dll.wstring().c_str(), L"Game.PluginBootstrap, Game", L"RegisterAll",
+                      UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&register_all_fn);
+    if (rc != 0 || register_all_fn == nullptr) {
+        std::cerr << "Failed to bind RegisterAll: 0x" << std::hex << rc << "\n";
         return -1;
     }
 
-    rc = load_asm(dll.wstring().c_str(), L"Game.GameScript, Game", L"Update",
-                  UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
-                  nullptr, (void **)&update);
-    if (rc != 0 || update == nullptr) {
-        std::cerr << "Failed to bind Update: 0x" << std::hex << rc << "\n";
-        return -1;
-    }
+    // now call it so managed code will self-register all systems:
+    register_all_fn((void *)&HostRegisterStartup, (void *)&HostRegisterUpdate,
+                    (void *)&HostGetProcAddress);
 
     App &app = AppSingleton();
-    app.add_startup_system([&]() {
-        // tell C# how to spawn entities & add transforms
-        init((void *)&CreateEntity, (void *)&AddTransform);
-    });
+    // app.add_startup_system([&]() {
+    //     // tell C# how to spawn entities & add transforms
+    //     init((void *)&CreateEntity, (void *)&AddTransform);
+    // });
 
-    // cs with view, single invoke
-    // 2.95s
-    app.add_update_system([&](float dt) {
-        // for each entity-with-Transform, call the managed Update on a single component
-        auto view = app.registry.view<Transform>();
-        for (auto e : view) {
-            auto &t = view.get<Transform>(e);
-            update(dt, &t, 1);
-        }
-    });
-
-    // C++ with view, single invoke
-    // 1.79s
+    // // cs with view, single invoke
+    // app.add_update_system([&](float dt) {
+    //     // for each entity-with-Transform, call the managed Update on a single component
+    //     auto view = app.registry.view<Transform>();
+    //     for (auto e : view) {
+    //         auto &t = view.get<Transform>(e);
+    //         update(dt, &t, 1);
+    //     }
+    // });
 
     // cs with storage, multi invoke
-    // 1.80s
     // app.add_update_system([&](float dt) {
     //     // The dense array is guaranteed contiguous *and* stable for this frame
     //     auto &storage = app.registry.storage<Transform>();
@@ -180,9 +192,6 @@ int test_managed() {
 
     //     if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
     // });
-
-    // C++ with storage, multi invoke
-    // 1.24s
 
     // finally run
     app.run();
