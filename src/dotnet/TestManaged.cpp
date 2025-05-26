@@ -96,31 +96,31 @@ App &AppSingleton() {
     return app;
 }
 
-using RegisterAllFn        = void(__cdecl *)(void *);
-using ManagedBatchUpdateFn = void (*)(float dt, Transform *transform);
+using RegisterAllFn      = void(__cdecl *)(void *);
+using ManagedPerEntityFn = void (*)(float, void *);
 
-// storage for the managed fn:
-static ManagedBatchUpdateFn g_managedBatchUpdate = nullptr;
+static ManagedPerEntityFn g_perEntityFn = nullptr;
 
-// host calls this to add a startup system
 void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
-// host calls this to add an update system
+
 void HostRegisterUpdate(void (*sys)(float)) { AppSingleton().add_update_system(sys); }
+
 uint32_t CreateEntity() { return (uint32_t)AppSingleton().registry.create(); }
+
 void AddTransform(uint32_t e, Transform t) {
     AppSingleton().registry.emplace_or_replace<Transform>(entt::entity{e}, t);
 }
-void HostRegisterBatchUpdate(ManagedBatchUpdateFn fn) {
-    g_managedBatchUpdate = fn;
+
+void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn) {
+    g_perEntityFn = fn;
     AppSingleton().add_update_system([](float dt) {
-        if (g_managedBatchUpdate == nullptr) {
-            return;
-        }
-        auto v = AppSingleton().registry.view<Transform>();
-        for (auto e : v) {
-            auto &t = v.get<Transform>(e);
-            // call the managed batch update function
-            g_managedBatchUpdate(dt, &t);
+        if (!g_perEntityFn) return;
+        // for each Transform in the registry:
+        auto view = AppSingleton().registry.view<Transform>();
+        for (auto e : view) {
+            auto &t = view.get<Transform>(e);
+            // call into managed code, passing address of each component:
+            g_perEntityFn(dt, &t);
         }
     });
 }
@@ -132,7 +132,8 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "HostRegisterStartup") == 0) return (void *)&HostRegisterStartup;
     if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
     if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
-    if (std::strcmp(name, "HostRegisterBatchUpdate") == 0) return (void *)&HostRegisterBatchUpdate;
+    if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0)
+        return (void *)&HostRegisterPerEntityUpdate;
     return nullptr;
 }
 }
