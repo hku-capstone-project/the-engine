@@ -54,12 +54,6 @@ namespace Game
             GameScript.AddTransform =
               Marshal.GetDelegateForFunctionPointer<GameScript.AddTransformDel>(
                 hostGet("AddTransform"));
-            GameScript.GetTransformBuffer =
-              Marshal.GetDelegateForFunctionPointer<GameScript.HostGetTransformBufferDel>(
-                hostGet("HostGetTransformBuffer"));
-            GameScript.GetTransformCount =
-              Marshal.GetDelegateForFunctionPointer<GameScript.HostGetTransformCountDel>(
-                hostGet("HostGetTransformCount"));
 
             // scan for your methods...
             var asm = Assembly.GetExecutingAssembly();
@@ -105,15 +99,6 @@ namespace Game
         public delegate void AddTransformDel(uint e, Transform t);
         public static AddTransformDel AddTransform;
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate IntPtr HostGetTransformBufferDel();
-        public static HostGetTransformBufferDel GetTransformBuffer;
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate int HostGetTransformCountDel();
-        public static HostGetTransformCountDel GetTransformCount;
-
-
         [StartupSystem]
         public static void InitGameObjects()
         {
@@ -134,10 +119,11 @@ namespace Game
             }
         }
 
-
         [UpdateSystem]
         public static void UpdateTransform(float dt)
         {
+            Console.WriteLine("Hello from UpdateTransform!");
+
             // IntPtr buf = GetTransformBuffer();
             // int cnt = GetTransformCount();
             // var span = new Span<Transform>(buf.ToPointer(), cnt);

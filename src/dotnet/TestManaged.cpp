@@ -106,16 +106,6 @@ uint32_t CreateEntity() { return (uint32_t)AppSingleton().registry.create(); }
 void AddTransform(uint32_t e, Transform t) {
     AppSingleton().registry.emplace<Transform>(entt::entity{e}, t);
 }
-void *HostGetTransformBuffer() {
-    // entt::storage<Transform> has a .raw() -> Transform*
-    auto &storage = AppSingleton().registry.storage<Transform>();
-    return storage.raw();
-}
-
-int HostGetTransformCount() {
-    auto &storage = AppSingleton().registry.storage<Transform>();
-    return static_cast<int>(storage.size());
-}
 
 extern "C" {
 
@@ -124,8 +114,6 @@ __declspec(dllexport) void *__cdecl HostGetProcAddress(char const *name) {
     if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
     if (std::strcmp(name, "HostRegisterStartup") == 0) return (void *)&HostRegisterStartup;
     if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
-    if (std::strcmp(name, "HostGetTransformBuffer") == 0) return (void *)&HostGetTransformBuffer;
-    if (std::strcmp(name, "HostGetTransformCount") == 0) return (void *)&HostGetTransformCount;
     return nullptr;
 }
 }
@@ -167,12 +155,8 @@ int test_managed() {
                     (void *)&HostGetProcAddress);
 
     App &app = AppSingleton();
-    // app.add_startup_system([&]() {
-    //     // tell C# how to spawn entities & add transforms
-    //     init((void *)&CreateEntity, (void *)&AddTransform);
-    // });
 
-    // // cs with view, single invoke
+    // cs with view, single invoke
     // app.add_update_system([&](float dt) {
     //     // for each entity-with-Transform, call the managed Update on a single component
     //     auto view = app.registry.view<Transform>();
