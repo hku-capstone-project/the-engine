@@ -12,7 +12,7 @@ set BINARY_DIR=build/%BUILD_TYPE%/
 set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
 
 @REM delete build/Game folder if it exists
-if exist build/Game rd /s /q build/Game
+if exist build\Game rd /s /q build\Game
 @REM publish the game project in cs
 pushd game
 dotnet publish -c Release -r win-x64 --self-contained false -o ../build/Game
