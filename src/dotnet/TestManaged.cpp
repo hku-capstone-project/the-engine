@@ -97,7 +97,7 @@ App &AppSingleton() {
 }
 
 using RegisterAllFn        = void(__cdecl *)(void *);
-using ManagedBatchUpdateFn = void (*)(float dt, Transform *transforms, int count);
+using ManagedBatchUpdateFn = void (*)(float dt, Transform *transform);
 
 // storage for the managed fn:
 static ManagedBatchUpdateFn g_managedBatchUpdate = nullptr;
@@ -113,10 +113,15 @@ void AddTransform(uint32_t e, Transform t) {
 void HostRegisterBatchUpdate(ManagedBatchUpdateFn fn) {
     g_managedBatchUpdate = fn;
     AppSingleton().add_update_system([](float dt) {
-        auto &storage    = AppSingleton().registry.storage<Transform>();
-        Transform **data = storage.raw();
-        int cnt          = int(storage.size());
-        if (data && cnt && g_managedBatchUpdate) g_managedBatchUpdate(dt, *data, cnt);
+        if (g_managedBatchUpdate == nullptr) {
+            return;
+        }
+        auto v = AppSingleton().registry.view<Transform>();
+        for (auto e : v) {
+            auto &t = v.get<Transform>(e);
+            // call the managed batch update function
+            g_managedBatchUpdate(dt, &t);
+        }
     });
 }
 

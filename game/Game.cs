@@ -24,8 +24,7 @@ namespace Game
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void ManagedBatchUpdateDel(
             float dt,
-            Transform* transforms,
-            int count
+            Transform* transform
         );
 
         // ----- these are YOUR managed‐to‐unmanaged SYSTEM callbacks -----
@@ -83,10 +82,9 @@ namespace Game
                 {
                     var pars = m.GetParameters();
                     if (m.ReturnType == typeof(void)
-                        && pars.Length == 3
+                        && pars.Length == 2
                         && pars[0].ParameterType == typeof(float)
-                        && pars[1].ParameterType == typeof(Transform*)
-                        && pars[2].ParameterType == typeof(int))
+                        && pars[1].ParameterType == typeof(Transform*))
                     {
                         // pin the managed batch update
                         var del = (ManagedBatchUpdateDel)Delegate.CreateDelegate(
@@ -135,16 +133,10 @@ namespace Game
         }
 
         [UpdateSystem]
-        public static void UpdateTransform(float dt, Transform* transforms, int count)
+        public static void UpdateTransform(float dt, Transform* transform)
         {
-            // ptr arithmetic in unsafe C#:
-            for (int i = 0; i < count; i++)
-            {
-                ref Transform t = ref transforms[i];
-
-                // e.g. bob in y with time:
-                t.position.Y += MathF.Sin(dt + i * 0.01f) * 0.1f;
-            }
+            ref Transform t = ref *transform;
+            t.position.Y += MathF.Sin(dt) * 0.1f;
         }
     }
 }
