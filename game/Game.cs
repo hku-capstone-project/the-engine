@@ -6,15 +6,8 @@ using System.Collections.Generic;
 
 namespace Game
 {
-    [AttributeUsage(AttributeTargets.Method)]
-    public class StartupSystemAttribute : Attribute { }
-
-    [AttributeUsage(AttributeTargets.Method)]
-    public class UpdateSystemAttribute : Attribute { }
-
     public static unsafe class PluginBootstrap
     {
-        // engine→managed exports:
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void HostRegStartupDel(IntPtr fnPtr);
 
@@ -24,6 +17,16 @@ namespace Game
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate IntPtr HostGetProcDel(
           [MarshalAs(UnmanagedType.LPStr)] string name);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void HostRegBatchDel(IntPtr managedFnPtr);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void ManagedBatchUpdateDel(
+            float dt,
+            Transform* transforms,
+            int count
+        );
 
         // ----- these are YOUR managed‐to‐unmanaged SYSTEM callbacks -----
         // non-generic so GetFunctionPointerForDelegate will accept them:
@@ -38,14 +41,13 @@ namespace Game
 
         [UnmanagedCallersOnly]
         public static void RegisterAll(
-          IntPtr hostRegStartupPtr,
-          IntPtr hostRegUpdatePtr,
           IntPtr hostGetProcPtr
         )
         {
-            var hostStartup = Marshal.GetDelegateForFunctionPointer<HostRegStartupDel>(hostRegStartupPtr);
-            var hostUpdate = Marshal.GetDelegateForFunctionPointer<HostRegUpdateDel>(hostRegUpdatePtr);
             var hostGet = Marshal.GetDelegateForFunctionPointer<HostGetProcDel>(hostGetProcPtr);
+
+            var hostStartup = Marshal.GetDelegateForFunctionPointer<HostRegStartupDel>(hostGet("HostRegisterStartup"));
+            var hostUpdate = Marshal.GetDelegateForFunctionPointer<HostRegUpdateDel>(hostGet("HostRegisterUpdate"));
 
             // bind your engine callbacks into GameScript:
             GameScript.CreateEntity =
@@ -54,6 +56,9 @@ namespace Game
             GameScript.AddTransform =
               Marshal.GetDelegateForFunctionPointer<GameScript.AddTransformDel>(
                 hostGet("AddTransform"));
+
+            var hostRegBatch = Marshal.GetDelegateForFunctionPointer<HostRegBatchDel>(
+            hostGet("HostRegisterBatchUpdate"));
 
             // scan for your methods...
             var asm = Assembly.GetExecutingAssembly();
@@ -74,16 +79,25 @@ namespace Game
                     hostStartup(fnp);
                 }
 
-                if (m.GetCustomAttribute<UpdateSystemAttribute>() != null
-                    && m.ReturnType == typeof(void)
-                    && m.GetParameters().Length == 1
-                    && m.GetParameters()[0].ParameterType == typeof(float))
+                if (m.GetCustomAttribute<UpdateSystemAttribute>() != null)
                 {
-                    var del = (ManagedUpdateFn)Delegate.CreateDelegate(
-                                typeof(ManagedUpdateFn), m);
-                    _pinned.Add(del);
-                    var fnp = Marshal.GetFunctionPointerForDelegate(del);
-                    hostUpdate(fnp);
+                    var pars = m.GetParameters();
+                    if (m.ReturnType == typeof(void)
+                        && pars.Length == 3
+                        && pars[0].ParameterType == typeof(float)
+                        && pars[1].ParameterType == typeof(Transform*)
+                        && pars[2].ParameterType == typeof(int))
+                    {
+                        // pin the managed batch update
+                        var del = (ManagedBatchUpdateDel)Delegate.CreateDelegate(
+                                      typeof(ManagedBatchUpdateDel), m);
+                        _pinned.Add(del);
+
+                        // register it
+                        hostRegBatch(
+                          Marshal.GetFunctionPointerForDelegate(del)
+                        );
+                    }
                 }
             }
         }
@@ -93,10 +107,11 @@ namespace Game
     {
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate uint CreateEntityDel();
-        public static CreateEntityDel CreateEntity;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddTransformDel(uint e, Transform t);
+
+        public static CreateEntityDel CreateEntity;
         public static AddTransformDel AddTransform;
 
         [StartupSystem]
@@ -120,19 +135,16 @@ namespace Game
         }
 
         [UpdateSystem]
-        public static void UpdateTransform(float dt)
+        public static void UpdateTransform(float dt, Transform* transforms, int count)
         {
-            Console.WriteLine("Hello from UpdateTransform!");
+            // ptr arithmetic in unsafe C#:
+            for (int i = 0; i < count; i++)
+            {
+                ref Transform t = ref transforms[i];
 
-            // IntPtr buf = GetTransformBuffer();
-            // int cnt = GetTransformCount();
-            // var span = new Span<Transform>(buf.ToPointer(), cnt);
-
-            // for (int i = 0; i < cnt; i++)
-            // {
-            //     ref var t = ref span[i];
-            //     t.position.Z = (float)(Math.Sin((t.position.X + t.position.Y) + dt * 3.0) * 0.5);
-            // }
+                // e.g. bob in y with time:
+                t.position.Y += MathF.Sin(dt + i * 0.01f) * 0.1f;
+            }
         }
     }
 }

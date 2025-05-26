@@ -90,13 +90,17 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
     return (load_assembly_and_get_function_pointer_fn)fn;
 }
 
-using RegisterAll = void(__cdecl *)(void *, void *, void *);
-
 // Single‐instance App
 App &AppSingleton() {
     static App app;
     return app;
 }
+
+using RegisterAllFn        = void(__cdecl *)(void *);
+using ManagedBatchUpdateFn = void (*)(float dt, Transform *transforms, int count);
+
+// storage for the managed fn:
+static ManagedBatchUpdateFn g_managedBatchUpdate = nullptr;
 
 // host calls this to add a startup system
 void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
@@ -104,22 +108,29 @@ void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys)
 void HostRegisterUpdate(void (*sys)(float)) { AppSingleton().add_update_system(sys); }
 uint32_t CreateEntity() { return (uint32_t)AppSingleton().registry.create(); }
 void AddTransform(uint32_t e, Transform t) {
-    AppSingleton().registry.emplace<Transform>(entt::entity{e}, t);
+    AppSingleton().registry.emplace_or_replace<Transform>(entt::entity{e}, t);
+}
+void HostRegisterBatchUpdate(ManagedBatchUpdateFn fn) {
+    g_managedBatchUpdate = fn;
+    AppSingleton().add_update_system([](float dt) {
+        auto &storage    = AppSingleton().registry.storage<Transform>();
+        Transform **data = storage.raw();
+        int cnt          = int(storage.size());
+        if (data && cnt && g_managedBatchUpdate) g_managedBatchUpdate(dt, *data, cnt);
+    });
 }
 
 extern "C" {
-
-__declspec(dllexport) void *__cdecl HostGetProcAddress(char const *name) {
+__declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(char const *name) {
     if (std::strcmp(name, "CreateEntity") == 0) return (void *)&CreateEntity;
     if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
     if (std::strcmp(name, "HostRegisterStartup") == 0) return (void *)&HostRegisterStartup;
     if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
+    if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
+    if (std::strcmp(name, "HostRegisterBatchUpdate") == 0) return (void *)&HostRegisterBatchUpdate;
     return nullptr;
 }
 }
-
-// forward C ABI for CreateEntity/AddTransform
-extern "C" {}
 
 int test_managed() {
     if (!load_hostfxr()) {
@@ -141,7 +152,7 @@ int test_managed() {
     auto load_asm = get_dotnet_load_assembly(cfg.wstring().c_str());
     if (!load_asm) return -1;
 
-    RegisterAll register_all_fn = nullptr;
+    RegisterAllFn register_all_fn = nullptr;
 
     int rc = load_asm(dll.wstring().c_str(), L"Game.PluginBootstrap, Game", L"RegisterAll",
                       UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&register_all_fn);
@@ -151,8 +162,7 @@ int test_managed() {
     }
 
     // now call it so managed code will self-register all systems:
-    register_all_fn((void *)&HostRegisterStartup, (void *)&HostRegisterUpdate,
-                    (void *)&HostGetProcAddress);
+    register_all_fn((void *)&HostGetProcAddress);
 
     App &app = AppSingleton();
 
