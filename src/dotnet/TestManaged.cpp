@@ -4,8 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "Components.hpp"
 #include "TestManaged.hpp"
-#include "Transform.hpp"
 #include "config/RootDir.h"
 
 #include "Engine.hpp"
@@ -110,13 +110,6 @@ __declspec(dllexport) void __cdecl AddTransform(uint32_t e, Transform t) {
 }
 }
 
-static void UpdateTransformsCpp(float dt, Transform *ptr, int count) {
-    for (int i = 0; i < count; ++i) {
-        auto &t = ptr[i];
-        t.z     = std::sin((t.x + t.y) + dt * 3.0f) * 0.5f;
-    }
-}
-
 int test_managed() {
     if (!load_hostfxr()) return -1;
 
@@ -164,45 +157,32 @@ int test_managed() {
 
     // cs with view, single invoke
     // 2.95s
-    // app.add_update_system([&](float dt) {
-    //     // for each entity-with-Transform, call the managed Update on a single component
-    //     auto view = app.registry.view<Transform>();
-    //     for (auto e : view) {
-    //         auto &t = view.get<Transform>(e);
-    //         update(dt, &t, 1);
-    //     }
-    // });
+    app.add_update_system([&](float dt) {
+        // for each entity-with-Transform, call the managed Update on a single component
+        auto view = app.registry.view<Transform>();
+        for (auto e : view) {
+            auto &t = view.get<Transform>(e);
+            update(dt, &t, 1);
+        }
+    });
 
     // C++ with view, single invoke
     // 1.79s
-    // app.add_update_system([&](float dt) {
-    //     auto view = app.registry.view<Transform>();
-    //     for (auto e : view) {
-    //         auto &t = view.get<Transform>(e);
-    //         UpdateTransformsCpp(dt, &t, 1);
-    //     }
-    // });
 
     // cs with storage, multi invoke
     // 1.80s
-    app.add_update_system([&](float dt) {
-        // The dense array is guaranteed contiguous *and* stable for this frame
-        auto &storage = app.registry.storage<Transform>();
+    // app.add_update_system([&](float dt) {
+    //     // The dense array is guaranteed contiguous *and* stable for this frame
+    //     auto &storage = app.registry.storage<Transform>();
 
-        Transform **begin = storage.raw();
-        int count         = static_cast<int>(storage.size());
+    //     Transform **begin = storage.raw();
+    //     int count         = static_cast<int>(storage.size());
 
-        if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
-    });
+    //     if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
+    // });
 
     // C++ with storage, multi invoke
     // 1.24s
-    // app.add_update_system([&](float dt) {
-    //     auto &storage    = app.registry.storage<Transform>();
-    //     Transform **data = storage.raw();
-    //     int count        = static_cast<int>(storage.size());
-    //     if (count > 0) UpdateTransformsCpp(dt, *data, count);
-    // });
 
     // finally run
     app.run();

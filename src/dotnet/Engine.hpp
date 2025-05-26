@@ -6,8 +6,7 @@
 #include <iostream>
 #include <vector>
 
-
-#include "Transform.hpp"
+#include "Components.hpp"
 
 class App {
   public:
@@ -29,14 +28,15 @@ class App {
         auto transforms = registry.view<Transform>();
         for (auto e : transforms) {
             auto &t = transforms.get<Transform>(e);
-            printf("Entity %d: Transform(%f, %f, %f)\n", entt::to_integral(e), t.x, t.y, t.z);
+            printf("Entity %d: Transform(%f, %f, %f)\n", entt::to_integral(e), t.position.x,
+                   t.position.y, t.position.z);
         }
 
         // start measure current time
         auto start = std::chrono::high_resolution_clock::now();
 
-        while (_updateCount++ < 1000000) { // just an example limit
-            float dt = 1.0f / 60.0f;       // just example
+        while (_updateCount++ < 1000) { // just an example limit
+            float dt = 1.0f / 60.0f;    // just example
             for (auto &s : updateSystems) s(dt);
 
             // ... here you would poll window/input, draw with Vulkan, etc.
@@ -54,7 +54,8 @@ class App {
         transforms = registry.view<Transform>();
         for (auto e : transforms) {
             auto &t = transforms.get<Transform>(e);
-            printf("Entity %d: Transform(%f, %f, %f)\n", entt::to_integral(e), t.x, t.y, t.z);
+            printf("Entity %d: Transform(%f, %f, %f)\n", entt::to_integral(e), t.position.x,
+                   t.position.y, t.position.z);
         }
     }
 

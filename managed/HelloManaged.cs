@@ -26,12 +26,12 @@ namespace HelloManaged
                 for (int y = 0; y < N; y++)
                 {
                     uint e = CreateEntity();
-                    AddTransform(e, new Transform
+
+                    Transform t = new Transform
                     {
-                        x = x * 1.0f,
-                        y = y * 1.0f,
-                        z = 0
-                    });
+                        position = new System.Numerics.Vector3(x * 1.0f, y * 1.0f, 0)
+                    };
+                    AddTransform(e, t);
                 }
             }
         }
@@ -46,7 +46,7 @@ namespace HelloManaged
             for (int i = 0; i < span.Length; i++)
             {
                 ref var t = ref span[i];
-                t.z = (float)(Math.Sin((t.x + t.y) + dt * 3.0) * 0.5);
+                t.position.Z = (float)(Math.Sin((t.position.X + t.position.Y) + dt * 3.0) * 0.5);
             }
         }
     }
