@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace HelloManaged
+namespace Game
 {
     public static unsafe class GameScript
     {

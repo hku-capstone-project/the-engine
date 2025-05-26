@@ -114,10 +114,10 @@ int test_managed() {
     if (!load_hostfxr()) return -1;
 
     // compute paths
-    fs::path root    = fs::path(kRootDir);
-    fs::path managed = root / "build" / "Managed";
-    fs::path cfg     = managed / "HelloManaged.runtimeconfig.json";
-    fs::path dll     = managed / "HelloManaged.dll";
+    fs::path root = fs::path(kRootDir);
+    fs::path game = root / "build" / "Game";
+    fs::path cfg  = game / "Game.runtimeconfig.json";
+    fs::path dll  = game / "Game.dll";
 
     if (!fs::exists(cfg) || !fs::exists(dll)) {
         std::cerr << "Managed files missing\n";
@@ -133,7 +133,7 @@ int test_managed() {
     InitFn init     = nullptr;
     UpdateFn update = nullptr;
 
-    int rc = load_asm(dll.wstring().c_str(), L"HelloManaged.GameScript, HelloManaged", L"Init",
+    int rc = load_asm(dll.wstring().c_str(), L"Game.GameScript, Game", L"Init",
                       UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
                       nullptr, (void **)&init);
     if (rc != 0 || init == nullptr) {
@@ -141,7 +141,7 @@ int test_managed() {
         return -1;
     }
 
-    rc = load_asm(dll.wstring().c_str(), L"HelloManaged.GameScript, HelloManaged", L"Update",
+    rc = load_asm(dll.wstring().c_str(), L"Game.GameScript, Game", L"Update",
                   UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
                   nullptr, (void **)&update);
     if (rc != 0 || update == nullptr) {

@@ -2,7 +2,7 @@ using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace HelloManaged
+namespace Game
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct Transform
