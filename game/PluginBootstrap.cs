@@ -113,15 +113,21 @@ namespace Game
             // push dt
             il.Emit(OpCodes.Ldarg_0);
 
-            // load components[0]
-            il.Emit(OpCodes.Ldarg_1);    // void*
-            il.Emit(OpCodes.Ldc_I4_0);   // index 0
-            il.Emit(OpCodes.Conv_I);     // native int
-            il.Emit(OpCodes.Add);
-            il.Emit(OpCodes.Ldind_I);    // read ptr
-            il.Emit(OpCodes.Conv_U);     // native ptr
+            // load components[0] (which is T*)
+            // This sequence correctly pushes the T* (e.g., Transform*) onto the stack.
+            // Ldarg_1 loads the 'comps' argument, which is effectively void** (pointer to the component pointer).
+            // The sequence Ldarg_1, Ldc_I4_0, Conv_I, Add, Ldind_I, Conv_U results in
+            // the actual component pointer (T*) being pushed onto the stack.
+            il.Emit(OpCodes.Ldarg_1);    // void* (this is &ptrs[0] from C++)
+            il.Emit(OpCodes.Ldc_I4_0);   // offset 0.
+            il.Emit(OpCodes.Conv_I);     // Convert offset to native int.
+            il.Emit(OpCodes.Add);        // Add offset to base address: &ptrs[0] + 0 = &ptrs[0].
+            il.Emit(OpCodes.Ldind_I);    // Dereference: loads the value at &ptrs[0], which is ptrs[0] (the T*).
+            il.Emit(OpCodes.Conv_U);     // Convert T* to UIntPtr (unsigned native int).
 
-            // call real system: (float, T*)
+            // call real system: (float, ref T)
+            // The MethodInfo 'm' now refers to a method like UpdateTransform(float, ref Transform).
+            // The CLR handles passing the T* (on stack as UIntPtr) to a 'ref T' parameter.
             il.EmitCall(OpCodes.Call, m, null);
             il.Emit(OpCodes.Ret);
 

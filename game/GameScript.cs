@@ -8,7 +8,7 @@ using System.Reflection.Emit;
 
 namespace Game
 {
-    public static unsafe class GameScript
+    public static class GameScript
     {
         [StartupSystem]
         public static void InitGameObjects()
@@ -34,17 +34,15 @@ namespace Game
         }
 
         [UpdateSystem, Query(typeof(Transform))]
-        public static void UpdateTransform(float dt, Transform* t)
+        public static void UpdateTransform(float dt, ref Transform t)
         {
-            ref var tr = ref *t;
-            tr.position.Y += MathF.Sin(dt) * 0.1f;
+            t.position.Y += MathF.Sin(dt) * 0.1f; // Use t directly
         }
 
         [UpdateSystem, Query(typeof(Velocity))]
-        public static void UpdateVelocity(float dt, Velocity* v)
+        public static void UpdateVelocity(float dt, ref Velocity v)
         {
-            ref var vel = ref *v;
-            vel.velocity += new System.Numerics.Vector3(0, -9.81f * dt, 0);
+            v.velocity += new System.Numerics.Vector3(0, -9.81f * dt, 0); // Use v directly
         }
     }
 }
