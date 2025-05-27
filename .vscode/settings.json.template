@@ -2,14 +2,17 @@
 {
   "command-runner.commands": {
     "build windows release": "build.bat",
-    "build windows debug": "build.bat --debug"
+    "build windows debug": "build.bat --debug",
+    "create py env": "conda create -n the-engine python=3.10 -y",
+    "install py env": "conda activate the-engine && pip install -r dev-tools/requirements.txt",
+    "log cs code": "conda activate the-engine && python dev-tools/logcscode.py"
   },
   "clangd.arguments": [
     // number of async workers used by clangd. background index also uses this many workers
     "-j=8",
 
     // specify a path to look for compile_commands.json
-    "--compile-commands-dir=.vscode/",
+    "--compile-commands-dir=./",
 
     // never insert headers automatically
     "--header-insertion=never",
