@@ -37,10 +37,19 @@ namespace Game
         static List<DynamicMethod> _shims = new();
         static List<NativePerEntityDel> _pinnedShims = new();
 
+        public static Func<string, IntPtr> GetProc { get; private set; }
+
         [UnmanagedCallersOnly]
         public static void RegisterAll(IntPtr hostGetPtr)
         {
             var hostGet = Marshal.GetDelegateForFunctionPointer<HostGetProcDel>(hostGetPtr);
+
+            // store for other systems
+            GetProc = name => hostGet(name);
+
+            // ← this line replaces ModuleInitializer
+            EngineBindings.Init(GetProc);
+
             var hostStartup = Marshal.GetDelegateForFunctionPointer<HostRegStartupDel>(
                                 hostGet("HostRegisterStartup"));
             var hostPerEnt = Marshal.GetDelegateForFunctionPointer<HostRegPerEntDel>(

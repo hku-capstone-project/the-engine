@@ -34,12 +34,12 @@ namespace Game
             for (int x = 0; x < N; x++)
                 for (int y = 0; y < N; y++)
                 {
-                    uint e = CreateEntity();
-                    AddTransform(e, new Transform
+                    uint e = EngineBindings.CreateEntity();
+                    EngineBindings.AddTransform(e, new Transform
                     {
                         position = new System.Numerics.Vector3(x, y, 0)
                     });
-                    AddVelocity(e, new Velocity
+                    EngineBindings.AddVelocity(e, new Velocity
                     {
                         velocity = new System.Numerics.Vector3(
                             (x - N / 2) * 0.1f,
