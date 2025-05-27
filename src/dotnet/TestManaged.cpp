@@ -4,8 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "Components.hpp"
 #include "TestManaged.hpp"
-#include "Transform.hpp"
 #include "config/RootDir.h"
 
 #include "Engine.hpp"
@@ -42,21 +42,21 @@ bool load_hostfxr() {
     char_t buffer[MAX_PATH];
     size_t buf_len = sizeof(buffer) / sizeof(char_t);
 
-    // 1) ask nethost for the hostfxr path
+    // ask nethost for the hostfxr path
     int rc = get_hostfxr_path(buffer, &buf_len, nullptr);
     if (rc != 0) {
         std::cerr << "get_hostfxr_path() failed: 0x" << std::hex << rc << std::endl;
         return false;
     }
 
-    // 2) load hostfxr.dll
+    // load hostfxr.dll
     HMODULE lib = ::LoadLibraryW(buffer);
     if (!lib) {
         std::cerr << "LoadLibraryW failed\n";
         return false;
     }
 
-    // 2) reinterpret_cast the FARPROC to each function-pointer type:
+    // reinterpret_cast the FARPROC to each function-pointer type:
     init_fptr = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(
         get_export(lib, "hostfxr_initialize_for_runtime_config"));
     get_delegate_fptr = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(
@@ -90,41 +90,113 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
     return (load_assembly_and_get_function_pointer_fn)fn;
 }
 
-// managed function pointers
-using InitFn   = void(__cdecl *)(void   */*createEntityPtr*/, void   */*addTransformPtr*/);
-using UpdateFn = void(__cdecl *)(float /*dt*/, Transform * /*ptr*/, int /*count*/);
-
 // Single‐instance App
 App &AppSingleton() {
     static App app;
     return app;
 }
 
-// forward C ABI for CreateEntity/AddTransform
-extern "C" {
-__declspec(dllexport) uint32_t __cdecl CreateEntity() {
-    return (uint32_t)AppSingleton().registry.create();
+using RegisterAllFn = void(__cdecl *)(void *);
+
+// signature of your managed callback:
+using ManagedPerEntityFn = void (*)(float dt, void **components);
+
+// A getter that, given (registry,entity), returns pointer to that component:
+using GetterFn = void *(*)(entt::registry &, entt::entity);
+
+// A storage‐iterator that, given a runtime_view&, calls .iterate(storage<T>())
+using IteratorFn = std::function<void(entt::runtime_view &)>;
+
+// when you add a new T component, insert here in BOTH maps.
+static const std::unordered_map<std::string, GetterFn> g_getters = {
+    {"Transform",
+     +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Transform>(e); }},
+    {"Velocity", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Velocity>(e); }},
+};
+
+static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
+    {"Transform",
+     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Transform>()); }},
+    {"Velocity",
+     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Velocity>()); }},
+};
+
+void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
+
+void HostRegisterUpdate(void (*sys)(float)) { AppSingleton().add_update_system(sys); }
+
+uint32_t CreateEntity() { return (uint32_t)AppSingleton().registry.create(); }
+
+void AddTransform(uint32_t e, Transform t) {
+    AppSingleton().registry.emplace_or_replace<Transform>(entt::entity{e}, t);
 }
-__declspec(dllexport) void __cdecl AddTransform(uint32_t e, Transform t) {
-    AppSingleton().registry.emplace<Transform>(entt::entity{e}, t);
-}
+void AddVelocity(uint32_t e, Velocity v) {
+    AppSingleton().registry.emplace_or_replace<Velocity>(entt::entity{e}, v);
 }
 
-static void UpdateTransformsCpp(float dt, Transform *ptr, int count) {
+void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
+    assert(fn && count > 0);
+
+    // build per‐system vectors of getters + storage‐iterators:
+    std::vector<GetterFn> getters;
+    getters.reserve(count);
+    std::vector<IteratorFn> iters;
+    iters.reserve(count);
+
     for (int i = 0; i < count; ++i) {
-        auto &t = ptr[i];
-        t.z     = std::sin((t.x + t.y) + dt * 3.0f) * 0.5f;
+        auto &nm = names[i];
+        auto git = g_getters.find(nm);
+        auto iit = g_storage_iterators.find(nm);
+        assert(git != g_getters.end() && "Unknown component for getter");
+        assert(iit != g_storage_iterators.end() && "Unknown component for iterator");
+        getters.push_back(git->second);
+        iters.push_back(iit->second);
     }
+
+    // register one native update‐system lambda
+    AppSingleton().add_update_system([=](float dt) {
+        // 1) build the dynamic view
+        entt::runtime_view view{};
+        for (auto &iter : iters) {
+            iter(view);
+        }
+
+        // 2) per‐entity call
+        std::vector<void *> ptrs(count);
+        for (auto e : view) {
+            for (int i = 0; i < count; ++i) {
+                ptrs[i] = getters[i](AppSingleton().registry, e);
+            }
+            // single P/Invoke for this entity
+            fn(dt, ptrs.data());
+        }
+    });
+}
+
+extern "C" {
+__declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(char const *name) {
+    if (std::strcmp(name, "CreateEntity") == 0) return (void *)&CreateEntity;
+    if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
+    if (std::strcmp(name, "HostRegisterStartup") == 0) return (void *)&HostRegisterStartup;
+    if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
+    if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
+    if (std::strcmp(name, "AddVelocity") == 0) return (void *)&AddVelocity;
+    if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0)
+        return (void *)&HostRegisterPerEntityUpdate;
+    return nullptr;
+}
 }
 
 int test_managed() {
-    if (!load_hostfxr()) return -1;
+    if (!load_hostfxr()) {
+        return -1;
+    }
 
     // compute paths
-    fs::path root    = fs::path(kRootDir);
-    fs::path managed = root / "build" / "Managed";
-    fs::path cfg     = managed / "HelloManaged.runtimeconfig.json";
-    fs::path dll     = managed / "HelloManaged.dll";
+    fs::path root = fs::path(kRootDir);
+    fs::path game = root / "build" / "Game";
+    fs::path cfg  = game / "Game.runtimeconfig.json";
+    fs::path dll  = game / "Game.dll";
 
     if (!fs::exists(cfg) || !fs::exists(dll)) {
         std::cerr << "Managed files missing\n";
@@ -135,74 +207,19 @@ int test_managed() {
     auto load_asm = get_dotnet_load_assembly(cfg.wstring().c_str());
     if (!load_asm) return -1;
 
-    // using mutate_fn   = void(__cdecl *)(void *);
-    // mutate_fn mutator = nullptr;
-    InitFn init     = nullptr;
-    UpdateFn update = nullptr;
+    RegisterAllFn register_all_fn = nullptr;
 
-    int rc = load_asm(dll.wstring().c_str(), L"HelloManaged.GameScript, HelloManaged", L"Init",
-                      UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
-                      nullptr, (void **)&init);
-    if (rc != 0 || init == nullptr) {
-        std::cerr << "Failed to bind Init: 0x" << std::hex << rc << "\n";
+    int rc = load_asm(dll.wstring().c_str(), L"Game.PluginBootstrap, Game", L"RegisterAll",
+                      UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&register_all_fn);
+    if (rc != 0 || register_all_fn == nullptr) {
+        std::cerr << "Failed to bind RegisterAll: 0x" << std::hex << rc << "\n";
         return -1;
     }
 
-    rc = load_asm(dll.wstring().c_str(), L"HelloManaged.GameScript, HelloManaged", L"Update",
-                  UNMANAGEDCALLERSONLY_METHOD, // must match UnmanagedCallersOnly
-                  nullptr, (void **)&update);
-    if (rc != 0 || update == nullptr) {
-        std::cerr << "Failed to bind Update: 0x" << std::hex << rc << "\n";
-        return -1;
-    }
+    // now call it so managed code will self-register all systems:
+    register_all_fn((void *)&HostGetProcAddress);
 
     App &app = AppSingleton();
-    app.add_startup_system([&]() {
-        // tell C# how to spawn entities & add transforms
-        init((void *)&CreateEntity, (void *)&AddTransform);
-    });
-
-    // cs with view, single invoke
-    // 2.95s
-    // app.add_update_system([&](float dt) {
-    //     // for each entity-with-Transform, call the managed Update on a single component
-    //     auto view = app.registry.view<Transform>();
-    //     for (auto e : view) {
-    //         auto &t = view.get<Transform>(e);
-    //         update(dt, &t, 1);
-    //     }
-    // });
-
-    // C++ with view, single invoke
-    // 1.79s
-    // app.add_update_system([&](float dt) {
-    //     auto view = app.registry.view<Transform>();
-    //     for (auto e : view) {
-    //         auto &t = view.get<Transform>(e);
-    //         UpdateTransformsCpp(dt, &t, 1);
-    //     }
-    // });
-
-    // cs with storage, multi invoke
-    // 1.80s
-    app.add_update_system([&](float dt) {
-        // The dense array is guaranteed contiguous *and* stable for this frame
-        auto &storage = app.registry.storage<Transform>();
-
-        Transform **begin = storage.raw();
-        int count         = static_cast<int>(storage.size());
-
-        if (count > 0) update(dt, *begin, count); // single P/Invoke per frame
-    });
-
-    // C++ with storage, multi invoke
-    // 1.24s
-    // app.add_update_system([&](float dt) {
-    //     auto &storage    = app.registry.storage<Transform>();
-    //     Transform **data = storage.raw();
-    //     int count        = static_cast<int>(storage.size());
-    //     if (count > 0) UpdateTransformsCpp(dt, *data, count);
-    // });
 
     // finally run
     app.run();
