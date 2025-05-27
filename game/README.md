@@ -107,22 +107,19 @@ The following enhancements are planned to increase the flexibility and power of 
 
   1.  **C# `Components.cs`:**
 
-      - ```csharp
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)] // For modelPath
-        public struct Mesh
-        {
-            [MarshalAs(UnmanagedType.LPStr)] // Marshal as C-style string
-            public string modelPath;
-        }
-        ```
+      ```csharp
+      [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)] // For modelPath
+      public struct Mesh
+      {
+          [MarshalAs(UnmanagedType.LPStr)] // Marshal as C-style string
+          public string modelPath;
+      }
 
       [StructLayout(LayoutKind.Sequential)]
       public struct Material
       {
-      public System.Numerics.Vector3 color;
+          public System.Numerics.Vector3 color;
       }
-
-      ```
 
       ```
 
@@ -165,7 +162,3 @@ The following enhancements are planned to increase the flexibility and power of 
 2.  **New Component Types (Mesh, Material):** Can be developed in parallel or after multi-component queries are stable. This will allow for more visually interesting demos.
 3.  **Component/Entity Deletion:** Important for dynamic game worlds and resource management.
 4.  **Optimize Component Definition:** Address this last due to its complexity. It's a "quality of life" improvement for developers.
-
-## Conclusion
-
-By implementing these enhancements, we can create a more robust, flexible, and developer-friendly game scripting environment. Clear communication and collaboration will be key to tackling these tasks effectively.
