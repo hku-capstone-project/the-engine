@@ -10,23 +10,6 @@ namespace Game
 {
     public static unsafe class GameScript
     {
-        // engine → managed callbacks
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate uint CreateEntityDel();
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void AddTransformDel(uint e, Transform t);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void AddVelocityDel(uint e, Velocity v);
-
-        // startup signature
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void ManagedStartupDel();
-
-        public static CreateEntityDel CreateEntity;
-        public static AddTransformDel AddTransform;
-        public static AddVelocityDel AddVelocity;
-
         [StartupSystem]
         public static void InitGameObjects()
         {

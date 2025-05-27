@@ -5,51 +5,22 @@ namespace Game
 {
     internal static class EngineBindings
     {
-        // private delegate types
-        private delegate uint CreateEntityNative();
-        private delegate void AddTransformNative(uint e, Transform t);
-        private delegate void AddVelocityNative(uint e, Velocity v);
+        public delegate uint CreateEntityDel();
+        public delegate void AddTransformDel(uint e, Transform t);
+        public delegate void AddVelocityDel(uint e, Velocity v);
 
-        private static CreateEntityNative _createEntity = null!;
-        private static AddTransformNative _addTransform = null!;
-        private static AddVelocityNative _addVelocity = null!;
-        private static bool _isInitialized;
+        public static CreateEntityDel CreateEntity = null!;
+        public static AddTransformDel AddTransform = null!;
+        public static AddVelocityDel AddVelocity = null!;
 
-        /// <summary>
-        /// Must be called once by the host (PluginBootstrap.RegisterAll).
-        /// </summary>
         public static void Init(Func<string, IntPtr> getProc)
         {
-            if (_isInitialized) return;
-            _isInitialized = true;
-
-            _createEntity = Marshal.GetDelegateForFunctionPointer<CreateEntityNative>(
+            CreateEntity = Marshal.GetDelegateForFunctionPointer<CreateEntityDel>(
                                 getProc("CreateEntity"));
-            _addTransform = Marshal.GetDelegateForFunctionPointer<AddTransformNative>(
+            AddTransform = Marshal.GetDelegateForFunctionPointer<AddTransformDel>(
                                 getProc("AddTransform"));
-            _addVelocity = Marshal.GetDelegateForFunctionPointer<AddVelocityNative>(
+            AddVelocity = Marshal.GetDelegateForFunctionPointer<AddVelocityDel>(
                                 getProc("AddVelocity"));
-        }
-
-        public static uint CreateEntity()
-        {
-            if (!_isInitialized)
-                throw new InvalidOperationException("EngineBindings.Init() must be called first.");
-            return _createEntity();
-        }
-
-        public static void AddTransform(uint e, Transform t)
-        {
-            if (!_isInitialized)
-                throw new InvalidOperationException("EngineBindings.Init() must be called first.");
-            _addTransform(e, t);
-        }
-
-        public static void AddVelocity(uint e, Velocity v)
-        {
-            if (!_isInitialized)
-                throw new InvalidOperationException("EngineBindings.Init() must be called first.");
-            _addVelocity(e, v);
         }
     }
 }
