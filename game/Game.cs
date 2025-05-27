@@ -8,9 +8,6 @@ using System.Reflection.Emit;
 
 namespace Game
 {
-    // -------------------------------------------------------------------
-    // Plugin Bootstrap
-    // -------------------------------------------------------------------
     public static unsafe class PluginBootstrap
     {
         // host exports
@@ -147,62 +144,6 @@ namespace Game
                     );
                 }
             }
-        }
-    }
-    public static unsafe class GameScript
-    {
-        // engine → managed callbacks
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate uint CreateEntityDel();
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void AddTransformDel(uint e, Transform t);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void AddVelocityDel(uint e, Velocity v);
-
-        // startup signature
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void ManagedStartupDel();
-
-        public static CreateEntityDel CreateEntity;
-        public static AddTransformDel AddTransform;
-        public static AddVelocityDel AddVelocity;
-
-        [StartupSystem]
-        public static void InitGameObjects()
-        {
-            const int N = 4;
-            for (int x = 0; x < N; x++)
-                for (int y = 0; y < N; y++)
-                {
-                    uint e = CreateEntity();
-                    AddTransform(e, new Transform
-                    {
-                        position = new System.Numerics.Vector3(x, y, 0)
-                    });
-                    AddVelocity(e, new Velocity
-                    {
-                        velocity = new System.Numerics.Vector3(
-                            (x - N / 2) * 0.1f,
-                            (y - N / 2) * 0.1f,
-                            0
-                        )
-                    });
-                }
-        }
-
-        [UpdateSystem, Query(typeof(Transform))]
-        public static void UpdateTransform(float dt, Transform* t)
-        {
-            ref var tr = ref *t;
-            tr.position.Y += MathF.Sin(dt) * 0.1f;
-        }
-
-        [UpdateSystem, Query(typeof(Velocity))]
-        public static void UpdateVelocity(float dt, Velocity* v)
-        {
-            ref var vel = ref *v;
-            vel.velocity += new System.Numerics.Vector3(0, -9.81f * dt, 0);
         }
     }
 }
