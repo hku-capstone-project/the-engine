@@ -107,15 +107,11 @@ using GetterFn = void *(*)(entt::registry &, entt::entity);
 // A storage‐iterator that, given a runtime_view&, calls .iterate(storage<T>())
 using IteratorFn = std::function<void(entt::runtime_view &)>;
 
-// ----------------------------------------------------------------------------
-// 1) Extend the maps for every component type you have.
-//    When you add a new T component, insert here in BOTH maps.
-// ----------------------------------------------------------------------------
+// when you add a new T component, insert here in BOTH maps.
 static const std::unordered_map<std::string, GetterFn> g_getters = {
     {"Transform",
      +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Transform>(e); }},
     {"Velocity", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Velocity>(e); }},
-    // … add your other Component types here …
 };
 
 static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
@@ -123,7 +119,6 @@ static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
      [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Transform>()); }},
     {"Velocity",
      [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Velocity>()); }},
-    // … and here as well …
 };
 
 void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
