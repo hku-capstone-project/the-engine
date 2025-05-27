@@ -20,17 +20,27 @@ class App {
     void add_startup_system(StartupSystem sys) { startSystems.push_back(sys); }
     void add_update_system(UpdateSystem sys) { updateSystems.push_back(sys); }
 
-    void run() {
-        for (auto &s : startSystems) {
-            s();
-        }
-
+    void print_reg() {
         auto transforms = registry.view<Transform>();
         for (auto e : transforms) {
             auto &t = transforms.get<Transform>(e);
             printf("Entity %d: Transform(%f, %f, %f)\n", entt::to_integral(e), t.position.x,
                    t.position.y, t.position.z);
         }
+        auto velocities = registry.view<Velocity>();
+        for (auto e : velocities) {
+            auto &v = velocities.get<Velocity>(e);
+            printf("Entity %d: Velocity(%f, %f, %f)\n", entt::to_integral(e), v.velocity.x,
+                   v.velocity.y, v.velocity.z);
+        }
+    }
+
+    void run() {
+        for (auto &s : startSystems) {
+            s();
+        }
+
+        print_reg();
 
         // start measure current time
         auto start = std::chrono::high_resolution_clock::now();
@@ -50,13 +60,7 @@ class App {
         std::cout << "App run complete after " << _updateCount << " updates in " << elapsedSeconds
                   << " seconds.\n";
 
-        // debug final transforms
-        transforms = registry.view<Transform>();
-        for (auto e : transforms) {
-            auto &t = transforms.get<Transform>(e);
-            printf("Entity %d: Transform(%f, %f, %f)\n", entt::to_integral(e), t.position.x,
-                   t.position.y, t.position.z);
-        }
+        print_reg();
     }
 
   private:

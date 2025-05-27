@@ -31,9 +31,6 @@ namespace Game
       string[]      names
         );
 
-        // your shared engine callbacks are declared *once* in GameScript
-        // we will refer to GameScript.CreateEntityDel and AddTransformDel
-
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public unsafe delegate void NativePerEntityDel(
             float dt,
@@ -53,11 +50,12 @@ namespace Game
             var hostPerEnt = Marshal.GetDelegateForFunctionPointer<HostRegPerEntDel>(
                                 hostGet("HostRegisterPerEntityUpdate"));
 
-            // bind CreateEntity/AddTransform into GameScript:
             GameScript.CreateEntity = Marshal.GetDelegateForFunctionPointer<GameScript.CreateEntityDel>(
                                          hostGet("CreateEntity"));
             GameScript.AddTransform = Marshal.GetDelegateForFunctionPointer<GameScript.AddTransformDel>(
                                          hostGet("AddTransform"));
+            GameScript.AddVelocity = Marshal.GetDelegateForFunctionPointer<GameScript.AddVelocityDel>(
+                                         hostGet("AddVelocity"));
 
             // scan all static methods for systems
             foreach (var m in Assembly.GetExecutingAssembly()
@@ -160,6 +158,8 @@ namespace Game
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddTransformDel(uint e, Transform t);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void AddVelocityDel(uint e, Velocity v);
 
         // startup signature
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -167,11 +167,12 @@ namespace Game
 
         public static CreateEntityDel CreateEntity;
         public static AddTransformDel AddTransform;
+        public static AddVelocityDel AddVelocity;
 
         [StartupSystem]
         public static void InitGameObjects()
         {
-            const int N = 16;
+            const int N = 4;
             for (int x = 0; x < N; x++)
                 for (int y = 0; y < N; y++)
                 {
@@ -179,6 +180,14 @@ namespace Game
                     AddTransform(e, new Transform
                     {
                         position = new System.Numerics.Vector3(x, y, 0)
+                    });
+                    AddVelocity(e, new Velocity
+                    {
+                        velocity = new System.Numerics.Vector3(
+                            (x - N / 2) * 0.1f,
+                            (y - N / 2) * 0.1f,
+                            0
+                        )
                     });
                 }
         }
@@ -188,6 +197,13 @@ namespace Game
         {
             ref var tr = ref *t;
             tr.position.Y += MathF.Sin(dt) * 0.1f;
+        }
+
+        [UpdateSystem, Query(typeof(Velocity))]
+        public static void UpdateVelocity(float dt, Velocity* v)
+        {
+            ref var vel = ref *v;
+            vel.velocity += new System.Numerics.Vector3(0, -9.81f * dt, 0);
         }
     }
 }

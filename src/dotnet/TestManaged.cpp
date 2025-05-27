@@ -135,6 +135,9 @@ uint32_t CreateEntity() { return (uint32_t)AppSingleton().registry.create(); }
 void AddTransform(uint32_t e, Transform t) {
     AppSingleton().registry.emplace_or_replace<Transform>(entt::entity{e}, t);
 }
+void AddVelocity(uint32_t e, Velocity v) {
+    AppSingleton().registry.emplace_or_replace<Velocity>(entt::entity{e}, v);
+}
 
 void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
     assert(fn && count > 0);
@@ -182,6 +185,7 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "HostRegisterStartup") == 0) return (void *)&HostRegisterStartup;
     if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
     if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
+    if (std::strcmp(name, "AddVelocity") == 0) return (void *)&AddVelocity;
     if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0)
         return (void *)&HostRegisterPerEntityUpdate;
     return nullptr;
