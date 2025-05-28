@@ -7,15 +7,16 @@
 #include "utils/vulkan-wrapper/memory/BufferBundle.hpp"
 #include "utils/vulkan-wrapper/memory/Buffer.hpp"
 #include "utils/vulkan-wrapper/descriptor-set/DescriptorSetBundle.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
-GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, glm::vec3 workGroupSize,
-            Model* model, Image* baseColor, ShaderCompiler *shaderCompiler, VkRenderPass renderPass)
+GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, glm::vec3 workGroupSize, Image* baseColor, ShaderCompiler *shaderCompiler, VkRenderPass renderPass)
     : Pipeline(appContext, logger, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT),
       _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler), _renderPass(renderPass) {
 
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = sizeof(MVP);
+    bufferInfo.size = sizeof(_mvp);
     bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -117,7 +118,6 @@ void GfxPipeline::build() {
     viewportState.scissorCount = 1;
     viewportState.pScissors = &scissor;
 
-    // 光栅化状态
     VkPipelineRasterizationStateCreateInfo rasterizer{};
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE;
@@ -128,13 +128,11 @@ void GfxPipeline::build() {
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
-    // 多重采样状态
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
     multisampling.rasterizationSamples = _appContext->getMsaaSample();
 
-    // 深度和模板测试状态
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = VK_TRUE;
@@ -143,7 +141,6 @@ void GfxPipeline::build() {
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
-    // 颜色混合状态
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_TRUE;
@@ -235,6 +232,12 @@ void GfxPipeline::_cleanupShaderModules() {
     }
 }
 
-void GfxPipeline::updateMVP(const MVP& mvp) {
-    memcpy(_mvpBufferMapped, &mvp, sizeof(MVP));
+void GfxPipeline::updateMVP() {
+    VkExtent2D extent = _appContext->getSwapchainExtent();
+    float aspect = (float)extent.width / (float)extent.height;
+    _mvp.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    _mvp.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    _mvp.proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 10.0f);
+    _mvp.proj[1][1] *= -1;
+    memcpy(_mvpBufferMapped, &_mvp, sizeof(_mvp));
 }

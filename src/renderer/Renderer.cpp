@@ -30,8 +30,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
         _appContext, _logger, "./resources/models/sci_sword/textures/blade_baseColor.png",
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
-    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, glm::vec3(0, 0, 0),
-        _model.get(), _images.baseColor.get(), shaderCompiler, _renderPass
+    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, glm::vec3(0, 0, 0), _images.baseColor.get(), shaderCompiler, _renderPass
     );
 
     _createDepthStencil();
