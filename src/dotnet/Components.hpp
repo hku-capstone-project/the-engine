@@ -20,3 +20,11 @@ struct Player {
     bool isJumping;
     float jumpForce;
 };
+
+struct Mesh {
+    const char* modelPath;
+};
+
+struct Material {
+    glm::vec3 color;
+};
