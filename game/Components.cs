@@ -32,4 +32,18 @@ namespace Game
     //     [MarshalAs(UnmanagedType.LPStr)]
     //     public string modelPath;
     // }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct Mesh
+    {
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string modelPath;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Material
+    {
+        public Vector3 color;
+    }
+    
 }
