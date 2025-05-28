@@ -8,10 +8,12 @@ namespace Game
         public delegate uint CreateEntityDel();
         public delegate void AddTransformDel(uint e, Transform t);
         public delegate void AddVelocityDel(uint e, Velocity v);
+        public delegate void AddPlayerDel(uint e, Player p);
 
         public static CreateEntityDel CreateEntity = null!;
         public static AddTransformDel AddTransform = null!;
         public static AddVelocityDel AddVelocity = null!;
+        public static AddPlayerDel AddPlayer = null!;
 
         public static void Init(Func<string, IntPtr> getProc)
         {
@@ -21,6 +23,8 @@ namespace Game
                                 getProc("AddTransform"));
             AddVelocity = Marshal.GetDelegateForFunctionPointer<AddVelocityDel>(
                                 getProc("AddVelocity"));
+            AddPlayer = Marshal.GetDelegateForFunctionPointer<AddPlayerDel>(
+                                getProc("AddPlayer"));
         }
     }
 }

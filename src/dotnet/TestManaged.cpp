@@ -112,6 +112,7 @@ static const std::unordered_map<std::string, GetterFn> g_getters = {
     {"Transform",
      +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Transform>(e); }},
     {"Velocity", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Velocity>(e); }},
+    {"Player", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Player>(e); }},
 };
 
 static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
@@ -119,6 +120,8 @@ static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
      [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Transform>()); }},
     {"Velocity",
      [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Velocity>()); }},
+    {"Player",
+     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Player>()); }},
 };
 
 void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
@@ -132,6 +135,9 @@ void AddTransform(uint32_t e, Transform t) {
 }
 void AddVelocity(uint32_t e, Velocity v) {
     AppSingleton().registry.emplace_or_replace<Velocity>(entt::entity{e}, v);
+}
+void AddPlayer(uint32_t e, Player p) {
+    AppSingleton().registry.emplace_or_replace<Player>(entt::entity{e}, p);
 }
 
 void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
@@ -181,6 +187,7 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
     if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
     if (std::strcmp(name, "AddVelocity") == 0) return (void *)&AddVelocity;
+    if (std::strcmp(name, "AddPlayer") == 0) return (void *)&AddPlayer;
     if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0)
         return (void *)&HostRegisterPerEntityUpdate;
     return nullptr;

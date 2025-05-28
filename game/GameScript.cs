@@ -5,44 +5,98 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection.Emit;
+using System.Numerics;
 
 namespace Game
 {
-    public static class GameScript
+    public static class GameSystems
     {
+        private static float _jumpTimer = 0;
+
         [StartupSystem]
-        public static void InitGameObjects()
+        public static void CreateTestEntities()
         {
-            const int N = 4;
-            for (int x = 0; x < N; x++)
-                for (int y = 0; y < N; y++)
-                {
-                    uint e = EngineBindings.CreateEntity();
-                    EngineBindings.AddTransform(e, new Transform
-                    {
-                        position = new System.Numerics.Vector3(x, y, 0)
-                    });
-                    EngineBindings.AddVelocity(e, new Velocity
-                    {
-                        velocity = new System.Numerics.Vector3(
-                            (x - N / 2) * 0.1f,
-                            (y - N / 2) * 0.1f,
-                            0
-                        )
-                    });
-                }
+            // 创建两个实体：
+            // 1. 一个同时具有Transform、Velocity和Player组件的实体
+            // 2. 一个只有Transform和Velocity的实体
+            
+            // 实体1：玩家
+            uint playerId = EngineBindings.CreateEntity();
+            
+            var transform1 = new Transform { 
+                position = new Vector3(0, 0, 0)
+            };
+            EngineBindings.AddTransform(playerId, transform1);
+            
+            var velocity1 = new Velocity {
+                velocity = new Vector3(1, 0, 0)
+            };
+            EngineBindings.AddVelocity(playerId, velocity1);
+            
+            var player = new Player {
+                isJumping = false,
+                jumpForce = 5.0f
+            };
+            EngineBindings.AddPlayer(playerId, player);
+
+            // 实体2：普通物体
+            uint objectId = EngineBindings.CreateEntity();
+            
+            var transform2 = new Transform { 
+                position = new Vector3(0, 2, 0)  // 放在玩家上方
+            };
+            EngineBindings.AddTransform(objectId, transform2);
+            
+            var velocity2 = new Velocity {
+                velocity = new Vector3(0.5f, 0, 0)  // 移动速度比玩家慢
+            };
+            EngineBindings.AddVelocity(objectId, velocity2);
         }
 
-        [UpdateSystem, Query(typeof(Transform))]
-        public static void UpdateTransform(float dt, ref Transform t)
+        // 这个系统只处理有Transform和Velocity的实体
+        [UpdateSystem]
+        [Query(typeof(Transform), typeof(Velocity))]
+        public static void PhysicsSystem(float dt, ref Transform transform, ref Velocity velocity)
         {
-            t.position.Y += MathF.Sin(dt) * 0.1f; // Use t directly
+            // 基本的物理更新
+            transform.position.X += velocity.velocity.X * dt;
+            transform.position.Y += velocity.velocity.Y * dt;
+            transform.position.Z += velocity.velocity.Z * dt;
+            
+            // 添加重力效果
+            velocity.velocity.Y -= 9.8f * dt;  // 重力加速度
+
+            // 地面碰撞检测
+            if (transform.position.Y < 0)
+            {
+                transform.position.Y = 0;
+                velocity.velocity.Y = 0;
+            }
+            
+            Console.WriteLine($"PhysicsSystem - Entity - Position: {transform.position.X}, {transform.position.Y}, {transform.position.Z}");
         }
 
-        [UpdateSystem, Query(typeof(Velocity))]
-        public static void UpdateVelocity(float dt, ref Velocity v)
+        // 这个系统只处理有Transform、Velocity和Player的实体
+        [UpdateSystem]
+        [Query(typeof(Transform), typeof(Velocity), typeof(Player))]
+        public static void PlayerSystem(float dt, ref Transform transform, ref Velocity velocity, ref Player player)
         {
-            v.velocity += new System.Numerics.Vector3(0, -9.81f * dt, 0); // Use v directly
+            // 每2秒触发一次跳跃
+            _jumpTimer += dt;
+            if (_jumpTimer >= 2.0f)
+            {
+                player.isJumping = true;
+                _jumpTimer = 0;
+            }
+
+            // 玩家特有的逻辑 - 只处理跳跃
+            if (player.isJumping)
+            {
+                velocity.velocity.Y = player.jumpForce;
+                player.isJumping = false;
+            }
+            
+            Console.WriteLine($"PlayerSystem - Player Entity - Position: {transform.position.X}, {transform.position.Y}, {transform.position.Z}, Jumping: {player.isJumping}");
         }
     }
 }

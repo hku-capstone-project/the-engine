@@ -16,6 +16,12 @@ namespace Game
         public Vector3 velocity;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Player
+    {
+        public bool isJumping;
+        public float jumpForce;
+    }
 
     // // FIXME:
     // [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]

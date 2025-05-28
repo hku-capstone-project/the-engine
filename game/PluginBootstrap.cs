@@ -93,63 +93,49 @@ namespace Game
           var query = m.GetCustomAttribute<QueryAttribute>()
                    ?? throw new InvalidOperationException($"{m.Name} missing [Query]");
           var comps = query.Components;
+          var compNames = comps.Select(c => c.Name).ToArray();
 
-          // for brevity demo only 1‐component here
-          if (comps.Length == 1)
+          // emit: void shim(float dt, void* comps)
+          var shim = new DynamicMethod(
+            "shim_" + m.Name,
+            typeof(void),
+            new[] { typeof(float), typeof(void*) },
+            typeof(PluginBootstrap),
+            skipVisibility: true
+          );
+          var il = shim.GetILGenerator();
+
+          // push dt
+          il.Emit(OpCodes.Ldarg_0);
+
+          // 为每个组件生成加载代码
+          for (int i = 0; i < comps.Length; i++)
           {
-            var compType = comps[0];
-            var compName = compType.Name;
-
-            // emit: void shim(float dt, void* comps)
-            var shim = new DynamicMethod(
-              "shim_" + m.Name,
-              typeof(void),
-              new[] { typeof(float), typeof(void*) },
-              typeof(PluginBootstrap),
-              skipVisibility: true
-            );
-            var il = shim.GetILGenerator();
-
-            // push dt
-            il.Emit(OpCodes.Ldarg_0);
-
-            // load components[0] (which is T*)
-            // This sequence correctly pushes the T* (e.g., Transform*) onto the stack.
-            // Ldarg_1 loads the 'comps' argument, which is effectively void** (pointer to the component pointer).
-            // The sequence Ldarg_1, Ldc_I4_0, Conv_I, Add, Ldind_I, Conv_U results in
-            // the actual component pointer (T*) being pushed onto the stack.
+            // 加载组件指针数组
             il.Emit(OpCodes.Ldarg_1);    // void* (this is &ptrs[0] from C++)
-            il.Emit(OpCodes.Ldc_I4_0);   // offset 0.
-            il.Emit(OpCodes.Conv_I);     // Convert offset to native int.
-            il.Emit(OpCodes.Add);        // Add offset to base address: &ptrs[0] + 0 = &ptrs[0].
-            il.Emit(OpCodes.Ldind_I);    // Dereference: loads the value at &ptrs[0], which is ptrs[0] (the T*).
-            il.Emit(OpCodes.Conv_U);     // Convert T* to UIntPtr (unsigned native int).
-
-            // call real system: (float, ref T)
-            // The MethodInfo 'm' now refers to a method like UpdateTransform(float, ref Transform).
-            // The CLR handles passing the T* (on stack as UIntPtr) to a 'ref T' parameter.
-            il.EmitCall(OpCodes.Call, m, null);
-            il.Emit(OpCodes.Ret);
-
-            _shims.Add(shim);
-
-            // wrap the DynamicMethod in our Cdecl delegate
-            var nativeDel = (NativePerEntityDel)
-                shim.CreateDelegate(typeof(NativePerEntityDel));
-            _pinnedShims.Add(nativeDel);
-
-            // now get a real Cdecl function-pointer
-            var fnPtr = Marshal.GetFunctionPointerForDelegate(nativeDel);
-
-            // register it (count=1, just the one component name)
-            hostPerEnt(fnPtr, 1, new[] { compName });
-
-            continue;
+            il.Emit(OpCodes.Ldc_I4, i * IntPtr.Size);  // 当前组件索引 * 指针大小
+            il.Emit(OpCodes.Conv_I);     // 转换为native int
+            il.Emit(OpCodes.Add);        // 计算当前组件指针的地址
+            il.Emit(OpCodes.Ldind_I);    // 加载组件指针
+            il.Emit(OpCodes.Conv_U);     // 转换为UIntPtr
           }
 
-          throw new NotSupportedException(
-            $"Only 1-component queries supported; saw {comps.Length}"
-          );
+          // 调用实际的系统方法
+          il.EmitCall(OpCodes.Call, m, null);
+          il.Emit(OpCodes.Ret);
+
+          _shims.Add(shim);
+
+          // 包装DynamicMethod为Cdecl委托
+          var nativeDel = (NativePerEntityDel)
+              shim.CreateDelegate(typeof(NativePerEntityDel));
+          _pinnedShims.Add(nativeDel);
+
+          // 获取真实的Cdecl函数指针
+          var fnPtr = Marshal.GetFunctionPointerForDelegate(nativeDel);
+
+          // 注册系统，传入所有组件名称
+          hostPerEnt(fnPtr, comps.Length, compNames);
         }
       }
     }

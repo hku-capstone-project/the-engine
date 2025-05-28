@@ -15,3 +15,8 @@ struct Velocity {
 struct Model {
     std::string modelPath;
 };
+
+struct Player {
+    bool isJumping;
+    float jumpForce;
+};
