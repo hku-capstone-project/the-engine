@@ -159,6 +159,12 @@ void HostRemoveComponentVelocity(uint32_t entityId) {
 void HostRemoveComponentPlayer(uint32_t entityId) {
     AppSingleton().registry.remove<Player>(entt::entity{entityId});
 }
+void HostRemoveComponentMesh(uint32_t entityId) {
+    AppSingleton().registry.remove<Mesh>(entt::entity{entityId});
+}
+void HostRemoveComponentMaterial(uint32_t entityId) {
+    AppSingleton().registry.remove<Material>(entt::entity{entityId});
+}
 void HostDestroyEntity(uint32_t entityId) {
     AppSingleton().registry.destroy(entt::entity{entityId});
 }
@@ -216,6 +222,8 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "HostRemoveComponentTransform") == 0) return (void*)&HostRemoveComponentTransform;
     if (std::strcmp(name, "HostRemoveComponentVelocity") == 0) return (void*)&HostRemoveComponentVelocity;
     if (std::strcmp(name, "HostRemoveComponentPlayer") == 0) return (void*)&HostRemoveComponentPlayer;
+    if (std::strcmp(name, "HostRemoveComponentMesh") == 0) return (void*)&HostRemoveComponentMesh;
+    if (std::strcmp(name, "HostRemoveComponentMaterial") == 0) return (void*)&HostRemoveComponentMaterial;
     if (std::strcmp(name, "HostDestroyEntity") == 0) return (void*)&HostDestroyEntity;
     if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0) return (void*)&HostRegisterPerEntityUpdate;
     return nullptr;

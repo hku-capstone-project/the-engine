@@ -14,6 +14,10 @@ namespace Game
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddPlayerDel(uint e, Player p);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void AddMeshDel(uint e, Mesh m);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void AddMaterialDel(uint e, Material mat);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void RemoveComponentDel(uint entityId);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void DestroyEntityDel(uint entityId);
@@ -22,9 +26,13 @@ namespace Game
         public static AddTransformDel AddTransform = null!;
         public static AddVelocityDel AddVelocity = null!;
         public static AddPlayerDel AddPlayer = null!;
+        public static AddMeshDel AddMesh = null!;
+        public static AddMaterialDel AddMaterial = null!;
         public static RemoveComponentDel RemoveTransform = null!;
         public static RemoveComponentDel RemoveVelocity = null!;
         public static RemoveComponentDel RemovePlayer = null!;
+        public static RemoveComponentDel RemoveMesh = null!;
+        public static RemoveComponentDel RemoveMaterial = null!;
         public static DestroyEntityDel DestroyEntity = null!;
 
         public static void Init(Func<string, IntPtr> getProc)
@@ -37,12 +45,20 @@ namespace Game
                                 getProc("AddVelocity"));
             AddPlayer = Marshal.GetDelegateForFunctionPointer<AddPlayerDel>(
                                 getProc("AddPlayer"));
+            AddMesh = Marshal.GetDelegateForFunctionPointer<AddMeshDel>(
+                                getProc("AddMesh"));
+            AddMaterial = Marshal.GetDelegateForFunctionPointer<AddMaterialDel>(
+                                getProc("AddMaterial"));
             RemoveTransform = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
                                 getProc("HostRemoveComponentTransform"));
             RemoveVelocity = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
                                 getProc("HostRemoveComponentVelocity"));
             RemovePlayer = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
                                 getProc("HostRemoveComponentPlayer"));
+            RemoveMesh = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
+                                getProc("HostRemoveComponentMesh"));
+            RemoveMaterial = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
+                                getProc("HostRemoveComponentMaterial"));
             DestroyEntity = Marshal.GetDelegateForFunctionPointer<DestroyEntityDel>(
                                 getProc("HostDestroyEntity"));
         }

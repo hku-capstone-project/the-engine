@@ -33,11 +33,10 @@ namespace Game
     //     public string modelPath;
     // }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct Mesh
     {
-        [MarshalAs(UnmanagedType.LPStr)]
-        public string modelPath;
+        public int modelId;  // 使用ID而不是字符串路径，避免marshalling问题
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -22,7 +22,7 @@ struct Player {
 };
 
 struct Mesh {
-    const char* modelPath;
+    int32_t modelId;  // 使用ID而不是字符串路径，避免marshalling问题
 };
 
 struct Material {
