@@ -1,15 +1,18 @@
+// frag.glsl
 #version 450
 
-layout(binding = 1) uniform sampler2D texSampler;
+// --- set 0 / binding 1: base‐color sampler ---
+// layout(set = 0, binding = 1) uniform sampler2D baseColor;
 
-layout(location = 0) in vec3 fragNormal;
-layout(location = 1) in vec2 fragTexCoord;
+// --- varyings from the vertex shader ---
+layout(location = 0) in vec3 fragColor;
+layout(location = 1) in vec2 fragUV;
 
+// --- final output ---
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-    float diff    = max(dot(normalize(fragNormal), lightDir), 0.0);
-    vec3 color    = texture(texSampler, fragTexCoord).rgb;
-    outColor      = vec4(color * (0.3 + 0.7 * diff), 1.0);
+    // vec4 tex = texture(baseColor, fragUV);
+    // modulate texture by vertex color
+    outColor = vec4(fragColor, 1.0);
 }

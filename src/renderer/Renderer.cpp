@@ -1,4 +1,5 @@
 #include "Renderer.hpp"
+#include "ShaderSharedVariables.hpp"
 #include "app-context/VulkanApplicationContext.hpp"
 #include "camera/Camera.hpp"
 #include "config-container/ConfigContainer.hpp"
@@ -6,11 +7,12 @@
 #include "utils/logger/Logger.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 #include "utils/vulkan-wrapper/descriptor-set/DescriptorSetBundle.hpp"
+#include "utils/vulkan-wrapper/memory/Buffer.hpp"
+#include "utils/vulkan-wrapper/memory/BufferBundle.hpp"
 #include "utils/vulkan-wrapper/memory/Image.hpp"
 #include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 #include "window/Window.hpp"
-#include "camera/Camera.hpp"
 
 Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
@@ -37,24 +39,35 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
-    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, kPathToResourceFolder + "shaders",
-                                              _descriptorSetBundle.get(), glm::vec3(0, 0, 0),
-                                              _images.baseColor.get(), shaderCompiler, _renderPass);
+    _createBuffersAndBufferBundles();
+    _createDescriptorSetBundle();
+    _createRenderPass();
+    _createGraphicsPipeline();
 
     _createDepthStencil();
     _createColorResources();
-    _createRenderPass();
     _createFrameBuffers();
     _recordTracingCommandBuffers();
     _recordDeliveryCommandBuffers();
 }
 
+void Renderer::_createBuffersAndBufferBundles() {
+    _renderInfoBufferBundle = std::make_unique<BufferBundle>(
+        _appContext, _framesInFlight, sizeof(G_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        MemoryStyle::kHostVisible);
+}
+
 void Renderer::_createDescriptorSetBundle() {
     _descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
         _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    // _descriptorSetBundle->bindUniformBufferBundle(0, _mvpBuffer);
-    // _descriptorSetBundle->bindImageSampler(1, baseColor);
-    // _descriptorSetBundle->create();
+    _descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundle.get());
+    _descriptorSetBundle->create();
+}
+
+void Renderer::_createGraphicsPipeline() {
+    _pipeline = std::make_unique<GfxPipeline>(
+        _appContext, _logger, kPathToResourceFolder + "shaders", _descriptorSetBundle.get(),
+        glm::vec3(0, 0, 0), _images.baseColor.get(), _shaderCompiler, _renderPass);
 }
 
 void Renderer::_createRenderPass() {

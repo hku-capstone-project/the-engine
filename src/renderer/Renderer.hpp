@@ -52,7 +52,6 @@ class Renderer {
     std::unique_ptr<Camera> _camera;
 
     ConfigContainer *_configContainer;
-    std::unique_ptr<GfxPipeline> _pipeline = nullptr;
 
     std::vector<VkCommandBuffer> _deliveryCommandBuffers{};
     std::vector<VkCommandBuffer> _tracingCommandBuffers{};
@@ -81,6 +80,15 @@ class Renderer {
 
     size_t _framesInFlight = 0;
 
+    // pipeline
+    std::unique_ptr<GfxPipeline> _pipeline = nullptr;
+    void _createGraphicsPipeline();
+
+    // buffers
+    std::unique_ptr<BufferBundle> _renderInfoBufferBundle;
+    void _createBuffersAndBufferBundles();
+
+    // descriptor set
     std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
 
     void _recordDeliveryCommandBuffers();

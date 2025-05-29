@@ -19,7 +19,7 @@
 #define uvec2 alignas(8) glm::uvec2
 #define uint uint32_t
 
-// #include "sharedVariables.glsl" // IWYU pragma: export
+#include "sharedVariables.glsl" // IWYU pragma: export
 
 #undef vec3
 #undef uvec3
