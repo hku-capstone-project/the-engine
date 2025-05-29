@@ -77,6 +77,9 @@ class Image {
                                        VkImageAspectFlags aspectFlags, uint32_t imageDepth = 1,
                                        uint32_t layerCount = 1);
 
+    VkImage getVkImage() const { return _vkImage; }
+    VkImageView getVkImageView() const { return _vkImageView; }
+
   private:
     VulkanApplicationContext *_appContext;
 

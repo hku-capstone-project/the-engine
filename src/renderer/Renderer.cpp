@@ -146,71 +146,31 @@ void Renderer::_createGraphicsPipeline() {
 }
 
 void Renderer::_createDepthStencil() {
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageInfo.format        = _appContext->getDepthFormat();
-    imageInfo.extent        = {_appContext->getSwapchainExtent().width,
-                               _appContext->getSwapchainExtent().height, 1};
-    imageInfo.mipLevels     = 1;
-    imageInfo.arrayLayers   = 1;
-    imageInfo.samples       = _appContext->getMsaaSample();
-    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    // build a small ImageDimensions struct
+    ImageDimensions dim{_appContext->getSwapchainExtent().width,
+                        _appContext->getSwapchainExtent().height, 1};
 
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage                   = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    allocInfo.requiredFlags           = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    vmaCreateImage(_appContext->getAllocator(), &imageInfo, &allocInfo, &_depthStencil.image,
-                   &_depthStencil.allocation, nullptr);
-
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image                           = _depthStencil.image;
-    viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format                          = _appContext->getDepthFormat();
-    viewInfo.subresourceRange.baseMipLevel   = 0;
-    viewInfo.subresourceRange.levelCount     = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount     = 1;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-    vkCreateImageView(_appContext->getDevice(), &viewInfo, nullptr, &_depthStencil.imageView);
+    _depthStencilImage = std::make_unique<Image>(
+        _appContext, _logger, dim, _appContext->getDepthFormat(),
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        /* no sampler needed */ VK_NULL_HANDLE,
+        /* initial layout */ VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
+        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 }
 
 void Renderer::_createColorResources() {
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageInfo.extent        = {_appContext->getSwapchainExtent().width,
-                               _appContext->getSwapchainExtent().height, 1};
-    imageInfo.mipLevels     = 1;
-    imageInfo.arrayLayers   = 1;
-    imageInfo.format        = VK_FORMAT_B8G8R8A8_UNORM;
-    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    imageInfo.samples     = _appContext->getMsaaSample();
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    // build dimensions
+    ImageDimensions dim{_appContext->getSwapchainExtent().width,
+                        _appContext->getSwapchainExtent().height, 1};
 
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage                   = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    allocInfo.requiredFlags           = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    vmaCreateImage(_appContext->getAllocator(), &imageInfo, &allocInfo, &colorResources.image,
-                   &colorResources.allocation, nullptr);
-
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image                           = colorResources.image;
-    viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format                          = VK_FORMAT_B8G8R8A8_UNORM;
-    viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel   = 0;
-    viewInfo.subresourceRange.levelCount     = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount     = 1;
-
-    vkCreateImageView(_appContext->getDevice(), &viewInfo, nullptr, &colorResources.imageView);
+    // Note: we pass both TRANSIENT_ATTACHMENT_BIT and COLOR_ATTACHMENT_BIT,
+    // no sampler is needed, and we transition straight to COLOR_ATTACHMENT_OPTIMAL:
+    _colorResourcesImage = std::make_unique<Image>(
+        _appContext, _logger, dim, VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        /* sampler */ VK_NULL_HANDLE,
+        /* initialLayout */ VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
+        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void Renderer::_createFrameBuffers() {
@@ -218,8 +178,8 @@ void Renderer::_createFrameBuffers() {
 
     std::array<VkImageView, 3> attachments = {};
 
-    attachments[0] = colorResources.imageView;
-    attachments[1] = _depthStencil.imageView;
+    attachments[0] = _colorResourcesImage->getVkImageView();
+    attachments[1] = _depthStencilImage->getVkImageView();
 
     VkFramebufferCreateInfo createInfo{};
     createInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -239,26 +199,7 @@ void Renderer::_createFrameBuffers() {
     }
 }
 
-Renderer::~Renderer() {
-    vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr);
-    if (_depthStencil.imageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(_appContext->getDevice(), _depthStencil.imageView, nullptr);
-        _depthStencil.imageView = VK_NULL_HANDLE;
-    }
-    if (_depthStencil.image != VK_NULL_HANDLE) {
-        vmaDestroyImage(_appContext->getAllocator(), _depthStencil.image, _depthStencil.allocation);
-        _depthStencil.image = VK_NULL_HANDLE;
-    }
-    if (colorResources.imageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(_appContext->getDevice(), colorResources.imageView, nullptr);
-        _depthStencil.imageView = VK_NULL_HANDLE;
-    }
-    if (colorResources.image != VK_NULL_HANDLE) {
-        vmaDestroyImage(_appContext->getAllocator(), colorResources.image,
-                        colorResources.allocation);
-        _depthStencil.image = VK_NULL_HANDLE;
-    }
-}
+Renderer::~Renderer() { vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr); }
 
 void Renderer::onSwapchainResize() {
     // TODO:

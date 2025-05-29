@@ -66,18 +66,9 @@ class Renderer {
 
     VkRenderPass _renderPass;
 
-    std::unique_ptr<Image> _renderTargetImage = nullptr;
-    struct {
-        VkImage image;
-        VkImageView imageView;
-        VmaAllocation allocation;
-    } _depthStencil;
-
-    struct {
-        VkImage image;
-        VkImageView imageView;
-        VmaAllocation allocation;
-    } colorResources;
+    std::unique_ptr<Image> _renderTargetImage   = nullptr;
+    std::unique_ptr<Image> _depthStencilImage   = nullptr;
+    std::unique_ptr<Image> _colorResourcesImage = nullptr;
 
     size_t _framesInFlight = 0;
 
