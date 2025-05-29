@@ -9,11 +9,11 @@
 
 GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
                          std::string fullPathToShaderSourceCode,
-                         DescriptorSetBundle *descriptorSetBundle, glm::vec3 workGroupSize,
-                         Image *baseColor, ShaderCompiler *shaderCompiler, VkRenderPass renderPass)
+                         DescriptorSetBundle *descriptorSetBundle, Image *baseColor,
+                         ShaderCompiler *shaderCompiler, VkRenderPass renderPass)
     : Pipeline(appContext, logger, fullPathToShaderSourceCode, descriptorSetBundle,
                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT),
-      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler), _renderPass(renderPass) {
+      _shaderCompiler(shaderCompiler), _renderPass(renderPass) {
     compileAndCacheShaderModule();
     build();
 }
@@ -183,22 +183,6 @@ void GfxPipeline::build() {
                                   nullptr, &_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline!");
     }
-}
-
-void GfxPipeline::recordCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame,
-                                uint32_t threadCountX, uint32_t threadCountY,
-                                uint32_t threadCountZ) {
-    _bind(commandBuffer, currentFrame);
-    vkCmdDispatch(commandBuffer,
-                  static_cast<uint32_t>(std::ceil((float)threadCountX / (float)_workGroupSize.x)),
-                  static_cast<uint32_t>(std::ceil((float)threadCountY / (float)_workGroupSize.y)),
-                  static_cast<uint32_t>(std::ceil((float)threadCountZ / (float)_workGroupSize.z)));
-}
-
-void GfxPipeline::recordIndirectCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame,
-                                        VkBuffer indirectBuffer) {
-    _bind(commandBuffer, currentFrame);
-    vkCmdDispatchIndirect(commandBuffer, indirectBuffer, 0);
 }
 
 void GfxPipeline::_cleanupShaderModules() {

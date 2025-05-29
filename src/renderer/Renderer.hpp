@@ -56,6 +56,7 @@ class Renderer {
     std::vector<VkCommandBuffer> _deliveryCommandBuffers{};
     std::vector<VkCommandBuffer> _tracingCommandBuffers{};
     std::vector<VkFramebuffer> _frameBuffers{};
+
     std::unique_ptr<Model> _model = nullptr;
     struct {
         std::unique_ptr<Image> baseColor;
@@ -70,7 +71,7 @@ class Renderer {
         VkImage image;
         VkImageView imageView;
         VmaAllocation allocation;
-    } depthStencil;
+    } _depthStencil;
 
     struct {
         VkImage image;
