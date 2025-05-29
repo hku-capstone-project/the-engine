@@ -49,10 +49,3 @@ message(STATUS "vcpkg include dir: ${vcpkg_INCLUDE_DIR}")
 
 add_subdirectory(src/)
 add_subdirectory(apps/)
-
-# copy compile_commands.json to .vscode folder for clangd to use, this is because the build dir for debug and release mode is different
-add_custom_target(copy-compile-commands ALL
-    ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_BINARY_DIR}/compile_commands.json
-    ${CMAKE_SOURCE_DIR}
-)

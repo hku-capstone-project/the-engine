@@ -64,6 +64,31 @@ bootstrap.bat
 
 ## Environment Setup
 
+### Dotnet (_newly updated_)
+
+- Download .NET 8.0.16 with SDK 8.0.410 from [here](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.410-windows-x64-installer)
+- You can varify your installation by checking
+
+```shell
+dotnet --list-sdks
+```
+
+and you should at least find:
+
+```shell
+8.0.410 [C:\Program Files\dotnet\sdk]
+```
+
+```shell
+dotnet --list-runtimes
+```
+
+and you should at least find:
+
+```shell
+Microsoft.NETCore.App 8.0.16 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+```
+
 ### Cmake
 
 - Download the 3.x installer from [here](https://cmake.org/download/)
@@ -129,6 +154,8 @@ build.bat
 
 ## Learning resources
 
-[Daxa Tutorial](https://tutorial.daxa.dev/)
-
 [Vulkan Tutorial](https://vulkan-tutorial.com/)
+
+[Bevy's ECS Design](https://bevyengine.org/learn/quick-start/getting-started/ecs/)
+
+[EnTT Crash Course](https://github.com/skypjack/entt/wiki/Crash-Course:-entity-component-system/465d90e0f5961adc460cd9d1e9358370987fbcd3)
