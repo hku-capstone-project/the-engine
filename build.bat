@@ -62,4 +62,6 @@ if %WITH_PORTABLE_RESOURCES%==ON (
 @REM /wait blocks the terminal to wait for the application to exit
 @REM /b means to stay in the command line below, 
 @REM /d xxx specifies the startup directory
+@REM ENGINE_ROOT is for Logs in the game folder
+set ENGINE_ROOT=%CD%
 start /wait /b /d "%PROJECT_EXECUTABLE_PATH%" run.exe

@@ -44,9 +44,13 @@ class App {
 
         // start measure current time
         auto start = std::chrono::high_resolution_clock::now();
+        auto lastFrameTime = start;
 
         while (_updateCount++ < 1000) { // just an example limit
-            float dt = 1.0f / 60.0f;    // just example
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float dt = std::chrono::duration<float>(currentTime - lastFrameTime).count();
+            lastFrameTime = currentTime;
+
             for (auto &s : updateSystems) s(dt);
 
             // ... here you would poll window/input, draw with Vulkan, etc.
