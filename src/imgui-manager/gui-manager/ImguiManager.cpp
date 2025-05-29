@@ -16,7 +16,6 @@
 #include "config-container/sub-config/ApplicationInfo.hpp"
 #include "config-container/sub-config/DebugInfo.hpp"
 #include "config-container/sub-config/ImguiManagerInfo.hpp"
-#include "config-container/sub-config/TracingInfo.hpp"
 
 ImguiManager::ImguiManager(VulkanApplicationContext *appContext, Window *window, Logger *logger,
                            ConfigContainer *configContainer)
@@ -258,13 +257,6 @@ void ImguiManager::_drawConfigMenuItem() {
         ImGui::SliderFloat("Debug F1", &di->debugF1, 0.0F, 1.0F);
         ImGui::SliderInt("Debug I1", &di->debugI1, 0, 10);
         ImGui::ColorEdit3("Debug C1", &di->debugC1.x);
-
-        ImGui::SeparatorText("Tracing");
-        auto &ti = _configContainer->tracingInfo;
-        ImGui::Checkbox("Visualize Chunks", &ti->visualizeChunks);
-        ImGui::Checkbox("Visualize Octree", &ti->visualizeOctree);
-        ImGui::Checkbox("Beam Optimization", &ti->beamOptimization);
-        ImGui::Checkbox("Trace Indirect Ray", &ti->traceIndirectRay);
 
         ImGui::EndMenu();
     }

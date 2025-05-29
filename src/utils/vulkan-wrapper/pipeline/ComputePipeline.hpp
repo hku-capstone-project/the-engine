@@ -13,8 +13,8 @@ class ShaderCompiler;
 class ComputePipeline : public Pipeline {
   public:
     ComputePipeline(VulkanApplicationContext *appContext, Logger *logger,
-                    WorkGroupSize workGroupSize, DescriptorSetBundle *descriptorSetBundle,
-                    ShaderCompiler *shaderCompiler);
+                    std::string fullPathToShaderSourceCode, WorkGroupSize workGroupSize,
+                    DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler);
 
     ~ComputePipeline() override;
 
@@ -25,7 +25,7 @@ class ComputePipeline : public Pipeline {
     ComputePipeline &operator=(ComputePipeline &&)      = delete;
 
     void build() override;
-    void compileAndCacheShaderModule(std::string &path) override;
+    void compileAndCacheShaderModule() override;
 
     void recordCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame, uint32_t threadCountX,
                        uint32_t threadCountY, uint32_t threadCountZ);

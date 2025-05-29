@@ -1,18 +1,23 @@
 #include "Renderer.hpp"
 #include "app-context/VulkanApplicationContext.hpp"
+#include "camera/Camera.hpp"
 #include "config-container/ConfigContainer.hpp"
 #include "config/RootDir.h"
 #include "utils/logger/Logger.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
+#include "utils/vulkan-wrapper/descriptor-set/DescriptorSetBundle.hpp"
 #include "utils/vulkan-wrapper/memory/Image.hpp"
 #include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 #include "window/Window.hpp"
+#include "camera/Camera.hpp"
 
-Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
+Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
-    : _appContext(appContext), _logger(logger), _shaderCompiler(shaderCompiler), _window(window),
-      _configContainer(configContainer) {
+    : _appContext(appContext), _logger(logger), _framesInFlight(framesInFlight),
+      _shaderCompiler(shaderCompiler), _window(window), _configContainer(configContainer) {
+    _camera = std::make_unique<Camera>(_window, configContainer);
+
     int width  = 0;
     int height = 0;
     window->getWindowDimension(width, height);
@@ -28,11 +33,13 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
     _model            = std::make_unique<Model>(_appContext, _logger,
                                                 kPathToResourceFolder + "models/sci_sword/sword.gltf");
     _images.baseColor = std::make_unique<Image>(
-        _appContext, _logger, kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
+        _appContext, _logger,
+        kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
-    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, glm::vec3(0, 0, 0), _images.baseColor.get(), shaderCompiler, _renderPass
-    );
+    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, kPathToResourceFolder + "shaders",
+                                              _descriptorSetBundle.get(), glm::vec3(0, 0, 0),
+                                              _images.baseColor.get(), shaderCompiler, _renderPass);
 
     _createDepthStencil();
     _createColorResources();
@@ -40,6 +47,14 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
     _createFrameBuffers();
     _recordTracingCommandBuffers();
     _recordDeliveryCommandBuffers();
+}
+
+void Renderer::_createDescriptorSetBundle() {
+    _descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
+        _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    // _descriptorSetBundle->bindUniformBufferBundle(0, _mvpBuffer);
+    // _descriptorSetBundle->bindImageSampler(1, baseColor);
+    // _descriptorSetBundle->create();
 }
 
 void Renderer::_createRenderPass() {
@@ -239,23 +254,6 @@ void Renderer::onSwapchainResize() {
 void Renderer::drawFrame(size_t currentFrame) {
     ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
 
-    // 更新MVP矩阵
-    _rotation += 0.01f;
-    _mvp.model = glm::rotate(glm::mat4(1.0f), _rotation, glm::vec3(0.0f, 1.0f, 0.0f));
-    _mvp.model = glm::scale(_mvp.model, glm::vec3(0.5f)); // 缩小模型尺寸
-
-    // 调整相机位置
-    _camera.position = glm::vec3(0.0f, 1.0f, 3.0f);
-    _camera.front    = glm::vec3(0.0f, 0.0f, -1.0f);
-    _camera.up       = glm::vec3(0.0f, 1.0f, 0.0f);
-
-    _mvp.view = _camera.getViewMatrix();
-    _mvp.proj = glm::perspective(glm::radians(45.0f),
-                                 static_cast<float>(imgDimensions.width) /
-                                     static_cast<float>(imgDimensions.height),
-                                 0.1f, 100.0f);
-    _mvp.proj[1][1] *= -1; // 翻转Y轴以匹配Vulkan坐标系
-
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
     cmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     cmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -300,7 +298,7 @@ void Renderer::drawFrame(size_t currentFrame) {
                       _pipeline->getPipeline());
 
     // 更新MVP矩阵
-    _pipeline->updateMVP(_mvp);
+    // _pipeline->updateMVP(_mvp);
 
     vkCmdDrawIndexed(_tracingCommandBuffers[currentFrame], _model->idxCnt, 1, 0, 0, 0);
     vkCmdEndRenderPass(_tracingCommandBuffers[currentFrame]);
@@ -328,9 +326,7 @@ void Renderer::drawFrame(size_t currentFrame) {
     vkEndCommandBuffer(_tracingCommandBuffers[currentFrame]);
 }
 
-void Renderer::processInput(double deltaTime) {
-    // _camera->processInput(deltaTime);
-}
+void Renderer::processInput(double deltaTime) { _camera->processInput(deltaTime); }
 
 void Renderer::_recordTracingCommandBuffers() {
     for (auto &commandBuffer : _tracingCommandBuffers) {

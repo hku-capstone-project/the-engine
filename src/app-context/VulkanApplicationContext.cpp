@@ -99,7 +99,6 @@ void VulkanApplicationContext::init(Logger *logger, GLFWwindow *window,
     _createSwapchain(settings->isFramerateLimited);
     _createAllocator();
     _createCommandPool();
-    _createSyncObjects();
 }
 
 void VulkanApplicationContext::onSwapchainResize(bool isFramerateLimited) {

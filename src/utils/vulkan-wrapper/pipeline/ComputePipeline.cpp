@@ -8,15 +8,21 @@
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 
 ComputePipeline::ComputePipeline(VulkanApplicationContext *appContext, Logger *logger,
+                                 std::string fullPathToShaderSourceCode,
                                  WorkGroupSize workGroupSize,
                                  DescriptorSetBundle *descriptorSetBundle,
                                  ShaderCompiler *shaderCompiler)
-    : Pipeline(appContext, logger, descriptorSetBundle, VK_SHADER_STAGE_COMPUTE_BIT),
-      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {}
+    : Pipeline(appContext, logger, fullPathToShaderSourceCode, descriptorSetBundle,
+               VK_SHADER_STAGE_COMPUTE_BIT),
+      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {
+    compileAndCacheShaderModule();
+    build();
+}
 
 ComputePipeline::~ComputePipeline() = default;
 
-void ComputePipeline::compileAndCacheShaderModule(std::string &path) {
+void ComputePipeline::compileAndCacheShaderModule() {
+    auto const path       = _fullPathToShaderSourceCode;
     auto const sourceCode = FileReader::readShaderSourceCode(path, _logger);
     auto const compiledCode =
         _shaderCompiler->compileShaderFromFile(ShaderStage::kCompute, path, sourceCode);
@@ -32,6 +38,10 @@ void ComputePipeline::compileAndCacheShaderModule(std::string &path) {
 
 // the shader module must be cached before this step
 void ComputePipeline::build() {
+    if (_cachedShaderModule == VK_NULL_HANDLE) {
+        throw std::runtime_error("Shader module is not cached!");
+    }
+
     _cleanupPipelineAndLayout();
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};

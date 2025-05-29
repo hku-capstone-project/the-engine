@@ -35,8 +35,9 @@ Application::Application(Logger *logger) : _logger(logger) {
 
     _fpsSink = std::make_unique<FpsSink>();
 
-    _renderer = std::make_unique<Renderer>(_appContext.get(), _logger, _shaderCompiler.get(),
-                                           _window.get(), _configContainer.get());
+    _renderer = std::make_unique<Renderer>(
+        _appContext.get(), _logger, _configContainer->applicationInfo->framesInFlight,
+        _shaderCompiler.get(), _window.get(), _configContainer.get());
 
     _init();
 

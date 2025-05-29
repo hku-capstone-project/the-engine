@@ -1,13 +1,12 @@
 #pragma once
 #define VK_NO_PROTOTYPES
 
+#include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 #include "vma/vk_mem_alloc.h"
 #include "volk.h"
+
 #include <memory>
 #include <vector>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 
 class VulkanApplicationContext;
 class Logger;
@@ -19,28 +18,12 @@ class Image;
 class ImageForwardingPair;
 class BufferBundle;
 class DescriptorSetBundle;
-
-class Camera {
-public:
-    Camera() {
-        position = glm::vec3(0.0f, 0.0f, 5.0f);
-        front = glm::vec3(0.0f, 0.0f, -1.0f);
-        up = glm::vec3(0.0f, 1.0f, 0.0f);
-    }
-
-    glm::mat4 getViewMatrix() {
-        return glm::lookAt(position, position + front, up);
-    }
-
-    glm::vec3 position;
-    glm::vec3 front;
-    glm::vec3 up;
-};
+class Camera;
 
 class Renderer {
   public:
-    Renderer(VulkanApplicationContext *appContext, Logger *logger, ShaderCompiler *shaderCompiler,
-             Window *window, ConfigContainer *configContainer);
+    Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
+             ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer);
     ~Renderer();
 
     // disable move and copy
@@ -66,6 +49,8 @@ class Renderer {
     Logger *_logger;
     ShaderCompiler *_shaderCompiler;
     Window *_window;
+    std::unique_ptr<Camera> _camera;
+
     ConfigContainer *_configContainer;
     std::unique_ptr<GfxPipeline> _pipeline = nullptr;
 
@@ -94,9 +79,9 @@ class Renderer {
         VmaAllocation allocation;
     } colorResources;
 
-    Camera _camera;
-    MVP _mvp;
-    float _rotation = 0.0f;
+    size_t _framesInFlight = 0;
+
+    std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
 
     void _recordDeliveryCommandBuffers();
     void _recordTracingCommandBuffers();
@@ -104,4 +89,6 @@ class Renderer {
     void _createFrameBuffers();
     void _createDepthStencil();
     void _createColorResources();
+
+    void _createDescriptorSetBundle();
 };

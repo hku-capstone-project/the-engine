@@ -124,7 +124,6 @@ class VulkanApplicationContext {
     void _createSwapchain(bool isFramerateLimited);
     void _createAllocator();
     void _createCommandPool();
-    void _createSyncObjects();
 
     static std::vector<const char *> _getRequiredInstanceExtensions();
     void _checkDeviceSuitable(VkSurfaceKHR surface, VkPhysicalDevice physicalDevice);

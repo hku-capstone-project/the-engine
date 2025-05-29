@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Pipeline.hpp"
-#include "glm/glm.hpp"
+#include "utils/incl/GlmIncl.hpp" // IWYU pragma: export
 #include "vma/vk_mem_alloc.h"
 
 #include <memory>
@@ -13,7 +13,10 @@ class Buffer;
 // GFX shaders should be placed in a folder and name as vert.glsl & frag.glsl
 class GfxPipeline : public Pipeline {
   public:
-    GfxPipeline(VulkanApplicationContext *appContext, Logger *logger, glm::vec3 workGroupSize, Image* baseColor, ShaderCompiler *shaderCompiler, VkRenderPass renderPass);
+    GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
+                std::string fullPathToShaderSourceCode, DescriptorSetBundle *descriptorSetBundle,
+                glm::vec3 workGroupSize, Image *baseColor, ShaderCompiler *shaderCompiler,
+                VkRenderPass renderPass);
 
     ~GfxPipeline() override;
 
@@ -23,15 +26,13 @@ class GfxPipeline : public Pipeline {
     GfxPipeline &operator=(GfxPipeline &&)      = delete;
 
     void build() override;
-    void compileAndCacheShaderModule(std::string &path) override;
+    void compileAndCacheShaderModule() override;
 
     void recordCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame, uint32_t threadCountX,
                        uint32_t threadCountY, uint32_t threadCountZ);
 
     void recordIndirectCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame,
                                VkBuffer indirectBuffer);
-
-    void updateMVP();
 
   private:
     VkShaderModule _vertShaderModule = VK_NULL_HANDLE;
