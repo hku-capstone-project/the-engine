@@ -72,7 +72,7 @@ void ComputePipeline::build() {
 void ComputePipeline::recordCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame,
                                     uint32_t threadCountX, uint32_t threadCountY,
                                     uint32_t threadCountZ) {
-    _bind(commandBuffer, currentFrame);
+    recordBind(commandBuffer, currentFrame);
     vkCmdDispatch(commandBuffer,
                   static_cast<uint32_t>(std::ceil((float)threadCountX / (float)_workGroupSize.x)),
                   static_cast<uint32_t>(std::ceil((float)threadCountY / (float)_workGroupSize.y)),
@@ -81,7 +81,7 @@ void ComputePipeline::recordCommand(VkCommandBuffer commandBuffer, uint32_t curr
 
 void ComputePipeline::recordIndirectCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame,
                                             VkBuffer indirectBuffer) {
-    _bind(commandBuffer, currentFrame);
+    recordBind(commandBuffer, currentFrame);
     vkCmdDispatchIndirect(commandBuffer, indirectBuffer, 0);
 }
 

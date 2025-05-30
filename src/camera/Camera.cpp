@@ -2,15 +2,15 @@
 
 #include "config-container/ConfigContainer.hpp"
 #include "config-container/sub-config/CameraInfo.hpp"
+#include "utils/logger/Logger.hpp"
 #include "window/KeyboardInfo.hpp"
-
 
 glm::vec3 constexpr kWorldUp = {0.F, 1.F, 0.F};
 
 #define GLFW_THUMB_KEY GLFW_KEY_LEFT_CONTROL
 
-Camera::Camera(Window *window, ConfigContainer *configContainer)
-    : _window(window), _configContainer(configContainer) {
+Camera::Camera(Window *window, Logger *logger, ConfigContainer *configContainer)
+    : _window(window), _logger(logger), _configContainer(configContainer) {
     auto const &h = _configContainer->cameraInfo->initHeight;
     _position     = glm::vec3(0.0F, h, 0.0F);
     _yaw          = _configContainer->cameraInfo->initYaw;
@@ -37,7 +37,10 @@ glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float zNear, float zFar
 
 float Camera::getVFov() const { return _configContainer->cameraInfo->vFov; }
 
-void Camera::processInput(double deltaTime) { processKeyboard(deltaTime); }
+void Camera::processInput(double deltaTime) {
+    _printInfo();
+    processKeyboard(deltaTime);
+}
 
 void Camera::processKeyboard(double deltaTime) {
     if (!canMove()) {
@@ -108,4 +111,12 @@ void Camera::_updateCameraVectors() {
     _right = glm::normalize(glm::cross(_front, kWorldUp));
     // more you look up or down which results in slower movement.
     _up = glm::cross(_right, _front);
+}
+
+void Camera::_printInfo() {
+    _logger->info("Camera position: ({}, {}, {})", _position.x, _position.y, _position.z);
+    _logger->info("Camera front: ({}, {}, {})", _front.x, _front.y, _front.z);
+    _logger->info("Camera up: ({}, {}, {})", _up.x, _up.y, _up.z);
+    _logger->info("Camera right: ({}, {}, {})", _right.x, _right.y, _right.z);
+    _logger->info("Camera yaw: {}, pitch: {}", _yaw, _pitch);
 }

@@ -154,7 +154,7 @@ void Application::_mainLoop() {
 
         _fpsSink->addRecord(1.0F / deltaTimeInSec);
         _imguiManager->draw(_fpsSink.get());
-        // _renderer->processInput(deltaTimeInSec);
+        _renderer->processInput(deltaTimeInSec);
 
         _drawFrame();
     }

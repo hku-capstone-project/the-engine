@@ -42,6 +42,8 @@ class Pipeline {
         return _pipelineLayout;
     }
 
+    void recordBind(VkCommandBuffer commandBuffer, size_t currentFrame);
+
   protected:
     VulkanApplicationContext *_appContext;
     Logger *_logger;
@@ -59,5 +61,4 @@ class Pipeline {
     void _doCleanupShaderModules();
 
     VkShaderModule _createShaderModule(const std::vector<uint32_t> &code);
-    void _bind(VkCommandBuffer commandBuffer, size_t currentFrame);
 };

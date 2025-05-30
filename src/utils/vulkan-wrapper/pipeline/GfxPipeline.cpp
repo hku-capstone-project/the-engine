@@ -18,18 +18,15 @@ GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
     build();
 }
 
-GfxPipeline::~GfxPipeline() {
-    vkDestroyPipeline(_appContext->getDevice(), _pipeline, nullptr);
-    vkDestroyPipelineLayout(_appContext->getDevice(), _pipelineLayout, nullptr);
-}
+GfxPipeline::~GfxPipeline() = default;
 
 void GfxPipeline::compileAndCacheShaderModule() {
     auto const path           = _fullPathToShaderSourceCode;
-    auto const sourceVertCode = FileReader::readShaderSourceCode(path + "/vert.glsl", _logger);
+    auto const sourceVertCode = FileReader::readShaderSourceCode(path + ".vert", _logger);
     auto const compiledVertCode =
         _shaderCompiler->compileShaderFromFile(ShaderStage::kVert, path, sourceVertCode);
 
-    auto const sourceFragCode = FileReader::readShaderSourceCode(path + "/frag.glsl", _logger);
+    auto const sourceFragCode = FileReader::readShaderSourceCode(path + ".frag", _logger);
     auto const compiledFragCode =
         _shaderCompiler->compileShaderFromFile(ShaderStage::kFrag, path, sourceFragCode);
 
@@ -194,4 +191,10 @@ void GfxPipeline::_cleanupShaderModules() {
         vkDestroyShaderModule(_appContext->getDevice(), _fragShaderModule, nullptr);
         _fragShaderModule = VK_NULL_HANDLE;
     }
+}
+
+void GfxPipeline::recordDrawIndexed(VkCommandBuffer commandBuffer, size_t currentFrame) {
+    recordBind(commandBuffer, currentFrame);
+    // TODO:
+    // vkCmdDrawIndexed(commandBuffer, _appContext->getModel()->idxCnt, 1, 0, 0, 0);
 }

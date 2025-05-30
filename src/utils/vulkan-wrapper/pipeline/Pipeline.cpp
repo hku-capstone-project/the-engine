@@ -7,8 +7,7 @@
 #include <vector>
 
 static const std::map<VkShaderStageFlags, VkPipelineBindPoint> kShaderStageFlagsToBindPoint{
-    {VK_SHADER_STAGE_VERTEX_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
-    {VK_SHADER_STAGE_FRAGMENT_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
+    {VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
     {VK_SHADER_STAGE_COMPUTE_BIT, VK_PIPELINE_BIND_POINT_COMPUTE}};
 
 Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger,
@@ -52,9 +51,9 @@ VkShaderModule Pipeline::_createShaderModule(const std::vector<uint32_t> &code) 
     return shaderModule;
 }
 
-void Pipeline::_bind(VkCommandBuffer commandBuffer, size_t currentFrame) {
+void Pipeline::recordBind(VkCommandBuffer commandBuffer, size_t currentFrame) {
     vkCmdBindDescriptorSets(commandBuffer, kShaderStageFlagsToBindPoint.at(_shaderStageFlags),
                             _pipelineLayout, 0, 1,
                             &_descriptorSetBundle->getDescriptorSet(currentFrame), 0, nullptr);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, _pipeline);
+    vkCmdBindPipeline(commandBuffer, kShaderStageFlagsToBindPoint.at(_shaderStageFlags), _pipeline);
 }

@@ -22,6 +22,8 @@ class GfxPipeline : public Pipeline {
 
     void build() override;
     void compileAndCacheShaderModule() override;
+    
+    void recordDrawIndexed(VkCommandBuffer commandBuffer, size_t currentFrame);
 
   private:
     ShaderCompiler *_shaderCompiler;

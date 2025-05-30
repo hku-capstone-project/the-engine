@@ -18,7 +18,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
     : _appContext(appContext), _logger(logger), _framesInFlight(framesInFlight),
       _shaderCompiler(shaderCompiler), _window(window), _configContainer(configContainer) {
-    _camera = std::make_unique<Camera>(_window, configContainer);
+    _camera = std::make_unique<Camera>(_window, logger, configContainer);
 
     int width  = 0;
     int height = 0;
@@ -49,11 +49,15 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
     _createFrameBuffers();
     _recordTracingCommandBuffers();
     _recordDeliveryCommandBuffers();
+
+    // attach camera's mouse handler to the window mouse callback
+    _window->addCursorMoveCallback(
+        [this](CursorMoveInfo const &mouseInfo) { _camera->handleMouseMovement(mouseInfo); });
 }
 
 void Renderer::_createBuffersAndBufferBundles() {
     _renderInfoBufferBundle = std::make_unique<BufferBundle>(
-        _appContext, _framesInFlight, sizeof(G_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         MemoryStyle::kHostVisible);
 }
 
@@ -141,7 +145,7 @@ void Renderer::_createRenderPass() {
 
 void Renderer::_createGraphicsPipeline() {
     _pipeline = std::make_unique<GfxPipeline>(
-        _appContext, _logger, kPathToResourceFolder + "shaders", _descriptorSetBundle.get(),
+        _appContext, _logger, kPathToResourceFolder + "shaders/default", _descriptorSetBundle.get(),
         _images.baseColor.get(), _shaderCompiler, _renderPass);
 }
 
@@ -205,7 +209,26 @@ void Renderer::onSwapchainResize() {
     // TODO:
 }
 
+void Renderer::_updateUboData(size_t currentFrame) {
+    auto view = _camera->getViewMatrix();
+
+    auto swapchainExtent = _appContext->getSwapchainExtent();
+    auto proj            = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
+                                                        static_cast<float>(swapchainExtent.height));
+
+    auto model = glm::mat4(1.0f);
+
+    S_RenderInfo renderInfo{};
+    renderInfo.view  = view;
+    renderInfo.proj  = proj;
+    renderInfo.model = model;
+
+    _renderInfoBufferBundle->getBuffer(currentFrame)->fillData(&renderInfo);
+}
+
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
+    _updateUboData(currentFrame);
+
     ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
 
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
@@ -227,36 +250,33 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
 
     rdrPassBeginInfo.framebuffer = _frameBuffers[imageIndex];
 
-    vkBeginCommandBuffer(_tracingCommandBuffers[currentFrame], &cmdBufferBeginInfo);
-    vkCmdBeginRenderPass(_tracingCommandBuffers[currentFrame], &rdrPassBeginInfo,
-                         VK_SUBPASS_CONTENTS_INLINE);
+    auto &cmdBuffer = _tracingCommandBuffers[currentFrame];
+
+    vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
+    vkCmdBeginRenderPass(cmdBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(_tracingCommandBuffers[currentFrame], 0, 1,
-                           &_model->vertexBuffer->getVkBuffer(), offsets);
-    vkCmdBindIndexBuffer(_tracingCommandBuffers[currentFrame], _model->indexBuffer->getVkBuffer(),
-                         0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_model->vertexBuffer->getVkBuffer(), offsets);
+    vkCmdBindIndexBuffer(cmdBuffer, _model->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
     VkViewport viewport{};
     viewport.width    = imgDimensions.width;
     viewport.height   = imgDimensions.height;
     viewport.maxDepth = 1.0f;
     viewport.minDepth = 0.0f;
-    vkCmdSetViewport(_tracingCommandBuffers[currentFrame], 0, 1, &viewport);
+    vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.extent = {imgDimensions.width, imgDimensions.height};
     scissor.offset = {0, 0};
-    vkCmdSetScissor(_tracingCommandBuffers[currentFrame], 0, 1, &scissor);
+    vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
-    vkCmdBindPipeline(_tracingCommandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      _pipeline->getPipeline());
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
-    // 更新MVP矩阵
-    // _pipeline->updateMVP(_mvp);
-
-    vkCmdDrawIndexed(_tracingCommandBuffers[currentFrame], _model->idxCnt, 1, 0, 0, 0);
-    vkCmdEndRenderPass(_tracingCommandBuffers[currentFrame]);
+    // TODO:
+    _pipeline->recordDrawIndexed(cmdBuffer, currentFrame);
+    vkCmdDrawIndexed(cmdBuffer, _model->idxCnt, 1, 0, 0, 0);
+    vkCmdEndRenderPass(cmdBuffer);
 
     // 添加渲染完成后的图像布局转换
     VkImageMemoryBarrier barrier{};
@@ -274,11 +294,11 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     barrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstAccessMask                   = 0;
 
-    vkCmdPipelineBarrier(
-        _tracingCommandBuffers[currentFrame], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &barrier);
 
-    vkEndCommandBuffer(_tracingCommandBuffers[currentFrame]);
+    vkEndCommandBuffer(cmdBuffer);
 }
 
 void Renderer::processInput(double deltaTime) { _camera->processInput(deltaTime); }

@@ -79,6 +79,7 @@ class Renderer {
     // buffers
     std::unique_ptr<BufferBundle> _renderInfoBufferBundle;
     void _createBuffersAndBufferBundles();
+    void _updateUboData(size_t currentFrame);
 
     // descriptor set
     std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
