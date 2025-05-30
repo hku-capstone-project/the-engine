@@ -15,7 +15,8 @@ class DescriptorSetBundle;
 class Pipeline {
   public:
     Pipeline(VulkanApplicationContext *appContext, Logger *logger,
-             DescriptorSetBundle *descriptorSetBundle, VkShaderStageFlags shaderStageFlags);
+             std::string fullPathToShaderSourceCode, DescriptorSetBundle *descriptorSetBundle,
+             VkShaderStageFlags shaderStageFlags);
     virtual ~Pipeline();
 
     // disable copy and move
@@ -25,30 +26,32 @@ class Pipeline {
     Pipeline &operator=(Pipeline &&)      = delete;
 
     virtual void build() = 0;
-    void init(std::string &path);
 
     // build the shader module and cache it
     // returns of the shader has been compiled and cached correctly
-    virtual void compileAndCacheShaderModule(std::string &path) = 0;
+    virtual void compileAndCacheShaderModule() = 0;
 
     void updateDescriptorSetBundle(DescriptorSetBundle *descriptorSetBundle);
+
+    [[nodiscard]] std::string getFullPathToShaderSourceCode() const {
+        return _fullPathToShaderSourceCode;
+    }
 
     [[nodiscard]] const inline VkPipeline &getPipeline() const { return _pipeline; }
     [[nodiscard]] const inline VkPipelineLayout &getPipelineLayout() const {
         return _pipelineLayout;
     }
 
+    void recordBind(VkCommandBuffer commandBuffer, size_t currentFrame);
+
   protected:
     VulkanApplicationContext *_appContext;
     Logger *_logger;
 
-    DescriptorSetBundle *_descriptorSetBundle;
-
-    std::vector<BufferBundle *> _uniformBufferBundles; // buffer bundles for uniform data
-    std::vector<BufferBundle *> _storageBufferBundles; // buffer bundles for storage data
-    std::vector<Image *> _storageImages;               // images for storage data
-
     VkShaderStageFlags _shaderStageFlags;
+
+    DescriptorSetBundle *_descriptorSetBundle;
+    std::string _fullPathToShaderSourceCode;
 
     VkPipeline _pipeline             = VK_NULL_HANDLE;
     VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
@@ -58,5 +61,4 @@ class Pipeline {
     void _doCleanupShaderModules();
 
     VkShaderModule _createShaderModule(const std::vector<uint32_t> &code);
-    void _bind(VkCommandBuffer commandBuffer, size_t currentFrame);
 };

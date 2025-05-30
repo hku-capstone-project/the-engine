@@ -4,8 +4,6 @@ add_library(src-config-container STATIC
         sub-config/DebugInfo.cpp
         sub-config/ImguiManagerInfo.cpp
         sub-config/RendererInfo.cpp
-        sub-config/TerrainInfo.cpp
-        sub-config/TracingInfo.cpp
         ConfigContainer.cpp
 )
 

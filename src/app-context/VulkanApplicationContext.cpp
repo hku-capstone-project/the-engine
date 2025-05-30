@@ -156,17 +156,12 @@ void VulkanApplicationContext::_createAllocator() {
 // create a command pool for rendering commands and a command pool for gui
 // commands (imgui)
 void VulkanApplicationContext::_createCommandPool() {
-    VkCommandPoolCreateInfo commandPoolCreateInfo1{};
-    commandPoolCreateInfo1.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    commandPoolCreateInfo1.queueFamilyIndex = _queueFamilyIndices.graphicsFamily;
-
-    vkCreateCommandPool(_device, &commandPoolCreateInfo1, nullptr, &_commandPool);
-
-    VkCommandPoolCreateInfo commandPoolCreateInfo2{};
-    commandPoolCreateInfo2.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    commandPoolCreateInfo2.queueFamilyIndex = _queueFamilyIndices.graphicsFamily;
+    VkCommandPoolCreateInfo commandPoolCreateInfo{};
+    commandPoolCreateInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    commandPoolCreateInfo.queueFamilyIndex = _queueFamilyIndices.graphicsFamily;
     // this flag allows the use of vkResetCommandBuffer
-    commandPoolCreateInfo2.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-    vkCreateCommandPool(_device, &commandPoolCreateInfo2, nullptr, &_guiCommandPool);
+    vkCreateCommandPool(_device, &commandPoolCreateInfo, nullptr, &_commandPool);
+    vkCreateCommandPool(_device, &commandPoolCreateInfo, nullptr, &_guiCommandPool);
 }

@@ -31,8 +31,6 @@ struct ConfigContainer {
     std::unique_ptr<DebugInfo> debugInfo               = nullptr;
     std::unique_ptr<ImguiManagerInfo> imguiManagerInfo = nullptr;
     std::unique_ptr<RendererInfo> RendererInfo         = nullptr;
-    std::unique_ptr<TerrainInfo> terrainInfo           = nullptr;
-    std::unique_ptr<TracingInfo> tracingInfo           = nullptr;
 
   private:
     Logger *_logger;

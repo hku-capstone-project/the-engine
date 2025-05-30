@@ -35,8 +35,9 @@ Application::Application(Logger *logger) : _logger(logger) {
 
     _fpsSink = std::make_unique<FpsSink>();
 
-    _renderer = std::make_unique<Renderer>(_appContext.get(), _logger, _shaderCompiler.get(),
-                                           _window.get(), _configContainer.get());
+    _renderer = std::make_unique<Renderer>(
+        _appContext.get(), _logger, _configContainer->applicationInfo->framesInFlight,
+        _shaderCompiler.get(), _window.get(), _configContainer.get());
 
     _init();
 
@@ -153,7 +154,7 @@ void Application::_mainLoop() {
 
         _fpsSink->addRecord(1.0F / deltaTimeInSec);
         _imguiManager->draw(_fpsSink.get());
-        // _renderer->processInput(deltaTimeInSec);
+        _renderer->processInput(deltaTimeInSec);
 
         _drawFrame();
     }
@@ -192,11 +193,11 @@ void Application::_drawFrame() {
         _logger->error("resizing is not allowed!");
     }
 
-    // _renderer->drawFrame(currentFrame);
+    _renderer->drawFrame(currentFrame, imageIndex);
 
     _imguiManager->recordCommandBuffer(currentFrame, imageIndex);
     std::vector<VkCommandBuffer> submitCommandBuffers = {
-        // _renderer->getTracingCommandBuffer(currentFrame),
+        _renderer->getTracingCommandBuffer(currentFrame),
         _renderer->getDeliveryCommandBuffer(imageIndex),
         _imguiManager->getCommandBuffer(currentFrame),
     };

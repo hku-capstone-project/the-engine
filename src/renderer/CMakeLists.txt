@@ -1,5 +1,5 @@
 add_library(src-renderer STATIC
-        Renderer.cpp
+    Renderer.cpp
 )
 
 target_include_directories(src-renderer PRIVATE
@@ -9,4 +9,5 @@ target_include_directories(src-renderer PRIVATE
 )
 
 target_link_libraries(src-renderer PRIVATE
+    src-camera
 )

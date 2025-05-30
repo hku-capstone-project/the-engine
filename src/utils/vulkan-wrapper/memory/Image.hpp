@@ -2,16 +2,13 @@
 
 #include "volk.h"
 
-#ifdef _WIN32
 #include "vma/vk_mem_alloc.h" // NO_G3_REWRITE
-#else
-#include "vk_mem_alloc.h" // NO_G3_REWRITE
-#endif
 
 #include <string>
 #include <vector>
 
 class Logger;
+class VulkanApplicationContext;
 
 struct ImageDimensions {
     uint32_t width;
@@ -30,7 +27,6 @@ struct ImageDimensions {
     }
 };
 
-class VulkanApplicationContext;
 // the wrapper class of VkImage and its corresponding VkImageView, handles
 // memory allocation
 class Image {
@@ -80,6 +76,9 @@ class Image {
     static VkImageView createImageView(VkDevice device, const VkImage &image, VkFormat format,
                                        VkImageAspectFlags aspectFlags, uint32_t imageDepth = 1,
                                        uint32_t layerCount = 1);
+
+    VkImage getVkImage() const { return _vkImage; }
+    VkImageView getVkImageView() const { return _vkImageView; }
 
   private:
     VulkanApplicationContext *_appContext;
