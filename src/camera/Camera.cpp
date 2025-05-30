@@ -89,7 +89,7 @@ void Camera::handleMouseMovement(CursorMoveInfo const &mouseInfo) {
     mouseDy *= _configContainer->cameraInfo->mouseSensitivity;
 
     _yaw += mouseDx;
-    _pitch += mouseDy;
+    _pitch -= mouseDy;
 
     constexpr float cameraLim = 89.9F;
     // make sure that when mPitch is out of bounds, screen doesn't get flipped

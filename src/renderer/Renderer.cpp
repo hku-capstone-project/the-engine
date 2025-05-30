@@ -12,6 +12,7 @@
 #include "utils/vulkan-wrapper/memory/Image.hpp"
 #include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
+#include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 #include "window/Window.hpp"
 
 Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
@@ -32,12 +33,20 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    _model            = std::make_unique<Model>(_appContext, _logger,
-                                                kPathToResourceFolder + "models/sci_sword/sword.gltf");
-    _images.baseColor = std::make_unique<Image>(
+    _model = std::make_unique<Model>(_appContext, _logger,
+                                     kPathToResourceFolder + "models/sci_sword/sword.gltf");
+
+    auto samplerSettings = Sampler::Settings{
+        Sampler::AddressMode::kClampToEdge, // U
+        Sampler::AddressMode::kClampToEdge, // V
+        Sampler::AddressMode::kClampToEdge  // W
+    };
+
+    _images.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
+    _images.baseColor     = std::make_unique<Image>(
         _appContext, _logger,
         kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, _images.sharedSampler->getVkSampler());
 
     _createBuffersAndBufferBundles();
     _createDescriptorSetBundle();
@@ -65,6 +74,7 @@ void Renderer::_createDescriptorSetBundle() {
     _descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
         _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundle.get());
+    _descriptorSetBundle->bindImageSampler(1, _images.baseColor.get());
     _descriptorSetBundle->create();
 }
 
@@ -146,7 +156,7 @@ void Renderer::_createRenderPass() {
 void Renderer::_createGraphicsPipeline() {
     _pipeline = std::make_unique<GfxPipeline>(
         _appContext, _logger, kPathToResourceFolder + "shaders/default", _descriptorSetBundle.get(),
-        _images.baseColor.get(), _shaderCompiler, _renderPass);
+        _shaderCompiler, _renderPass);
 }
 
 void Renderer::_createDepthStencil() {
@@ -229,7 +239,10 @@ void Renderer::_updateUboData(size_t currentFrame) {
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     _updateUboData(currentFrame);
 
-    ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
+    auto &cmdBuffer = _tracingCommandBuffers[currentFrame];
+
+    // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
+    VkExtent2D currentSwapchainExtent = _appContext->getSwapchainExtent();
 
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
     cmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -250,8 +263,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
 
     rdrPassBeginInfo.framebuffer = _frameBuffers[imageIndex];
 
-    auto &cmdBuffer = _tracingCommandBuffers[currentFrame];
-
     vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
     vkCmdBeginRenderPass(cmdBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -260,15 +271,17 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     vkCmdBindIndexBuffer(cmdBuffer, _model->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
     VkViewport viewport{};
-    viewport.width    = imgDimensions.width;
-    viewport.height   = imgDimensions.height;
-    viewport.maxDepth = 1.0f;
+    viewport.x        = 0.0f;
+    viewport.y        = 0.0f;
+    viewport.width    = static_cast<float>(currentSwapchainExtent.width);
+    viewport.height   = static_cast<float>(currentSwapchainExtent.height);
     viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
     vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
-    scissor.extent = {imgDimensions.width, imgDimensions.height};
     scissor.offset = {0, 0};
+    scissor.extent = currentSwapchainExtent;
     vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());

@@ -9,8 +9,8 @@
 
 GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
                          std::string fullPathToShaderSourceCode,
-                         DescriptorSetBundle *descriptorSetBundle, Image *baseColor,
-                         ShaderCompiler *shaderCompiler, VkRenderPass renderPass)
+                         DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler,
+                         VkRenderPass renderPass)
     : Pipeline(appContext, logger, fullPathToShaderSourceCode, descriptorSetBundle,
                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT),
       _shaderCompiler(shaderCompiler), _renderPass(renderPass) {
@@ -102,7 +102,7 @@ void GfxPipeline::build() {
     rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth               = 1.0f;
     rasterizer.cullMode                = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.frontFace               = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable         = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -140,9 +140,13 @@ void GfxPipeline::build() {
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    std::vector<VkDynamicState> dynamicStatesArray = {VK_DYNAMIC_STATE_VIEWPORT,
+                                                      VK_DYNAMIC_STATE_SCISSOR};
+
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = 0;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStatesArray.size());
+    dynamicState.pDynamicStates    = dynamicStatesArray.data();
 
     if (!_descriptorSetBundle || _descriptorSetBundle->getDescriptorSetLayout() == VK_NULL_HANDLE) {
         throw std::runtime_error("Descriptor set layout is not created!");

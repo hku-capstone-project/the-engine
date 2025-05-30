@@ -19,6 +19,7 @@ class ImageForwardingPair;
 class BufferBundle;
 class DescriptorSetBundle;
 class Camera;
+class Sampler;
 
 class Renderer {
   public:
@@ -59,6 +60,7 @@ class Renderer {
 
     std::unique_ptr<Model> _model = nullptr;
     struct {
+        std::unique_ptr<Sampler> sharedSampler;
         std::unique_ptr<Image> baseColor;
         std::unique_ptr<Image> normalMap;
         std::unique_ptr<Image> metalRoughness;

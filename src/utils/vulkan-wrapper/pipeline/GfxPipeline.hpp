@@ -11,7 +11,7 @@ class GfxPipeline : public Pipeline {
   public:
     GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
                 std::string fullPathToShaderSourceCode, DescriptorSetBundle *descriptorSetBundle,
-                Image *baseColor, ShaderCompiler *shaderCompiler, VkRenderPass renderPass);
+                ShaderCompiler *shaderCompiler, VkRenderPass renderPass);
 
     ~GfxPipeline() override;
 
@@ -22,7 +22,7 @@ class GfxPipeline : public Pipeline {
 
     void build() override;
     void compileAndCacheShaderModule() override;
-    
+
     void recordDrawIndexed(VkCommandBuffer commandBuffer, size_t currentFrame);
 
   private:
