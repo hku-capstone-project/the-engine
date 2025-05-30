@@ -38,7 +38,7 @@ glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float zNear, float zFar
 float Camera::getVFov() const { return _configContainer->cameraInfo->vFov; }
 
 void Camera::processInput(double deltaTime) {
-    _printInfo();
+    // _printInfo();
     processKeyboard(deltaTime);
 }
 

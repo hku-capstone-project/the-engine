@@ -35,7 +35,8 @@ void main() {
     // gl_Position = uboMVP.mvp * vec4(inPos, 1.0);
 
     // Using separate model, view, proj matrices:
-    gl_Position = renderInfo.data.proj * renderInfo.data.view * renderInfo.data.model * vec4(inPos, 1.0);
+    gl_Position =
+        renderInfo.data.proj * renderInfo.data.view * renderInfo.data.model * vec4(inPos, 1.0);
 
     // gl_Position = vec4(inPos, 1.0);
 
