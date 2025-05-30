@@ -32,7 +32,7 @@ class Renderer {
     Renderer(Renderer &&)                 = delete;
     Renderer &operator=(Renderer &&)      = delete;
 
-    void drawFrame(size_t currentFrame);
+    void drawFrame(size_t currentFrame, size_t imageIndex);
     void processInput(double deltaTime);
 
     void onSwapchainResize();

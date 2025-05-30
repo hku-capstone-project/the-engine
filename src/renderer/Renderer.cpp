@@ -205,7 +205,7 @@ void Renderer::onSwapchainResize() {
     // TODO:
 }
 
-void Renderer::drawFrame(size_t currentFrame) {
+void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
 
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
@@ -225,7 +225,8 @@ void Renderer::drawFrame(size_t currentFrame) {
     rdrPassBeginInfo.clearValueCount   = clear_vals.size();
     rdrPassBeginInfo.pClearValues      = clear_vals.data();
 
-    rdrPassBeginInfo.framebuffer = _frameBuffers[currentFrame];
+    rdrPassBeginInfo.framebuffer = _frameBuffers[imageIndex];
+
     vkBeginCommandBuffer(_tracingCommandBuffers[currentFrame], &cmdBufferBeginInfo);
     vkCmdBeginRenderPass(_tracingCommandBuffers[currentFrame], &rdrPassBeginInfo,
                          VK_SUBPASS_CONTENTS_INLINE);
