@@ -265,7 +265,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     barrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image                           = _appContext->getSwapchainImages()[currentFrame];
+    barrier.image                           = _appContext->getSwapchainImages()[imageIndex];
     barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel   = 0;
     barrier.subresourceRange.levelCount     = 1;
