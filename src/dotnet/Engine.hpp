@@ -33,6 +33,23 @@ class App {
             printf("Entity %d: Velocity(%f, %f, %f)\n", entt::to_integral(e), v.velocity.x,
                    v.velocity.y, v.velocity.z);
         }
+        auto players = registry.view<Player>();
+        for (auto e : players) {
+            auto &p = players.get<Player>(e);
+            printf("Entity %d: Player(isJumping=%d, jumpForce=%f)\n", entt::to_integral(e),
+                   p.isJumping, p.jumpForce);
+        }
+        auto meshes = registry.view<Mesh>();
+        for (auto e : meshes) {
+            auto &m = meshes.get<Mesh>(e);
+            printf("Entity %d: Mesh(modelId=%d)\n", entt::to_integral(e), m.modelId);
+        }
+        auto materials = registry.view<Material>();
+        for (auto e : materials) {
+            auto &m = materials.get<Material>(e);
+            printf("Entity %d: Material(%f, %f, %f)\n", entt::to_integral(e), m.color.x, m.color.y,
+                   m.color.z);
+        }
     }
 
     void run() {
@@ -43,13 +60,13 @@ class App {
         print_reg();
 
         // start measure current time
-        auto start = std::chrono::high_resolution_clock::now();
+        auto start         = std::chrono::high_resolution_clock::now();
         auto lastFrameTime = start;
 
         while (_updateCount++ < 1000) { // just an example limit
             auto currentTime = std::chrono::high_resolution_clock::now();
-            float dt = std::chrono::duration<float>(currentTime - lastFrameTime).count();
-            lastFrameTime = currentTime;
+            float dt         = std::chrono::duration<float>(currentTime - lastFrameTime).count();
+            lastFrameTime    = currentTime;
 
             for (auto &s : updateSystems) s(dt);
 
