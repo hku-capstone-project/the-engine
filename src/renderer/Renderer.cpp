@@ -15,6 +15,9 @@
 #include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 #include "window/Window.hpp"
 
+#include <filesystem>
+
+
 Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
     : _appContext(appContext), _logger(logger), _framesInFlight(framesInFlight),
@@ -37,32 +40,79 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
                                      kPathToResourceFolder + "models/sci_sword/sword.gltf");
 
     auto samplerSettings = Sampler::Settings{
-        Sampler::AddressMode::kClampToEdge, // U
-        Sampler::AddressMode::kClampToEdge, // V
-        Sampler::AddressMode::kClampToEdge  // W
+        Sampler::AddressMode::kClampToEdge,
+        Sampler::AddressMode::kClampToEdge,
+        Sampler::AddressMode::kClampToEdge
     };
 
     _images.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
-    _images.baseColor     = std::make_unique<Image>(
-        _appContext, _logger,
-        kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, _images.sharedSampler->getVkSampler());
+
+    // 默认纹理路径保持通用（可以用配置或参数传入）
+    std::string defaultTexturePath = kPathToResourceFolder + "textures/default_baseColor.png";
+    for (const auto &subModel : _model->getModelAttributes().subModels) {
+        std::string texturePath;
+        if (!subModel.baseColorTexturePath.empty()) {
+            // 直接用 ModelLoader 处理好的路径，拼接通用目录
+            texturePath = kPathToResourceFolder +"models/sci_sword/"+ subModel.baseColorTexturePath;
+
+            // 只检查文件是否存在
+            if (!std::filesystem::exists(texturePath)) {
+                _logger->error("Texture file does not exist: {}. Using default.", texturePath);
+                texturePath = defaultTexturePath;
+            }
+
+            _images.baseColors.emplace_back(std::make_unique<Image>(
+                _appContext, _logger, texturePath,
+                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                _images.sharedSampler->getVkSampler(),
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
+                VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
+            if (_images.baseColors.back()->getVkImage() == VK_NULL_HANDLE) {
+                _logger->error("Failed to load texture: {}. Using default texture.", texturePath);
+                texturePath = defaultTexturePath;
+                _images.baseColors.back() = std::make_unique<Image>(
+                    _appContext, _logger, texturePath,
+                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                    _images.sharedSampler->getVkSampler(),
+                    VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
+                    VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
+                if (_images.baseColors.back()->getVkImage() == VK_NULL_HANDLE) {
+                    _logger->error("Failed to load default texture: {}. Aborting.", texturePath);
+                    exit(1);
+                }
+            } else {
+                _logger->info("Loaded BaseColor Texture: {}", texturePath);
+            }
+        } else {
+            _logger->warn("SubModel missing BaseColor Texture, using default");
+            texturePath = defaultTexturePath;
+            _images.baseColors.emplace_back(std::make_unique<Image>(
+                _appContext, _logger, texturePath,
+                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                _images.sharedSampler->getVkSampler(),
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
+                VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
+            if (_images.baseColors.back()->getVkImage() == VK_NULL_HANDLE) {
+                _logger->error("Failed to load default texture: {}. Aborting.", texturePath);
+                exit(1);
+            }
+        }
+    }
 
     _createBuffersAndBufferBundles();
     _createDescriptorSetBundle();
     _createRenderPass();
     _createGraphicsPipeline();
-
     _createDepthStencil();
     _createColorResources();
     _createFrameBuffers();
     _recordTracingCommandBuffers();
     _recordDeliveryCommandBuffers();
 
-    // attach camera's mouse handler to the window mouse callback
     _window->addCursorMoveCallback(
         [this](CursorMoveInfo const &mouseInfo) { _camera->handleMouseMovement(mouseInfo); });
 }
+
 
 void Renderer::_createBuffersAndBufferBundles() {
     _renderInfoBufferBundle = std::make_unique<BufferBundle>(
@@ -74,13 +124,17 @@ void Renderer::_createDescriptorSetBundle() {
     _descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
         _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundle.get());
-    _descriptorSetBundle->bindImageSampler(1, _images.baseColor.get());
+    
+    // 动态绑定，每个纹理用不同的绑定点，从 binding 1 开始
+    for (size_t i = 0; i < _images.baseColors.size(); ++i) {
+        _descriptorSetBundle->bindImageSampler(1 + i, _images.baseColors[i].get());
+    }
     _descriptorSetBundle->create();
 }
 
+// 以下保持不变
 void Renderer::_createRenderPass() {
     std::array<VkAttachmentDescription, 3> attachments = {};
-    // Color attachment
     attachments[0].format         = VK_FORMAT_B8G8R8A8_UNORM;
     attachments[0].samples        = _appContext->getMsaaSample();
     attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -89,7 +143,6 @@ void Renderer::_createRenderPass() {
     attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[0].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     attachments[0].finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    // Depth attachment
     attachments[1].format         = _appContext->getDepthFormat();
     attachments[1].samples        = _appContext->getMsaaSample();
     attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -98,7 +151,6 @@ void Renderer::_createRenderPass() {
     attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     attachments[1].finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    // Resolve attachment
     attachments[2].format         = VK_FORMAT_B8G8R8A8_UNORM;
     attachments[2].samples        = VK_SAMPLE_COUNT_1_BIT;
     attachments[2].loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -108,7 +160,6 @@ void Renderer::_createRenderPass() {
     attachments[2].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     attachments[2].finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    // Attachment Reference
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -121,7 +172,6 @@ void Renderer::_createRenderPass() {
     colorAttachmentResolveRef.attachment = 2;
     colorAttachmentResolveRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    // SubPass Description
     VkSubpassDescription description{};
     description.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
     description.colorAttachmentCount    = 1;
@@ -129,7 +179,6 @@ void Renderer::_createRenderPass() {
     description.pDepthStencilAttachment = &depthAttachmentRef;
     description.pResolveAttachments     = &colorAttachmentResolveRef;
 
-    // SubPass Dependency
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
@@ -141,7 +190,6 @@ void Renderer::_createRenderPass() {
     dependency.dstAccessMask =
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    // Render Pass
     VkRenderPassCreateInfo createInfo{};
     createInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -160,30 +208,26 @@ void Renderer::_createGraphicsPipeline() {
 }
 
 void Renderer::_createDepthStencil() {
-    // build a small ImageDimensions struct
     ImageDimensions dim{_appContext->getSwapchainExtent().width,
                         _appContext->getSwapchainExtent().height, 1};
 
     _depthStencilImage = std::make_unique<Image>(
         _appContext, _logger, dim, _appContext->getDepthFormat(),
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        /* no sampler needed */ VK_NULL_HANDLE,
-        /* initial layout */ VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
+        VK_NULL_HANDLE,
+        VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
         VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 }
 
 void Renderer::_createColorResources() {
-    // build dimensions
     ImageDimensions dim{_appContext->getSwapchainExtent().width,
                         _appContext->getSwapchainExtent().height, 1};
 
-    // Note: we pass both TRANSIENT_ATTACHMENT_BIT and COLOR_ATTACHMENT_BIT,
-    // no sampler is needed, and we transition straight to COLOR_ATTACHMENT_OPTIMAL:
     _colorResourcesImage = std::make_unique<Image>(
         _appContext, _logger, dim, VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        /* sampler */ VK_NULL_HANDLE,
-        /* initialLayout */ VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
+        VK_NULL_HANDLE,
+        VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
         VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
@@ -240,8 +284,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     _updateUboData(currentFrame);
 
     auto &cmdBuffer = _tracingCommandBuffers[currentFrame];
-
-    // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
     VkExtent2D currentSwapchainExtent = _appContext->getSwapchainExtent();
 
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
@@ -250,7 +292,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     cmdBufferBeginInfo.pInheritanceInfo = nullptr;
 
     std::array<VkClearValue, 2> clear_vals = {};
-    clear_vals[0].color        = {{0.1f, 0.1f, 0.1f, 1.0f}}; // 稍微亮一点的背景色
+    clear_vals[0].color        = {{0.1f, 0.1f, 0.1f, 1.0f}};
     clear_vals[1].depthStencil = {1.0f, 0};
 
     VkRenderPassBeginInfo rdrPassBeginInfo{};
@@ -260,15 +302,39 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     rdrPassBeginInfo.renderArea.extent = _appContext->getSwapchainExtent();
     rdrPassBeginInfo.clearValueCount   = clear_vals.size();
     rdrPassBeginInfo.pClearValues      = clear_vals.data();
-
-    rdrPassBeginInfo.framebuffer = _frameBuffers[imageIndex];
+    rdrPassBeginInfo.framebuffer       = _frameBuffers[imageIndex];
 
     vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
-    vkCmdBeginRenderPass(cmdBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_model->vertexBuffer->getVkBuffer(), offsets);
-    vkCmdBindIndexBuffer(cmdBuffer, _model->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    // 转换所有 baseColor 纹理的布局
+    std::vector<VkImageMemoryBarrier> barriers;
+    for (const auto &baseColor : _images.baseColors) {
+        VkImageMemoryBarrier barrier{};
+        barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image                           = baseColor->getVkImage();
+        barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel   = 0;
+        barrier.subresourceRange.levelCount     = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount     = 1;
+        barrier.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+        barriers.push_back(barrier);
+    }
+
+    if (!barriers.empty()) {
+        vkCmdPipelineBarrier(cmdBuffer,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                             0, 0, nullptr, 0, nullptr,
+                             static_cast<uint32_t>(barriers.size()), barriers.data());
+    }
+
+    vkCmdBeginRenderPass(cmdBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport viewport{};
     viewport.x        = 0.0f;
@@ -286,12 +352,28 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
-    // TODO:
-    _pipeline->recordDrawIndexed(cmdBuffer, currentFrame);
-    vkCmdDrawIndexed(cmdBuffer, _model->idxCnt, 1, 0, 0, 0);
+    // 遍历子模型，绑定对应缓冲区和纹理
+    for (size_t i = 0; i < _model->subModelBuffers.size(); ++i) {
+        const auto &subModel = _model->subModelBuffers[i];
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &subModel.vertexBuffer->getVkBuffer(), offsets);
+        vkCmdBindIndexBuffer(cmdBuffer, subModel.indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+        // 绑定描述符集
+        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                _pipeline->getPipelineLayout(), 0, 1,
+                                &_descriptorSetBundle->getDescriptorSet(currentFrame), 0, nullptr);
+
+        // 推送常量，告诉着色器用哪个纹理索引
+        uint32_t textureIndex = static_cast<uint32_t>(i);
+        vkCmdPushConstants(cmdBuffer, _pipeline->getPipelineLayout(),
+                           VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &textureIndex);
+
+        vkCmdDrawIndexed(cmdBuffer, subModel.idxCnt, 1, 0, 0, 0);
+    }
+
     vkCmdEndRenderPass(cmdBuffer);
 
-    // 添加渲染完成后的图像布局转换
     VkImageMemoryBarrier barrier{};
     barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -313,6 +395,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
 
     vkEndCommandBuffer(cmdBuffer);
 }
+
 
 void Renderer::processInput(double deltaTime) { _camera->processInput(deltaTime); }
 
@@ -349,14 +432,12 @@ void Renderer::_recordDeliveryCommandBuffers() {
 
     vkAllocateCommandBuffers(_appContext->getDevice(), &allocInfo, _deliveryCommandBuffers.data());
 
-    // 记录命令
     for (size_t i = 0; i < _deliveryCommandBuffers.size(); i++) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         vkBeginCommandBuffer(_deliveryCommandBuffers[i], &beginInfo);
 
-        // 转换图像布局
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;

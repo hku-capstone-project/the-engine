@@ -51,9 +51,15 @@ struct Vertex {
     }
 };
 
-struct ModelAttributes {
+// 每个子模型的属性
+struct SubModel {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
+    std::string baseColorTexturePath; // baseColor纹理路径
+};
+
+struct ModelAttributes {
+    std::vector<SubModel> subModels; // 按子模型分组
 };
 
 namespace ModelLoader {

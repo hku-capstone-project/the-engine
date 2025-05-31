@@ -8,9 +8,10 @@
 #include "utils/vulkan-wrapper/memory/Buffer.hpp"
 
 class VulkanApplicationContext;
+class Logger;
 
 class Model {
-  public:
+public:
     Model(VulkanApplicationContext *appContext, Logger *logger, const std::string &filePath);
     ~Model();
 
@@ -26,8 +27,19 @@ class Model {
     std::shared_ptr<Buffer> indexBuffer;
     uint32_t idxCnt;
 
-  private:
-    VulkanApplicationContext *_appContext;
+    // 每个子模型的缓冲区
+    struct SubModelBuffers {
+        std::shared_ptr<Buffer> vertexBuffer;
+        std::shared_ptr<Buffer> indexBuffer;
+        uint32_t vertCnt;
+        uint32_t idxCnt;
+    };
+    std::vector<SubModelBuffers> subModelBuffers; // 存每个子模型的缓冲区
 
+    const ModelAttributes& getModelAttributes() const { return _attributes; }
+
+private:
+    VulkanApplicationContext *_appContext;
     Logger *_logger;
+    ModelAttributes _attributes; // 存储加载的模型数据
 };

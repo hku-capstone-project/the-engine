@@ -1,97 +1,69 @@
 #pragma once
-#define VK_NO_PROTOTYPES
-
-#include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
-#include "vma/vk_mem_alloc.h"
-#include "volk.h"
-
 #include <memory>
 #include <vector>
+
+#include "utils/vulkan-wrapper/memory/Image.hpp"
+#include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 
 class VulkanApplicationContext;
 class Logger;
 class ShaderCompiler;
 class Window;
 class ConfigContainer;
+class Camera;
 class Model;
-class Image;
-class ImageForwardingPair;
 class BufferBundle;
 class DescriptorSetBundle;
-class Camera;
-class Sampler;
+class GfxPipeline;
 
 class Renderer {
-  public:
+public:
     Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
              ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer);
     ~Renderer();
-
-    // disable move and copy
-    Renderer(const Renderer &)            = delete;
-    Renderer &operator=(const Renderer &) = delete;
-    Renderer(Renderer &&)                 = delete;
-    Renderer &operator=(Renderer &&)      = delete;
-
     void drawFrame(size_t currentFrame, size_t imageIndex);
     void processInput(double deltaTime);
-
     void onSwapchainResize();
-    [[nodiscard]] inline VkCommandBuffer getTracingCommandBuffer(size_t currentFrame) {
-        return _tracingCommandBuffers[currentFrame];
-    }
 
-    [[nodiscard]] inline VkCommandBuffer getDeliveryCommandBuffer(size_t imageIndex) {
-        return _deliveryCommandBuffers[imageIndex];
-    }
+    // 访问命令缓冲区
+    VkCommandBuffer getTracingCommandBuffer(size_t frame) const { return _tracingCommandBuffers[frame]; }
+    VkCommandBuffer getDeliveryCommandBuffer(size_t index) const { return _deliveryCommandBuffers[index]; }
 
-  private:
-    VulkanApplicationContext *_appContext;
-    Logger *_logger;
-    ShaderCompiler *_shaderCompiler;
-    Window *_window;
-    std::unique_ptr<Camera> _camera;
-
-    ConfigContainer *_configContainer;
-
-    std::vector<VkCommandBuffer> _deliveryCommandBuffers{};
-    std::vector<VkCommandBuffer> _tracingCommandBuffers{};
-    std::vector<VkFramebuffer> _frameBuffers{};
-
-    std::unique_ptr<Model> _model = nullptr;
-    struct {
+private:
+    struct Images {
         std::unique_ptr<Sampler> sharedSampler;
-        std::unique_ptr<Image> baseColor;
-        std::unique_ptr<Image> normalMap;
-        std::unique_ptr<Image> metalRoughness;
+        std::vector<std::unique_ptr<Image>> baseColors;
     } _images;
 
-    VkRenderPass _renderPass;
+    VulkanApplicationContext *_appContext;
+    Logger *_logger;
+    size_t _framesInFlight;
+    ShaderCompiler *_shaderCompiler;
+    Window *_window;
+    ConfigContainer *_configContainer;
 
-    std::unique_ptr<Image> _renderTargetImage   = nullptr;
-    std::unique_ptr<Image> _depthStencilImage   = nullptr;
-    std::unique_ptr<Image> _colorResourcesImage = nullptr;
-
-    size_t _framesInFlight = 0;
-
-    // pipeline
-    std::unique_ptr<GfxPipeline> _pipeline = nullptr;
-    void _createGraphicsPipeline();
-
-    // buffers
+    std::unique_ptr<Camera> _camera;
+    std::unique_ptr<Image> _renderTargetImage;
+    std::unique_ptr<Model> _model;
     std::unique_ptr<BufferBundle> _renderInfoBufferBundle;
-    void _createBuffersAndBufferBundles();
-    void _updateUboData(size_t currentFrame);
-
-    // descriptor set
     std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
+    std::unique_ptr<GfxPipeline> _pipeline;
+    std::unique_ptr<Image> _depthStencilImage;
+    std::unique_ptr<Image> _colorResourcesImage;
 
-    void _recordDeliveryCommandBuffers();
-    void _recordTracingCommandBuffers();
+    VkRenderPass _renderPass;
+    std::vector<VkFramebuffer> _frameBuffers;
+    std::vector<VkCommandBuffer> _tracingCommandBuffers;
+    std::vector<VkCommandBuffer> _deliveryCommandBuffers;
+
+    void _createBuffersAndBufferBundles();
+    void _createDescriptorSetBundle();
     void _createRenderPass();
-    void _createFrameBuffers();
+    void _createGraphicsPipeline();
     void _createDepthStencil();
     void _createColorResources();
-
-    void _createDescriptorSetBundle();
+    void _createFrameBuffers();
+    void _updateUboData(size_t currentFrame);
+    void _recordTracingCommandBuffers();
+    void _recordDeliveryCommandBuffers();
 };
