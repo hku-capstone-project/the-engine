@@ -13,9 +13,9 @@ namespace Game
     public static class GameSystems
     {
         private static float _jumpTimer = 0;
-        private static float _testTimer = 0;  // 新增：测试计时器
-        private static bool _testPhase1Complete = false;  // 新增：第一阶段完成标志
-        private static bool _testPhase2Complete = false;  // 新增：第二阶段完成标志
+        private static float _testTimer = 0;  // New: Test timer
+        private static bool _testPhase1Complete = false;  // New: Phase 1 completion flag
+        private static bool _testPhase2Complete = false;  // New: Phase 2 completion flag
         private static uint _testEntityWithMesh = 0;
         private static uint _testEntityForDeletion = 0;
         private static StreamWriter _logWriter = null;
@@ -23,12 +23,12 @@ namespace Game
         [StartupSystem]
         public static void CreateTestEntities()
         {
-            // 初始化日志系统
+            // Initialize logging system
             InitializeLogging();
             
-            Log("🚀 === 开始验证新功能 ===");
-            
-            // 创建基础实体：玩家和普通物体
+            Log("🚀 === Starting Feature Validation ===");
+            Log("🎯 Test Point 1: Creating Player and Object entities...");
+            // Create base entities: player and regular object
             uint playerId = EngineBindings.CreateEntity();
             var transform1 = new Transform { position = new Vector3(0, 0, 0) };
             EngineBindings.AddTransform(playerId, transform1);
@@ -43,8 +43,8 @@ namespace Game
             var velocity2 = new Velocity { velocity = new Vector3(0.5f, 0, 0) };
             EngineBindings.AddVelocity(objectId, velocity2);
             
-            // 测试点2: 创建带有Mesh和Material组件的实体
-            Log("🎯 测试点2: 创建带有Mesh和Material组件的实体...");
+            // Test Point 2: Create entity with Mesh and Material components
+            Log("🎯 Test Point 2: Creating entity with Mesh and Material components...");
             _testEntityWithMesh = EngineBindings.CreateEntity();
             
             var transform3 = new Transform { position = new Vector3(5, 0, 5) };
@@ -56,45 +56,45 @@ namespace Game
             var material = new Material { color = new Vector3(1.0f, 0.5f, 0.2f) };
             EngineBindings.AddMaterial(_testEntityWithMesh, material);
             
-            Log($"✅ 创建实体ID: {_testEntityWithMesh}，具有Transform、Mesh和Material组件");
+            Log($"✅ Created entity ID: {_testEntityWithMesh} with Transform, Mesh, and Material components");
             
-            // 创建测试删除的实体
+            // Create test entity for deletion
             _testEntityForDeletion = EngineBindings.CreateEntity();
             var transformForDeletion = new Transform { position = new Vector3(-5, 3, -5) };
             EngineBindings.AddTransform(_testEntityForDeletion, transformForDeletion);
             var velocityForDeletion = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(_testEntityForDeletion, velocityForDeletion);
             
-            Log($"✅ 创建测试删除实体ID: {_testEntityForDeletion}，具有Transform和Velocity组件");
-            Log("💡 预期：0.1秒后删除组件，0.2秒后删除实体");  // 修改提示信息
+            Log($"✅ Created test entity ID: {_testEntityForDeletion} with Transform and Velocity components");
+            Log("💡 Expected: Remove components after 0.1s, delete entity after 0.2s");
         }
 
         private static void InitializeLogging()
         {
             try
             {
-                // 获取项目根目录的绝对路径
+                // Get absolute path of project root directory
                 string projectRoot = Environment.GetEnvironmentVariable("ENGINE_ROOT") ?? 
                                    Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".."));
                 
-                // 在项目根目录下创建logs文件夹
+                // Create logs folder in project root
                 string logsDir = Path.Combine(projectRoot, "logs");
                 Directory.CreateDirectory(logsDir);
 
-                // 创建带时间戳的日志文件
+                // Create timestamped log file
                 string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
                 string logPath = Path.Combine(logsDir, $"game_log_{timestamp}.txt");
                 _logWriter = new StreamWriter(logPath, true);
                 _logWriter.AutoFlush = true;
 
-                Console.WriteLine($"=== 日志系统初始化成功 ===");
-                Console.WriteLine($"日志文件路径: {logPath}");
-                _logWriter.WriteLine($"=== 日志系统初始化成功 ===");
-                _logWriter.WriteLine($"日志文件路径: {logPath}");
+                Console.WriteLine($"=== Logging System Initialized Successfully ===");
+                Console.WriteLine($"Log file path: {logPath}");
+                _logWriter.WriteLine($"=== Logging System Initialized Successfully ===");
+                _logWriter.WriteLine($"Log file path: {logPath}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"日志系统初始化失败: {ex.Message}");
+                Console.WriteLine($"Logging system initialization failed: {ex.Message}");
             }
         }
 
@@ -105,18 +105,18 @@ namespace Game
                 string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
                 string logMessage = $"[{timestamp}] {message}";
                 
-                // 同时输出到控制台和日志文件
+                // Output to both console and log file
                 Console.WriteLine(logMessage);
                 _logWriter?.WriteLine(logMessage);
-                _logWriter?.Flush();  // 确保立即写入文件
+                _logWriter?.Flush();  // Ensure immediate file write
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"日志写入失败: {ex.Message}");
+                Console.WriteLine($"Log write failed: {ex.Message}");
             }
         }
 
-        // 基础物理系统
+        // Basic physics system
         [UpdateSystem]
         [Query(typeof(Transform), typeof(Velocity))]
         public static void PhysicsSystem(float dt, ref Transform transform, ref Velocity velocity)
@@ -125,7 +125,7 @@ namespace Game
             transform.position.Y += velocity.velocity.Y * dt;
             transform.position.Z += velocity.velocity.Z * dt;
             
-            velocity.velocity.Y -= 9.8f * dt;  // 重力
+            velocity.velocity.Y -= 9.8f * dt;  // Gravity
 
             if (transform.position.Y < 0)
             {
@@ -136,13 +136,13 @@ namespace Game
             Log($"PhysicsSystem - Entity - Position: {transform.position.X:F1}, {transform.position.Y:F1}, {transform.position.Z:F1}");
         }
 
-        // 玩家系统
+        // Player system
         [UpdateSystem]
         [Query(typeof(Transform), typeof(Velocity), typeof(Player))]
         public static void PlayerSystem(float dt, ref Transform transform, ref Velocity velocity, ref Player player)
         {
             _jumpTimer += dt;
-            if (_jumpTimer >= 2.0f)
+            if (_jumpTimer >= 0.1f)
             {
                 player.isJumping = true;
                 _jumpTimer = 0;
@@ -157,7 +157,7 @@ namespace Game
             Log($"PlayerSystem - Player Entity - Position: {transform.position.X:F1}, {transform.position.Y:F1}, {transform.position.Z:F1}, Jumping: {player.isJumping}");
         }
 
-        // 验证多组件查询：Mesh + Material
+        // Test multi-component query: Mesh + Material
         [UpdateSystem]
         [Query(typeof(Transform), typeof(Mesh), typeof(Material))]
         public static void RenderSystem(float dt, ref Transform transform, ref Mesh mesh, ref Material material)
@@ -165,43 +165,43 @@ namespace Game
             Log($"🎨 RenderSystem - Entity - Position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2}), " +
                              $"ModelID: {mesh.modelId}, Color: ({material.color.X:F2}, {material.color.Y:F2}, {material.color.Z:F2})");
                              
-            // 简单动画
+            // Simple animation
             transform.position.X += 0.1f * dt;
             material.color.X = 0.5f + 0.5f * MathF.Sin(_testTimer * 0.01f);
         }
 
-        // 删除测试系统 - 使用时间控制
+        // Deletion test system - using time control
         [UpdateSystem]
         [Query(typeof(Transform))]
         public static void DeletionTestSystem(float dt, ref Transform transform)
         {
-            // 只在删除测试实体时执行删除逻辑（通过X和Z坐标识别，Y坐标会因重力变化）
+            // Only execute deletion logic for test entity (identified by X and Z coordinates, Y will change due to gravity)
             if (transform.position.X == -5 && transform.position.Z == -5)
             {
                 _testTimer += dt;
                 
-                // 阶段1: 0.1秒后测试组件删除
+                // Phase 1: Test component deletion after 0.1s
                 if (!_testPhase1Complete && _testTimer >= 0.1f)
                 {
-                    Log("🔥 === 测试点3: 组件删除功能 ===");
-                    Log($"从实体ID {_testEntityForDeletion} 移除Velocity组件...");
+                    Log("🔥 === Test Point 3: Component Deletion Feature ===");
+                    Log($"Removing Velocity component from entity ID {_testEntityForDeletion}...");
                     EngineBindings.RemoveVelocity(_testEntityForDeletion);
-                    Log("✅ Velocity组件已移除。该实体应该不再出现在PhysicsSystem中。");
+                    Log("✅ Velocity component removed. This entity should no longer appear in PhysicsSystem.");
                     
-                    Log($"从实体ID {_testEntityWithMesh} 移除Material组件...");
+                    Log($"Removing Material component from entity ID {_testEntityWithMesh}...");
                     EngineBindings.RemoveMaterial(_testEntityWithMesh);
-                    Log("✅ Material组件已移除。该实体应该不再出现在RenderSystem中。");
+                    Log("✅ Material component removed. This entity should no longer appear in RenderSystem.");
                     
                     _testPhase1Complete = true;
                 }
                 
-                // 阶段2: 0.2秒后测试实体删除
+                // Phase 2: Test entity deletion after 0.2s
                 if (!_testPhase2Complete && _testTimer >= 0.2f)
                 {
-                    Log("💀 === 测试点3: 实体删除功能 ===");
-                    Log($"删除实体ID {_testEntityForDeletion}...");
+                    Log("💀 === Test Point 3: Entity Deletion Feature ===");
+                    Log($"Deleting entity ID {_testEntityForDeletion}...");
                     EngineBindings.DestroyEntity(_testEntityForDeletion);
-                    Log("✅ 实体已删除。该实体应该不再出现在任何系统中。");
+                    Log("✅ Entity deleted. This entity should no longer appear in any system.");
                     
                     _testPhase2Complete = true;
                 }
