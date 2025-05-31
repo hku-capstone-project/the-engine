@@ -137,6 +137,5 @@ class VulkanApplicationContext {
 
     static ContextCreator::SwapchainSupportDetails
     _querySwapchainSupport(VkSurfaceKHR surface, VkPhysicalDevice physicalDevice);
-    VkPhysicalDevice _selectBestDevice(std::vector<VkPhysicalDevice> physicalDevices);
     static VkExtent2D _getSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
 };

@@ -1,18 +1,26 @@
 #include "Renderer.hpp"
+#include "ShaderSharedVariables.hpp"
 #include "app-context/VulkanApplicationContext.hpp"
+#include "camera/Camera.hpp"
 #include "config-container/ConfigContainer.hpp"
 #include "config/RootDir.h"
 #include "utils/logger/Logger.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
+#include "utils/vulkan-wrapper/descriptor-set/DescriptorSetBundle.hpp"
+#include "utils/vulkan-wrapper/memory/Buffer.hpp"
+#include "utils/vulkan-wrapper/memory/BufferBundle.hpp"
 #include "utils/vulkan-wrapper/memory/Image.hpp"
 #include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
+#include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 #include "window/Window.hpp"
 
-Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
+Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
-    : _appContext(appContext), _logger(logger), _shaderCompiler(shaderCompiler), _window(window),
-      _configContainer(configContainer) {
+    : _appContext(appContext), _logger(logger), _framesInFlight(framesInFlight),
+      _shaderCompiler(shaderCompiler), _window(window), _configContainer(configContainer) {
+    _camera = std::make_unique<Camera>(_window, logger, configContainer);
+
     int width  = 0;
     int height = 0;
     window->getWindowDimension(width, height);
@@ -25,21 +33,49 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    _pipeline = std::make_unique<GfxPipeline>(appContext, logger, glm::vec3(0, 0, 0), nullptr,
-                                              shaderCompiler);
+    _model = std::make_unique<Model>(_appContext, _logger,
+                                     kPathToResourceFolder + "models/sci_sword/sword.gltf");
 
-    _model            = std::make_unique<Model>(_appContext, _logger,
-                                                kPathToResourceFolder + "models/sci_sword/sword.gltf");
-    _images.baseColor = std::make_unique<Image>(
-        _appContext, _logger, kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    auto samplerSettings = Sampler::Settings{
+        Sampler::AddressMode::kClampToEdge, // U
+        Sampler::AddressMode::kClampToEdge, // V
+        Sampler::AddressMode::kClampToEdge  // W
+    };
+
+    _images.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
+    _images.baseColor     = std::make_unique<Image>(
+        _appContext, _logger,
+        kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, _images.sharedSampler->getVkSampler());
+
+    _createBuffersAndBufferBundles();
+    _createDescriptorSetBundle();
+    _createRenderPass();
+    _createGraphicsPipeline();
 
     _createDepthStencil();
     _createColorResources();
-    _createRenderPass();
     _createFrameBuffers();
     _recordTracingCommandBuffers();
     _recordDeliveryCommandBuffers();
+
+    // attach camera's mouse handler to the window mouse callback
+    _window->addCursorMoveCallback(
+        [this](CursorMoveInfo const &mouseInfo) { _camera->handleMouseMovement(mouseInfo); });
+}
+
+void Renderer::_createBuffersAndBufferBundles() {
+    _renderInfoBufferBundle = std::make_unique<BufferBundle>(
+        _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        MemoryStyle::kHostVisible);
+}
+
+void Renderer::_createDescriptorSetBundle() {
+    _descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
+        _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    _descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundle.get());
+    _descriptorSetBundle->bindImageSampler(1, _images.baseColor.get());
+    _descriptorSetBundle->create();
 }
 
 void Renderer::_createRenderPass() {
@@ -117,72 +153,38 @@ void Renderer::_createRenderPass() {
     vkCreateRenderPass(_appContext->getDevice(), &createInfo, nullptr, &_renderPass);
 }
 
+void Renderer::_createGraphicsPipeline() {
+    _pipeline = std::make_unique<GfxPipeline>(
+        _appContext, _logger, kPathToResourceFolder + "shaders/default", _descriptorSetBundle.get(),
+        _shaderCompiler, _renderPass);
+}
+
 void Renderer::_createDepthStencil() {
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageInfo.format        = _appContext->getDepthFormat();
-    imageInfo.extent        = {_appContext->getSwapchainExtent().width,
-                               _appContext->getSwapchainExtent().height, 1};
-    imageInfo.mipLevels     = 1;
-    imageInfo.arrayLayers   = 1;
-    imageInfo.samples       = _appContext->getMsaaSample();
-    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    // build a small ImageDimensions struct
+    ImageDimensions dim{_appContext->getSwapchainExtent().width,
+                        _appContext->getSwapchainExtent().height, 1};
 
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage                   = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    allocInfo.requiredFlags           = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    vmaCreateImage(_appContext->getAllocator(), &imageInfo, &allocInfo, &depthStencil.image,
-                   &depthStencil.allocation, nullptr);
-
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image                           = depthStencil.image;
-    viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format                          = _appContext->getDepthFormat();
-    viewInfo.subresourceRange.baseMipLevel   = 0;
-    viewInfo.subresourceRange.levelCount     = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount     = 1;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-    vkCreateImageView(_appContext->getDevice(), &viewInfo, nullptr, &depthStencil.imageView);
+    _depthStencilImage = std::make_unique<Image>(
+        _appContext, _logger, dim, _appContext->getDepthFormat(),
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        /* no sampler needed */ VK_NULL_HANDLE,
+        /* initial layout */ VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
+        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 }
 
 void Renderer::_createColorResources() {
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageInfo.extent        = {_appContext->getSwapchainExtent().width,
-                               _appContext->getSwapchainExtent().height, 1};
-    imageInfo.mipLevels     = 1;
-    imageInfo.arrayLayers   = 1;
-    imageInfo.format        = VK_FORMAT_B8G8R8A8_UNORM;
-    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    imageInfo.samples     = _appContext->getMsaaSample();
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    // build dimensions
+    ImageDimensions dim{_appContext->getSwapchainExtent().width,
+                        _appContext->getSwapchainExtent().height, 1};
 
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage                   = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    allocInfo.requiredFlags           = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    vmaCreateImage(_appContext->getAllocator(), &imageInfo, &allocInfo, &colorResources.image,
-                   &colorResources.allocation, nullptr);
-
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image                           = colorResources.image;
-    viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format                          = VK_FORMAT_B8G8R8A8_UNORM;
-    viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel   = 0;
-    viewInfo.subresourceRange.levelCount     = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount     = 1;
-
-    vkCreateImageView(_appContext->getDevice(), &viewInfo, nullptr, &colorResources.imageView);
+    // Note: we pass both TRANSIENT_ATTACHMENT_BIT and COLOR_ATTACHMENT_BIT,
+    // no sampler is needed, and we transition straight to COLOR_ATTACHMENT_OPTIMAL:
+    _colorResourcesImage = std::make_unique<Image>(
+        _appContext, _logger, dim, VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        /* sampler */ VK_NULL_HANDLE,
+        /* initialLayout */ VK_IMAGE_LAYOUT_UNDEFINED, _appContext->getMsaaSample(),
+        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void Renderer::_createFrameBuffers() {
@@ -190,8 +192,8 @@ void Renderer::_createFrameBuffers() {
 
     std::array<VkImageView, 3> attachments = {};
 
-    attachments[0] = colorResources.imageView;
-    attachments[1] = depthStencil.imageView;
+    attachments[0] = _colorResourcesImage->getVkImageView();
+    attachments[1] = _depthStencilImage->getVkImageView();
 
     VkFramebufferCreateInfo createInfo{};
     createInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -211,50 +213,36 @@ void Renderer::_createFrameBuffers() {
     }
 }
 
-Renderer::~Renderer() {
-    vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr);
-    if (depthStencil.imageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(_appContext->getDevice(), depthStencil.imageView, nullptr);
-        depthStencil.imageView = VK_NULL_HANDLE;
-    }
-    if (depthStencil.image != VK_NULL_HANDLE) {
-        vmaDestroyImage(_appContext->getAllocator(), depthStencil.image, depthStencil.allocation);
-        depthStencil.image = VK_NULL_HANDLE;
-    }
-    if (colorResources.imageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(_appContext->getDevice(), colorResources.imageView, nullptr);
-        depthStencil.imageView = VK_NULL_HANDLE;
-    }
-    if (colorResources.image != VK_NULL_HANDLE) {
-        vmaDestroyImage(_appContext->getAllocator(), colorResources.image,
-                        colorResources.allocation);
-        depthStencil.image = VK_NULL_HANDLE;
-    }
-}
+Renderer::~Renderer() { vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr); }
 
 void Renderer::onSwapchainResize() {
     // TODO:
 }
 
-void Renderer::drawFrame(size_t currentFrame) {
-    ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
+void Renderer::_updateUboData(size_t currentFrame) {
+    auto view = _camera->getViewMatrix();
 
-    // 更新MVP矩阵
-    _rotation += 0.01f;
-    _mvp.model = glm::rotate(glm::mat4(1.0f), _rotation, glm::vec3(0.0f, 1.0f, 0.0f));
-    _mvp.model = glm::scale(_mvp.model, glm::vec3(0.5f)); // 缩小模型尺寸
+    auto swapchainExtent = _appContext->getSwapchainExtent();
+    auto proj            = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
+                                                        static_cast<float>(swapchainExtent.height));
 
-    // 调整相机位置
-    _camera.position = glm::vec3(0.0f, 1.0f, 3.0f);
-    _camera.front    = glm::vec3(0.0f, 0.0f, -1.0f);
-    _camera.up       = glm::vec3(0.0f, 1.0f, 0.0f);
+    auto model = glm::mat4(1.0f);
 
-    _mvp.view = _camera.getViewMatrix();
-    _mvp.proj = glm::perspective(glm::radians(45.0f),
-                                 static_cast<float>(imgDimensions.width) /
-                                     static_cast<float>(imgDimensions.height),
-                                 0.1f, 100.0f);
-    _mvp.proj[1][1] *= -1; // 翻转Y轴以匹配Vulkan坐标系
+    S_RenderInfo renderInfo{};
+    renderInfo.view  = view;
+    renderInfo.proj  = proj;
+    renderInfo.model = model;
+
+    _renderInfoBufferBundle->getBuffer(currentFrame)->fillData(&renderInfo);
+}
+
+void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
+    _updateUboData(currentFrame);
+
+    auto &cmdBuffer = _tracingCommandBuffers[currentFrame];
+
+    // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
+    VkExtent2D currentSwapchainExtent = _appContext->getSwapchainExtent();
 
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
     cmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -273,37 +261,35 @@ void Renderer::drawFrame(size_t currentFrame) {
     rdrPassBeginInfo.clearValueCount   = clear_vals.size();
     rdrPassBeginInfo.pClearValues      = clear_vals.data();
 
-    rdrPassBeginInfo.framebuffer = _frameBuffers[currentFrame];
-    vkBeginCommandBuffer(_tracingCommandBuffers[currentFrame], &cmdBufferBeginInfo);
-    vkCmdBeginRenderPass(_tracingCommandBuffers[currentFrame], &rdrPassBeginInfo,
-                         VK_SUBPASS_CONTENTS_INLINE);
+    rdrPassBeginInfo.framebuffer = _frameBuffers[imageIndex];
+
+    vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
+    vkCmdBeginRenderPass(cmdBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(_tracingCommandBuffers[currentFrame], 0, 1,
-                           &_model->vertexBuffer->getVkBuffer(), offsets);
-    vkCmdBindIndexBuffer(_tracingCommandBuffers[currentFrame], _model->indexBuffer->getVkBuffer(),
-                         0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_model->vertexBuffer->getVkBuffer(), offsets);
+    vkCmdBindIndexBuffer(cmdBuffer, _model->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
     VkViewport viewport{};
-    viewport.width    = imgDimensions.width;
-    viewport.height   = imgDimensions.height;
-    viewport.maxDepth = 1.0f;
+    viewport.x        = 0.0f;
+    viewport.y        = 0.0f;
+    viewport.width    = static_cast<float>(currentSwapchainExtent.width);
+    viewport.height   = static_cast<float>(currentSwapchainExtent.height);
     viewport.minDepth = 0.0f;
-    vkCmdSetViewport(_tracingCommandBuffers[currentFrame], 0, 1, &viewport);
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
-    scissor.extent = {imgDimensions.width, imgDimensions.height};
     scissor.offset = {0, 0};
-    vkCmdSetScissor(_tracingCommandBuffers[currentFrame], 0, 1, &scissor);
+    scissor.extent = currentSwapchainExtent;
+    vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
-    vkCmdBindPipeline(_tracingCommandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      _pipeline->getPipeline());
+    vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
-    // 更新MVP矩阵
-    _pipeline->updateMVP(_mvp);
-
-    vkCmdDrawIndexed(_tracingCommandBuffers[currentFrame], _model->idxCnt, 1, 0, 0, 0);
-    vkCmdEndRenderPass(_tracingCommandBuffers[currentFrame]);
+    // TODO:
+    _pipeline->recordDrawIndexed(cmdBuffer, currentFrame);
+    vkCmdDrawIndexed(cmdBuffer, _model->idxCnt, 1, 0, 0, 0);
+    vkCmdEndRenderPass(cmdBuffer);
 
     // 添加渲染完成后的图像布局转换
     VkImageMemoryBarrier barrier{};
@@ -312,7 +298,7 @@ void Renderer::drawFrame(size_t currentFrame) {
     barrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image                           = _appContext->getSwapchainImages()[currentFrame];
+    barrier.image                           = _appContext->getSwapchainImages()[imageIndex];
     barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel   = 0;
     barrier.subresourceRange.levelCount     = 1;
@@ -321,16 +307,14 @@ void Renderer::drawFrame(size_t currentFrame) {
     barrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstAccessMask                   = 0;
 
-    vkCmdPipelineBarrier(
-        _tracingCommandBuffers[currentFrame], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &barrier);
 
-    vkEndCommandBuffer(_tracingCommandBuffers[currentFrame]);
+    vkEndCommandBuffer(cmdBuffer);
 }
 
-void Renderer::processInput(double deltaTime) {
-    // _camera->processInput(deltaTime);
-}
+void Renderer::processInput(double deltaTime) { _camera->processInput(deltaTime); }
 
 void Renderer::_recordTracingCommandBuffers() {
     for (auto &commandBuffer : _tracingCommandBuffers) {

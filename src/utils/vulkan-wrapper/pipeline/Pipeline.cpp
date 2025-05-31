@@ -7,14 +7,15 @@
 #include <vector>
 
 static const std::map<VkShaderStageFlags, VkPipelineBindPoint> kShaderStageFlagsToBindPoint{
-    {VK_SHADER_STAGE_VERTEX_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
-    {VK_SHADER_STAGE_FRAGMENT_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
+    {VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_PIPELINE_BIND_POINT_GRAPHICS},
     {VK_SHADER_STAGE_COMPUTE_BIT, VK_PIPELINE_BIND_POINT_COMPUTE}};
 
 Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger,
-                   DescriptorSetBundle *descriptorSetBundle, VkShaderStageFlags shaderStageFlags)
-    : _appContext(appContext), _logger(logger), _descriptorSetBundle(descriptorSetBundle),
-      _shaderStageFlags(shaderStageFlags) {}
+                   std::string fullPathToShaderSourceCode, DescriptorSetBundle *descriptorSetBundle,
+                   VkShaderStageFlags shaderStageFlags)
+    : _appContext(appContext), _logger(logger),
+      _fullPathToShaderSourceCode(fullPathToShaderSourceCode),
+      _descriptorSetBundle(descriptorSetBundle), _shaderStageFlags(shaderStageFlags) {}
 
 Pipeline::~Pipeline() {
     _doCleanupShaderModules();
@@ -34,11 +35,6 @@ void Pipeline::_cleanupPipelineAndLayout() {
     }
 }
 
-void Pipeline::init(std::string &path) {
-    compileAndCacheShaderModule(path);
-    build();
-}
-
 void Pipeline::updateDescriptorSetBundle(DescriptorSetBundle *descriptorSetBundle) {
     _descriptorSetBundle = descriptorSetBundle;
     build();
@@ -55,9 +51,9 @@ VkShaderModule Pipeline::_createShaderModule(const std::vector<uint32_t> &code) 
     return shaderModule;
 }
 
-void Pipeline::_bind(VkCommandBuffer commandBuffer, size_t currentFrame) {
+void Pipeline::recordBind(VkCommandBuffer commandBuffer, size_t currentFrame) {
     vkCmdBindDescriptorSets(commandBuffer, kShaderStageFlagsToBindPoint.at(_shaderStageFlags),
                             _pipelineLayout, 0, 1,
                             &_descriptorSetBundle->getDescriptorSet(currentFrame), 0, nullptr);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, _pipeline);
+    vkCmdBindPipeline(commandBuffer, kShaderStageFlagsToBindPoint.at(_shaderStageFlags), _pipeline);
 }

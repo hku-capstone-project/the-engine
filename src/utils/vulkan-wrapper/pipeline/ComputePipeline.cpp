@@ -8,15 +8,21 @@
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 
 ComputePipeline::ComputePipeline(VulkanApplicationContext *appContext, Logger *logger,
+                                 std::string fullPathToShaderSourceCode,
                                  WorkGroupSize workGroupSize,
                                  DescriptorSetBundle *descriptorSetBundle,
                                  ShaderCompiler *shaderCompiler)
-    : Pipeline(appContext, logger, descriptorSetBundle, VK_SHADER_STAGE_COMPUTE_BIT),
-      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {}
+    : Pipeline(appContext, logger, fullPathToShaderSourceCode, descriptorSetBundle,
+               VK_SHADER_STAGE_COMPUTE_BIT),
+      _workGroupSize(workGroupSize), _shaderCompiler(shaderCompiler) {
+    compileAndCacheShaderModule();
+    build();
+}
 
 ComputePipeline::~ComputePipeline() = default;
 
-void ComputePipeline::compileAndCacheShaderModule(std::string &path) {
+void ComputePipeline::compileAndCacheShaderModule() {
+    auto const path       = _fullPathToShaderSourceCode;
     auto const sourceCode = FileReader::readShaderSourceCode(path, _logger);
     auto const compiledCode =
         _shaderCompiler->compileShaderFromFile(ShaderStage::kCompute, path, sourceCode);
@@ -32,6 +38,10 @@ void ComputePipeline::compileAndCacheShaderModule(std::string &path) {
 
 // the shader module must be cached before this step
 void ComputePipeline::build() {
+    if (_cachedShaderModule == VK_NULL_HANDLE) {
+        throw std::runtime_error("Shader module is not cached!");
+    }
+
     _cleanupPipelineAndLayout();
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -62,7 +72,7 @@ void ComputePipeline::build() {
 void ComputePipeline::recordCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame,
                                     uint32_t threadCountX, uint32_t threadCountY,
                                     uint32_t threadCountZ) {
-    _bind(commandBuffer, currentFrame);
+    recordBind(commandBuffer, currentFrame);
     vkCmdDispatch(commandBuffer,
                   static_cast<uint32_t>(std::ceil((float)threadCountX / (float)_workGroupSize.x)),
                   static_cast<uint32_t>(std::ceil((float)threadCountY / (float)_workGroupSize.y)),
@@ -71,7 +81,7 @@ void ComputePipeline::recordCommand(VkCommandBuffer commandBuffer, uint32_t curr
 
 void ComputePipeline::recordIndirectCommand(VkCommandBuffer commandBuffer, uint32_t currentFrame,
                                             VkBuffer indirectBuffer) {
-    _bind(commandBuffer, currentFrame);
+    recordBind(commandBuffer, currentFrame);
     vkCmdDispatchIndirect(commandBuffer, indirectBuffer, 0);
 }
 
