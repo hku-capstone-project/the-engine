@@ -35,8 +35,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         _appContext->getSwapchainImageFormat(),
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-
-    std::string modelPath = kPathToResourceFolder + "models/sci_sword/sword.gltf";
+    std::string modelPath = kPathToResourceFolder + "models/chest/Futuristic_Chest_1.gltf";
     _model = std::make_unique<Model>(_appContext, _logger, modelPath);
 
     // 提取模型目录，包含 "models/"
