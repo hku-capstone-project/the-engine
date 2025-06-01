@@ -55,7 +55,10 @@ struct Vertex {
 struct SubModel {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    std::string baseColorTexturePath; // baseColor纹理路径
+    std::string baseColorTexturePath; // baseColor 纹理路径
+    std::string emissiveTexturePath;  // 发光贴图路径
+    std::string metallicRoughnessTexturePath; // 金属粗糙度贴图路径
+    std::string normalTexturePath;    // 法线贴图路径
 };
 
 struct ModelAttributes {

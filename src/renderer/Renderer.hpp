@@ -25,7 +25,6 @@ public:
     void processInput(double deltaTime);
     void onSwapchainResize();
 
-    // 访问命令缓冲区
     VkCommandBuffer getTracingCommandBuffer(size_t frame) const { return _tracingCommandBuffers[frame]; }
     VkCommandBuffer getDeliveryCommandBuffer(size_t index) const { return _deliveryCommandBuffers[index]; }
 
@@ -33,6 +32,9 @@ private:
     struct Images {
         std::unique_ptr<Sampler> sharedSampler;
         std::vector<std::unique_ptr<Image>> baseColors;
+        std::vector<std::unique_ptr<Image>> emissiveTextures;      // 发光贴图
+        std::vector<std::unique_ptr<Image>> metallicRoughnessTextures; // 金属粗糙度贴图
+        std::vector<std::unique_ptr<Image>> normalTextures;       // 法线贴图
     } _images;
 
     VulkanApplicationContext *_appContext;

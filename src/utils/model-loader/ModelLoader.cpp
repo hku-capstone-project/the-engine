@@ -9,6 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
+
 ModelAttributes ModelLoader::loadModelFromPath(const std::string &filePath, Logger *logger) {
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(filePath, aiProcess_Triangulate);
@@ -22,15 +23,60 @@ ModelAttributes ModelLoader::loadModelFromPath(const std::string &filePath, Logg
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
             SubModel subModel;
             
-            // 提取材质和baseColor纹理
+            // 提取材质和各种纹理路径
             aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
             aiString texturePath;
+
+            // baseColor 贴图
             if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath) == AI_SUCCESS) {
-                subModel.baseColorTexturePath = texturePath.C_Str();
+                std::string basePath = texturePath.C_Str();
+                if (basePath.find("textures/") == 0) {
+                    basePath = basePath.substr(9);
+                }
+                subModel.baseColorTexturePath = basePath;
                 logger->info("Mesh {}: BaseColor Texture Path = {}", i, subModel.baseColorTexturePath);
             } else {
                 subModel.baseColorTexturePath = "";
                 logger->warn("Mesh {}: No BaseColor Texture found", i);
+            }
+
+            // emissive 贴图
+            if (material->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath) == AI_SUCCESS) {
+                std::string basePath = texturePath.C_Str();
+                if (basePath.find("textures/") == 0) {
+                    basePath = basePath.substr(9);
+                }
+                subModel.emissiveTexturePath = basePath;
+                logger->info("Mesh {}: Emissive Texture Path = {}", i, subModel.emissiveTexturePath);
+            } else {
+                subModel.emissiveTexturePath = "";
+                logger->warn("Mesh {}: No Emissive Texture found", i);
+            }
+
+            // metallicRoughness 贴图
+            if (material->GetTexture(aiTextureType_UNKNOWN, 0, &texturePath) == AI_SUCCESS) {
+                std::string basePath = texturePath.C_Str();
+                if (basePath.find("textures/") == 0) {
+                    basePath = basePath.substr(9);
+                }
+                subModel.metallicRoughnessTexturePath = basePath;
+                logger->info("Mesh {}: MetallicRoughness Texture Path = {}", i, subModel.metallicRoughnessTexturePath);
+            } else {
+                subModel.metallicRoughnessTexturePath = "";
+                logger->warn("Mesh {}: No MetallicRoughness Texture found", i);
+            }
+
+            // normal 贴图
+            if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath) == AI_SUCCESS) {
+                std::string basePath = texturePath.C_Str();
+                if (basePath.find("textures/") == 0) {
+                    basePath = basePath.substr(9);
+                }
+                subModel.normalTexturePath = basePath;
+                logger->info("Mesh {}: Normal Texture Path = {}", i, subModel.normalTexturePath);
+            } else {
+                subModel.normalTexturePath = "";
+                logger->warn("Mesh {}: No Normal Texture found", i);
             }
 
             // 加载顶点

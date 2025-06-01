@@ -36,8 +36,17 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    _model = std::make_unique<Model>(_appContext, _logger,
-                                     kPathToResourceFolder + "models/sci_sword/sword.gltf");
+    std::string modelPath = kPathToResourceFolder + "models/sci_sword/sword.gltf";
+    _model = std::make_unique<Model>(_appContext, _logger, modelPath);
+
+    // 提取模型目录，包含 "models/"
+    std::string modelDir = modelPath;
+    size_t lastSlash = modelDir.find_last_of("/\\");
+    if (lastSlash != std::string::npos) {
+        modelDir = modelDir.substr(0, lastSlash); // 得到 kPathToResourceFolder + "models/sci_sword"
+    }
+    // 拼接纹理路径，保留 "models/"
+    std::string textureBasePath = modelDir + "/textures/"; // 得到 kPathToResourceFolder + "models/sci_sword/textures/"
 
     auto samplerSettings = Sampler::Settings{
         Sampler::AddressMode::kClampToEdge,
@@ -47,55 +56,123 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
 
     _images.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
 
-    // 默认纹理路径保持通用（可以用配置或参数传入）
+    // 默认纹理路径（通用）
     std::string defaultTexturePath = kPathToResourceFolder + "textures/default_baseColor.png";
     for (const auto &subModel : _model->getModelAttributes().subModels) {
-        std::string texturePath;
-        if (!subModel.baseColorTexturePath.empty()) {
-            // 直接用 ModelLoader 处理好的路径，拼接通用目录
-            texturePath = kPathToResourceFolder +"models/sci_sword/"+ subModel.baseColorTexturePath;
+        // 加载 baseColor 贴图
+        std::string texturePath = !subModel.baseColorTexturePath.empty()
+            ? textureBasePath + subModel.baseColorTexturePath
+            : defaultTexturePath;
 
-            // 只检查文件是否存在
-            if (!std::filesystem::exists(texturePath)) {
-                _logger->error("Texture file does not exist: {}. Using default.", texturePath);
-                texturePath = defaultTexturePath;
-            }
+        if (!subModel.baseColorTexturePath.empty() && !std::filesystem::exists(texturePath)) {
+            _logger->error("BaseColor texture file does not exist: {}. Using default.", texturePath);
+            texturePath = defaultTexturePath;
+        } else if (subModel.baseColorTexturePath.empty()) {
+            _logger->warn("SubModel missing BaseColor Texture, using default");
+        }
 
-            _images.baseColors.emplace_back(std::make_unique<Image>(
+        _images.baseColors.emplace_back(std::make_unique<Image>(
+            _appContext, _logger, texturePath,
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            _images.sharedSampler->getVkSampler(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
+            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
+        if (_images.baseColors.back()->getVkImage() == VK_NULL_HANDLE) {
+            _logger->error("Failed to load BaseColor texture: {}. Using default.", texturePath);
+            texturePath = defaultTexturePath;
+            _images.baseColors.back() = std::make_unique<Image>(
                 _appContext, _logger, texturePath,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 _images.sharedSampler->getVkSampler(),
                 VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
-                VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
+                VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
             if (_images.baseColors.back()->getVkImage() == VK_NULL_HANDLE) {
-                _logger->error("Failed to load texture: {}. Using default texture.", texturePath);
-                texturePath = defaultTexturePath;
-                _images.baseColors.back() = std::make_unique<Image>(
+                _logger->error("Failed to load default BaseColor texture: {}. Aborting.", texturePath);
+                exit(1);
+            }
+        } else {
+            _logger->info("Loaded BaseColor Texture: {}", texturePath);
+        }
+
+        // 加载 emissive 贴图
+        texturePath = !subModel.emissiveTexturePath.empty()
+            ? textureBasePath + subModel.emissiveTexturePath
+            : "";
+        if (!subModel.emissiveTexturePath.empty()) {
+            if (!std::filesystem::exists(texturePath)) {
+                _logger->warn("Emissive texture file does not exist: {}. Skipping.", texturePath);
+                _images.emissiveTextures.emplace_back(nullptr);
+            } else {
+                _images.emissiveTextures.emplace_back(std::make_unique<Image>(
                     _appContext, _logger, texturePath,
                     VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                     _images.sharedSampler->getVkSampler(),
                     VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
-                    VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
-                if (_images.baseColors.back()->getVkImage() == VK_NULL_HANDLE) {
-                    _logger->error("Failed to load default texture: {}. Aborting.", texturePath);
-                    exit(1);
+                    VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
+                if (_images.emissiveTextures.back()->getVkImage() == VK_NULL_HANDLE) {
+                    _logger->warn("Failed to load Emissive texture: {}. Skipping.", texturePath);
+                    _images.emissiveTextures.back() = nullptr;
+                } else {
+                    _logger->info("Loaded Emissive Texture: {}", texturePath);
                 }
-            } else {
-                _logger->info("Loaded BaseColor Texture: {}", texturePath);
             }
         } else {
-            _logger->warn("SubModel missing BaseColor Texture, using default");
-            texturePath = defaultTexturePath;
-            _images.baseColors.emplace_back(std::make_unique<Image>(
-                _appContext, _logger, texturePath,
-                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                _images.sharedSampler->getVkSampler(),
-                VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
-                VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
-            if (_images.baseColors.back()->getVkImage() == VK_NULL_HANDLE) {
-                _logger->error("Failed to load default texture: {}. Aborting.", texturePath);
-                exit(1);
+            _logger->warn("SubModel missing Emissive Texture, skipping");
+            _images.emissiveTextures.emplace_back(nullptr);
+        }
+
+        // 加载 metallicRoughness 贴图
+        texturePath = !subModel.metallicRoughnessTexturePath.empty()
+            ? textureBasePath + subModel.metallicRoughnessTexturePath
+            : "";
+        if (!subModel.metallicRoughnessTexturePath.empty()) {
+            if (!std::filesystem::exists(texturePath)) {
+                _logger->warn("MetallicRoughness texture file does not exist: {}. Skipping.", texturePath);
+                _images.metallicRoughnessTextures.emplace_back(nullptr);
+            } else {
+                _images.metallicRoughnessTextures.emplace_back(std::make_unique<Image>(
+                    _appContext, _logger, texturePath,
+                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                    _images.sharedSampler->getVkSampler(),
+                    VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
+                    VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
+                if (_images.metallicRoughnessTextures.back()->getVkImage() == VK_NULL_HANDLE) {
+                    _logger->warn("Failed to load MetallicRoughness texture: {}. Skipping.", texturePath);
+                    _images.metallicRoughnessTextures.back() = nullptr;
+                } else {
+                    _logger->info("Loaded MetallicRoughness Texture: {}", texturePath);
+                }
             }
+        } else {
+            _logger->warn("SubModel missing MetallicRoughness Texture, skipping");
+            _images.metallicRoughnessTextures.emplace_back(nullptr);
+        }
+
+        // 加载 normal 贴图
+        texturePath = !subModel.normalTexturePath.empty()
+            ? textureBasePath + subModel.normalTexturePath
+            : "";
+        if (!subModel.normalTexturePath.empty()) {
+            if (!std::filesystem::exists(texturePath)) {
+                _logger->warn("Normal texture file does not exist: {}. Skipping.", texturePath);
+                _images.normalTextures.emplace_back(nullptr);
+            } else {
+                _images.normalTextures.emplace_back(std::make_unique<Image>(
+                    _appContext, _logger, texturePath,
+                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                    _images.sharedSampler->getVkSampler(),
+                    VK_IMAGE_LAYOUT_UNDEFINED, VK_SAMPLE_COUNT_1_BIT,
+                    VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT));
+                if (_images.normalTextures.back()->getVkImage() == VK_NULL_HANDLE) {
+                    _logger->warn("Failed to load Normal texture: {}. Skipping.", texturePath);
+                    _images.normalTextures.back() = nullptr;
+                } else {
+                    _logger->info("Loaded Normal Texture: {}", texturePath);
+                }
+            }
+        } else {
+            _logger->warn("SubModel missing Normal Texture, skipping");
+            _images.normalTextures.emplace_back(nullptr);
         }
     }
 
@@ -113,7 +190,6 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         [this](CursorMoveInfo const &mouseInfo) { _camera->handleMouseMovement(mouseInfo); });
 }
 
-
 void Renderer::_createBuffersAndBufferBundles() {
     _renderInfoBufferBundle = std::make_unique<BufferBundle>(
         _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -125,9 +201,18 @@ void Renderer::_createDescriptorSetBundle() {
         _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     _descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundle.get());
     
-    // 动态绑定，每个纹理用不同的绑定点，从 binding 1 开始
+    // 绑定所有贴图到不同绑定点
     for (size_t i = 0; i < _images.baseColors.size(); ++i) {
-        _descriptorSetBundle->bindImageSampler(1 + i, _images.baseColors[i].get());
+        _descriptorSetBundle->bindImageSampler(1 + i * 4, _images.baseColors[i].get()); // binding 1, 5, 9...
+        if (_images.emissiveTextures[i]) {
+            _descriptorSetBundle->bindImageSampler(2 + i * 4, _images.emissiveTextures[i].get()); // binding 2, 6, 10...
+        }
+        if (_images.metallicRoughnessTextures[i]) {
+            _descriptorSetBundle->bindImageSampler(3 + i * 4, _images.metallicRoughnessTextures[i].get()); // binding 3, 7, 11...
+        }
+        if (_images.normalTextures[i]) {
+            _descriptorSetBundle->bindImageSampler(4 + i * 4, _images.normalTextures[i].get()); // binding 4, 8, 12...
+        }
     }
     _descriptorSetBundle->create();
 }
@@ -265,17 +350,19 @@ void Renderer::onSwapchainResize() {
 
 void Renderer::_updateUboData(size_t currentFrame) {
     auto view = _camera->getViewMatrix();
-
     auto swapchainExtent = _appContext->getSwapchainExtent();
-    auto proj            = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
-                                                        static_cast<float>(swapchainExtent.height));
-
+    auto proj = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
+                                             static_cast<float>(swapchainExtent.height));
     auto model = glm::mat4(1.0f);
 
+    // 假设 _camera 有 getPosition 方法
+    auto viewPos = _camera->getPosition(); // 获取摄像机位置
+
     S_RenderInfo renderInfo{};
-    renderInfo.view  = view;
-    renderInfo.proj  = proj;
+    renderInfo.view = view;
+    renderInfo.proj = proj;
     renderInfo.model = model;
+    renderInfo.viewPos = viewPos; // 假设 S_RenderInfo 有 viewPos 字段
 
     _renderInfoBufferBundle->getBuffer(currentFrame)->fillData(&renderInfo);
 }
@@ -306,7 +393,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
 
     vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
 
-    // 转换所有 baseColor 纹理的布局
+    // 转换所有贴图的布局
     std::vector<VkImageMemoryBarrier> barriers;
     for (const auto &baseColor : _images.baseColors) {
         VkImageMemoryBarrier barrier{};
@@ -324,6 +411,63 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
         barrier.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
         barriers.push_back(barrier);
+    }
+    for (const auto &emissive : _images.emissiveTextures) {
+        if (emissive) {
+            VkImageMemoryBarrier barrier{};
+            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image                           = emissive->getVkImage();
+            barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrier.subresourceRange.baseMipLevel   = 0;
+            barrier.subresourceRange.levelCount     = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount     = 1;
+            barrier.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+            barriers.push_back(barrier);
+        }
+    }
+    for (const auto &metallicRoughness : _images.metallicRoughnessTextures) {
+        if (metallicRoughness) {
+            VkImageMemoryBarrier barrier{};
+            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image                           = metallicRoughness->getVkImage();
+            barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrier.subresourceRange.baseMipLevel   = 0;
+            barrier.subresourceRange.levelCount     = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount     = 1;
+            barrier.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+            barriers.push_back(barrier);
+        }
+    }
+    for (const auto &normal : _images.normalTextures) {
+        if (normal) {
+            VkImageMemoryBarrier barrier{};
+            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image                           = normal->getVkImage();
+            barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrier.subresourceRange.baseMipLevel   = 0;
+            barrier.subresourceRange.levelCount     = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount     = 1;
+            barrier.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+            barriers.push_back(barrier);
+        }
     }
 
     if (!barriers.empty()) {
@@ -352,19 +496,16 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
-    // 遍历子模型，绑定对应缓冲区和纹理
     for (size_t i = 0; i < _model->subModelBuffers.size(); ++i) {
         const auto &subModel = _model->subModelBuffers[i];
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &subModel.vertexBuffer->getVkBuffer(), offsets);
         vkCmdBindIndexBuffer(cmdBuffer, subModel.indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-        // 绑定描述符集
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 _pipeline->getPipelineLayout(), 0, 1,
                                 &_descriptorSetBundle->getDescriptorSet(currentFrame), 0, nullptr);
 
-        // 推送常量，告诉着色器用哪个纹理索引
         uint32_t textureIndex = static_cast<uint32_t>(i);
         vkCmdPushConstants(cmdBuffer, _pipeline->getPipelineLayout(),
                            VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &textureIndex);
