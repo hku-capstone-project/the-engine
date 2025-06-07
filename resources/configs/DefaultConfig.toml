@@ -12,8 +12,8 @@ initHeight = 0.8
 initYaw = 270.0
 initPitch = 0.0
 vFov = 60.0
-movementSpeed = 10.2
-movementSpeedBoost = 13.0
+movementSpeed = 1.2
+movementSpeedBoost = 3.0
 mouseSensitivity = 0.08
 
 [ShadowMapCamera]
