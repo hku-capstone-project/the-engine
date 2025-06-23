@@ -234,7 +234,46 @@ Renderer::~Renderer() {
 }
 
 void Renderer::onSwapchainResize() {
-    // TODO:
+    _logger->info("Swapchain has been resized. Recreating dependent resources.");
+
+    // 1. Clean up resources that depend on the swapchain's resolution or images.
+    // ---------------------------------------------------------------------------
+
+    // Destroy existing framebuffers
+    for (auto framebuffer : _frameBuffers) {
+        vkDestroyFramebuffer(_appContext->getDevice(), framebuffer, nullptr);
+    }
+    _frameBuffers.clear();
+
+    // Reset unique_ptrs for images, which will trigger their destructors
+    _colorResourcesImage.reset();
+    _depthStencilImage.reset();
+    _renderTargetImage.reset();
+
+    // Note: Command buffers are implicitly handled by the _record... functions,
+    // which free existing buffers before re-allocating them.
+
+    // 2. Recreate the resources with the new swapchain properties.
+    // ---------------------------------------------------------------------------
+
+    // Recreate the main render target image with the new dimensions
+    VkExtent2D newExtent = _appContext->getSwapchainExtent();
+    _renderTargetImage   = std::make_unique<Image>(
+        _appContext, _logger, ImageDimensions{newExtent.width, newExtent.height},
+        _appContext->getSwapchainImageFormat(),
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+            VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+
+    // Recreate resolution-dependent resources by calling their creation functions
+    _createDepthStencil();
+    _createColorResources();
+    _createFrameBuffers();
+
+    // Re-allocate and re-record command buffers
+    _recordDrawingCommandBuffers();
+    _recordDeliveryCommandBuffers();
+
+    _logger->info("Renderer resources have been successfully recreated.");
 }
 
 void Renderer::_updateUboData(size_t currentFrame) {
