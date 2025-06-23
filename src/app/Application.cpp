@@ -83,10 +83,6 @@ void Application::_init() {
         
         // 输出控制说明
         _logger->info("=== CONTROLS ===");
-        _logger->info("Monkey Control:");
-        _logger->info("  WASD - Move forward/back/left/right");
-        _logger->info("  Q/Z  - Move up/down");
-        _logger->info("");
         _logger->info("Camera Control:");
         _logger->info("  Arrow Keys - Move forward/back/left/right");
         _logger->info("  Space/Ctrl - Move up/down");
@@ -108,42 +104,6 @@ void Application::_applicationKeyboardCallback(KeyboardInfo const &keyboardInfo)
     if (keyboardInfo.isKeyPressed(GLFW_KEY_E)) {
         _window->toggleCursor();
         return;
-    }
-    
-    // WASD控制猴子位置
-    if (_scriptEngine) {
-        auto view = _scriptEngine->registry.view<Transform, Mesh>();
-        for (auto entity : view) {
-            auto& transform = view.get<Transform>(entity);
-            auto& mesh = view.get<Mesh>(entity);
-            
-            if (mesh.modelId == 0) {  // 猴子模型
-                float moveSpeed = 0.1f;  // 猴子移动速度
-                
-                if (keyboardInfo.isKeyPressed(GLFW_KEY_W)) {
-                    transform.position.z -= moveSpeed;  // 向前
-                }
-                if (keyboardInfo.isKeyPressed(GLFW_KEY_S)) {
-                    transform.position.z += moveSpeed;  // 向后
-                }
-                if (keyboardInfo.isKeyPressed(GLFW_KEY_A)) {
-                    transform.position.x -= moveSpeed;  // 向左
-                }
-                if (keyboardInfo.isKeyPressed(GLFW_KEY_D)) {
-                    transform.position.x += moveSpeed;  // 向右
-                }
-                if (keyboardInfo.isKeyPressed(GLFW_KEY_Q)) {
-                    transform.position.y += moveSpeed;  // 向上
-                }
-                if (keyboardInfo.isKeyPressed(GLFW_KEY_Z)) {
-                    transform.position.y -= moveSpeed;  // 向下
-                }
-                
-                _logger->info("Monkey manual position: ({:.2f}, {:.2f}, {:.2f})", 
-                            transform.position.x, transform.position.y, transform.position.z);
-                break;
-            }
-        }
     }
 }
 
@@ -267,21 +227,30 @@ void Application::_drawFrame() {
 
     glm::vec3 currentPosition = glm::vec3(0.0f, 1.0f, 0.0f);  // 默认位置
     
+    // 更新脚本系统
     if (_scriptEngine) {
         // 运行脚本引擎的update systems
         for (auto &s : _scriptEngine->updateSystems) {
             s(deltaTime);
         }
         
-        // 获取猴子当前位置（现在通过键盘控制）
+        // 随机更新猴子位置（小范围移动）
         auto view = _scriptEngine->registry.view<Transform, Mesh>();
         for (auto entity : view) {
             auto& transform = view.get<Transform>(entity);
             auto& mesh = view.get<Mesh>(entity);
             
             if (mesh.modelId == 0) {  // 猴子模型
+                static float time = 0.0f;
+                time += 0.02f;  // 缓慢时间增量
+                
+                // 使用正弦波的组合实现随机移动
+                transform.position.x = 1.5f * std::sin(time * 0.7f) * std::cos(time * 0.5f);
+                transform.position.y = 0.5f * std::sin(time * 1.3f) + 1.0f;  // y轴基础高度1.0
+                transform.position.z = 1.2f * std::cos(time * 0.9f) * std::sin(time * 0.4f);
+                
                 currentPosition = transform.position;
-                break;  // 只处理第一个找到的猴子entity
+                break;
             }
         }
     }
