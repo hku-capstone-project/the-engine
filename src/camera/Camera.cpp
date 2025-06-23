@@ -22,6 +22,7 @@ Camera::Camera(Window *window, Logger *logger, ConfigContainer *configContainer)
 Camera::~Camera() = default;
 
 glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float zNear, float zFar) const {
+    // right handed
     glm::mat4 projection = glm::perspective(
         glm::radians(_configContainer->cameraInfo
                          ->vFov), // The vertical Field of View, in radians: the amount
@@ -32,6 +33,10 @@ glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float zNear, float zFar
                // precision issues.
         zFar   // Far clipping plane. Keep as little as possible.
     );
+    // make a scale matrix to flip y
+    glm::mat4 scale = glm::mat4(1.0F);
+    scale[1][1]     = -1.0F;
+    projection      = scale * projection;
     return projection;
 }
 
@@ -85,11 +90,11 @@ void Camera::handleMouseMovement(CursorMoveInfo const &mouseInfo) {
     float mouseDx = mouseInfo.dx;
     float mouseDy = mouseInfo.dy;
 
-    mouseDx *= -_configContainer->cameraInfo->mouseSensitivity;
+    mouseDx *= _configContainer->cameraInfo->mouseSensitivity;
     mouseDy *= _configContainer->cameraInfo->mouseSensitivity;
 
-    _yaw += mouseDx;
-    _pitch -= mouseDy;
+    _yaw -= mouseDx;
+    _pitch += mouseDy;
 
     constexpr float cameraLim = 89.9F;
     // make sure that when mPitch is out of bounds, screen doesn't get flipped
