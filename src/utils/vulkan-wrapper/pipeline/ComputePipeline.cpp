@@ -19,7 +19,10 @@ ComputePipeline::ComputePipeline(VulkanApplicationContext *appContext, Logger *l
     build();
 }
 
-ComputePipeline::~ComputePipeline() = default;
+ComputePipeline::~ComputePipeline() {
+    _cleanupPipelineAndLayout();
+    _cleanupShaderModules();
+}
 
 void ComputePipeline::compileAndCacheShaderModule() {
     auto const path       = _fullPathToShaderSourceCode;

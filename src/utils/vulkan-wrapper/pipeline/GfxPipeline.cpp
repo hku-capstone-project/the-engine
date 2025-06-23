@@ -18,7 +18,10 @@ GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
     build();
 }
 
-GfxPipeline::~GfxPipeline() = default;
+GfxPipeline::~GfxPipeline() {
+    _cleanupPipelineAndLayout();
+    _cleanupShaderModules();
+}
 
 void GfxPipeline::compileAndCacheShaderModule() {
     auto const path           = _fullPathToShaderSourceCode;

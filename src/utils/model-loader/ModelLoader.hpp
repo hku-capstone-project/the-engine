@@ -3,6 +3,7 @@
 #include <array>
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
+#include <optional> // Include for std::optional
 #include <string>
 #include <vector>
 
@@ -57,5 +58,6 @@ struct ModelAttributes {
 };
 
 namespace ModelLoader {
-ModelAttributes loadModelFromPath(const std::string &filePath, Logger *logger);
-};
+// The function now returns an optional, which will be empty if loading fails.
+std::optional<ModelAttributes> loadModelFromPath(const std::string &filePath, Logger *logger);
+}; // namespace ModelLoader

@@ -35,5 +35,5 @@ class GfxPipeline : public Pipeline {
 
     VkRenderPass _renderPass;
 
-    void _cleanupShaderModules() override;
+    void _cleanupShaderModules();
 };

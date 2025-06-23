@@ -16,14 +16,16 @@ layout(location = 2) in vec3 inNormal;   // from Vertex::normal
 layout(location = 3) in vec4 inTangent;  // Available if needed
 
 // Varyings passed to the fragment shader
-layout(location = 0) out vec2 fragTexCoord; // Pass texture coordinates
-layout(location = 1) out vec3 fragNormal;   // Pass normal (e.g., for lighting)
+// layout(location = 0) out vec2 fragTexCoord; // Pass texture coordinates
+// layout(location = 1) out vec3 fragNormal;   // Pass normal (e.g., for lighting)
+layout(location = 0) out vec3 vertColor;
 
 void main() {
     gl_Position =
         renderInfo.data.proj * renderInfo.data.view * renderInfo.data.model * vec4(inPos, 1.0);
-
-    fragTexCoord = inTexCoord;
-    fragNormal   = normalize(mat3(transpose(inverse(renderInfo.data.model))) *
-                             inNormal); // Transform normal to world space
+    // fragTexCoord = inTexCoord;
+    // fragNormal   = normalize(mat3(transpose(inverse(renderInfo.data.model))) *
+    //                          inNormal); // Transform normal to world space
+    
+    vertColor = vec3(1.0, 0.0, 0.0);
 }

@@ -33,8 +33,9 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    _model = std::make_unique<Model>(_appContext, _logger,
-                                     kPathToResourceFolder + "models/sci_sword/sword.gltf");
+    const auto testModelPath = kPathToResourceFolder + "models/blender-monkey/monkey.obj";
+    // const auto testModelPath = kPathToResourceFolder + "models/sci_sword/sword.gltf";
+    _model = std::make_unique<Model>(_appContext, _logger, testModelPath);
 
     auto samplerSettings = Sampler::Settings{
         Sampler::AddressMode::kClampToEdge, // U
@@ -46,7 +47,8 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
     _images.baseColor     = std::make_unique<Image>(
         _appContext, _logger,
         kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, _images.sharedSampler->getVkSampler());
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        _images.sharedSampler->getVkSampler());
 
     _createBuffersAndBufferBundles();
     _createDescriptorSetBundle();
@@ -213,7 +215,26 @@ void Renderer::_createFrameBuffers() {
     }
 }
 
-Renderer::~Renderer() { vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr); }
+Renderer::~Renderer() {
+    for (auto framebuffer : _frameBuffers) {
+        vkDestroyFramebuffer(_appContext->getDevice(), framebuffer, nullptr);
+    }
+
+    if (!_tracingCommandBuffers.empty()) {
+        vkFreeCommandBuffers(_appContext->getDevice(), _appContext->getCommandPool(),
+                             static_cast<uint32_t>(_tracingCommandBuffers.size()),
+                             _tracingCommandBuffers.data());
+    }
+    if (!_deliveryCommandBuffers.empty()) {
+        vkFreeCommandBuffers(_appContext->getDevice(), _appContext->getCommandPool(),
+                             static_cast<uint32_t>(_deliveryCommandBuffers.size()),
+                             _deliveryCommandBuffers.data());
+    }
+
+    _pipeline.reset();
+
+    vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr);
+}
 
 void Renderer::onSwapchainResize() {
     // TODO:

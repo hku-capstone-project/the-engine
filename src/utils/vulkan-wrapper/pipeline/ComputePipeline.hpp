@@ -38,5 +38,5 @@ class ComputePipeline : public Pipeline {
     WorkGroupSize _workGroupSize;
     ShaderCompiler *_shaderCompiler;
 
-    void _cleanupShaderModules() override;
+    void _cleanupShaderModules();
 };

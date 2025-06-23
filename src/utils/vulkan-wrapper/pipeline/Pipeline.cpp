@@ -17,12 +17,7 @@ Pipeline::Pipeline(VulkanApplicationContext *appContext, Logger *logger,
       _fullPathToShaderSourceCode(fullPathToShaderSourceCode),
       _descriptorSetBundle(descriptorSetBundle), _shaderStageFlags(shaderStageFlags) {}
 
-Pipeline::~Pipeline() {
-    _doCleanupShaderModules();
-    _cleanupPipelineAndLayout();
-}
-
-void Pipeline::_doCleanupShaderModules() { _cleanupShaderModules(); }
+Pipeline::~Pipeline() = default;
 
 void Pipeline::_cleanupPipelineAndLayout() {
     if (_pipelineLayout != VK_NULL_HANDLE) {

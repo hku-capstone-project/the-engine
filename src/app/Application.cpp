@@ -50,12 +50,12 @@ void Application::_onRenderLoopBlockRequest(E_RenderLoopBlockRequest const &even
     _blockStateBits |= event.blockStateBits;
 }
 
-Application::~Application() { _logger->info("Application is destroyed"); }
-
-void Application::run() {
-    _mainLoop();
+Application::~Application() {
+    _logger->info("Application is destroyed");
     _cleanup();
 }
+
+void Application::run() { _mainLoop(); }
 
 void Application::_init() {
     _imguiManager->init();
@@ -169,6 +169,7 @@ void Application::_cleanup() {
         vkDestroySemaphore(_appContext->getDevice(), _imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(_appContext->getDevice(), _framesInFlightFences[i], nullptr);
     }
+    _logger->info("application has cleaned up resources");
 }
 
 void Application::_drawFrame() {
