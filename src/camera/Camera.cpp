@@ -53,19 +53,19 @@ void Camera::processKeyboard(double deltaTime) {
 
     KeyboardInfo const &ki = _window->getKeyboardInfo();
 
-    if (ki.isKeyPressed(GLFW_KEY_W)) {
+    if (ki.isKeyPressed(GLFW_KEY_UP)) {     // 前进
         _position += _front * velocity;
     }
-    if (ki.isKeyPressed(GLFW_KEY_S)) {
+    if (ki.isKeyPressed(GLFW_KEY_DOWN)) {   // 后退
         _position -= _front * velocity;
     }
-    if (ki.isKeyPressed(GLFW_KEY_A)) {
+    if (ki.isKeyPressed(GLFW_KEY_LEFT)) {   // 向左
         _position -= _right * velocity;
     }
-    if (ki.isKeyPressed(GLFW_KEY_D)) {
+    if (ki.isKeyPressed(GLFW_KEY_RIGHT)) {  // 向右
         _position += _right * velocity;
     }
-    if (ki.isKeyPressed(GLFW_KEY_SPACE)) {
+    if (ki.isKeyPressed(GLFW_KEY_SPACE)) {  // 向上
         _position += kWorldUp * velocity;
     }
     if (ki.isKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
@@ -73,7 +73,7 @@ void Camera::processKeyboard(double deltaTime) {
     } else {
         _movementSpeedMultiplier = 1.F;
     }
-    if (ki.isKeyPressed(GLFW_THUMB_KEY)) {
+    if (ki.isKeyPressed(GLFW_THUMB_KEY)) {  // 向下 (Ctrl)
         _position -= kWorldUp * velocity;
     }
 }

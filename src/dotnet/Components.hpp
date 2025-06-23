@@ -12,7 +12,7 @@ struct Velocity {
     glm::vec3 velocity;
 };
 
-struct Model {
+struct GameModel {
     std::string modelPath;
 };
 

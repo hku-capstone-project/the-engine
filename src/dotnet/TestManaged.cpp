@@ -237,6 +237,41 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
 }
 }
 
+bool init_script_engine(App& scriptEngine) {
+    if (!load_hostfxr()) {
+        return false;
+    }
+
+    // compute paths
+    fs::path root = fs::path(kRootDir);
+    fs::path game = root / "build" / "Game";
+    fs::path cfg  = game / "Game.runtimeconfig.json";
+    fs::path dll  = game / "Game.dll";
+
+    if (!fs::exists(cfg) || !fs::exists(dll)) {
+        std::cerr << "Managed files missing\n";
+        return false;
+    }
+
+    // get the load_assembly_and_get_function_pointer
+    auto load_asm = get_dotnet_load_assembly(cfg.wstring().c_str());
+    if (!load_asm) return false;
+
+    RegisterAllFn register_all_fn = nullptr;
+
+    int rc = load_asm(dll.wstring().c_str(), L"Game.PluginBootstrap, Game", L"RegisterAll",
+                      UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&register_all_fn);
+    if (rc != 0 || register_all_fn == nullptr) {
+        std::cerr << "Failed to bind RegisterAll: 0x" << std::hex << rc << "\n";
+        return false;
+    }
+
+    // now call it so managed code will self-register all systems:
+    register_all_fn((void *)&HostGetProcAddress);
+
+    return true;
+}
+
 int test_managed() {
     if (!load_hostfxr()) {
         return -1;

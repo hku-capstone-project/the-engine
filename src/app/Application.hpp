@@ -4,8 +4,10 @@
 #include "utils/event-types/EventType.hpp"
 #include "utils/logger/Logger.hpp"
 #include "utils/vulkan-wrapper/memory/Image.hpp"
-#include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "window/KeyboardInfo.hpp"
+
+// 添加脚本引擎相关头文件
+#include "dotnet/Engine.hpp"
 
 #include <memory>
 
@@ -42,6 +44,9 @@ class Application {
     std::unique_ptr<ImguiManager> _imguiManager           = nullptr;
     std::unique_ptr<FpsSink> _fpsSink                     = nullptr;
 
+    // 添加脚本引擎实例
+    std::unique_ptr<App> _scriptEngine = nullptr;
+
     // semaphores and fences for synchronization
     std::vector<VkSemaphore> _imageAvailableSemaphores{};
     std::vector<VkSemaphore> _renderFinishedSemaphores{};
@@ -58,6 +63,7 @@ class Application {
     void _mainLoop();
     void _init();
     void _cleanup();
+    void _initScriptEngine();  // 添加脚本引擎初始化方法
 
     void _onRenderLoopBlockRequest(E_RenderLoopBlockRequest const &event);
     void _buildScene();

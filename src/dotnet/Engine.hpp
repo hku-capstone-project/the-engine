@@ -17,6 +17,10 @@ class App {
     // An Update system is void(float dt)
     using UpdateSystem = std::function<void(float)>;
 
+    // 将这些移到public以便Application访问
+    std::vector<StartupSystem> startSystems;
+    std::vector<UpdateSystem> updateSystems;
+
     void add_startup_system(StartupSystem sys) { startSystems.push_back(sys); }
     void add_update_system(UpdateSystem sys) { updateSystems.push_back(sys); }
 
@@ -86,7 +90,4 @@ class App {
 
   private:
     uint32_t _updateCount = 0;
-
-    std::vector<StartupSystem> startSystems;
-    std::vector<UpdateSystem> updateSystems;
 };

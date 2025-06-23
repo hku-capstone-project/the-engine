@@ -8,13 +8,13 @@ framesInFlight = 2
 isFramerateLimited = false
 
 [Camera]
-initPosition = [ 0.0, 0.0, 5.0 ]
+initPosition = [ -5.0, 3.0, 8.0 ]
 initYaw = 0.0
-initPitch = 0.0
+initPitch = -15.0
 vFov = 60.0
-movementSpeed = 0.2
-movementSpeedBoost = 3.0
-mouseSensitivity = 0.08
+movementSpeed = 2.0
+movementSpeedBoost = 5.0
+mouseSensitivity = 0.1
 
 [ShadowMapCamera]
 range = 1.0

@@ -16,8 +16,6 @@
 #include <memory>
 
 Application::Application(Logger *logger) : _logger(logger) {
-    test_managed();
-
     _appContext      = std::make_unique<VulkanApplicationContext>();
     _configContainer = std::make_unique<ConfigContainer>(_logger);
 
@@ -38,6 +36,8 @@ Application::Application(Logger *logger) : _logger(logger) {
     _renderer = std::make_unique<Renderer>(
         _appContext.get(), _logger, _configContainer->applicationInfo->framesInFlight,
         _shaderCompiler.get(), _window.get(), _configContainer.get());
+
+    _initScriptEngine();
 
     _init();
 
@@ -61,6 +61,42 @@ void Application::_init() {
     // attach application-level keyboard listeners
     _window->addKeyboardCallback(
         [this](KeyboardInfo const &keyboardInfo) { _applicationKeyboardCallback(keyboardInfo); });
+    
+    // 运行脚本引擎的startup systems
+    if (_scriptEngine) {
+        for (auto &s : _scriptEngine->startSystems) {
+            s();
+        }
+        _logger->info("Script engine startup systems executed");
+        
+        // 直接创建猴子entity用于渲染
+        auto monkeyEntity = _scriptEngine->registry.create();
+        Transform monkeyTransform;
+        monkeyTransform.position = glm::vec3(0.0f, 1.0f, 0.0f);
+        _scriptEngine->registry.emplace<Transform>(monkeyEntity, monkeyTransform);
+        
+        Mesh monkeyMesh;
+        monkeyMesh.modelId = 0;  // 猴子模型ID
+        _scriptEngine->registry.emplace<Mesh>(monkeyEntity, monkeyMesh);
+        
+        _logger->info("Monkey entity created directly in Application");
+        
+        // 输出控制说明
+        _logger->info("=== CONTROLS ===");
+        _logger->info("Monkey Control:");
+        _logger->info("  WASD - Move forward/back/left/right");
+        _logger->info("  Q/Z  - Move up/down");
+        _logger->info("");
+        _logger->info("Camera Control:");
+        _logger->info("  Arrow Keys - Move forward/back/left/right");
+        _logger->info("  Space/Ctrl - Move up/down");
+        _logger->info("  Mouse      - Look around (press E to toggle mouse capture)");
+        _logger->info("");
+        _logger->info("Other:");
+        _logger->info("  E   - Toggle mouse cursor");
+        _logger->info("  ESC - Exit");
+        _logger->info("================");
+    }
 }
 
 void Application::_applicationKeyboardCallback(KeyboardInfo const &keyboardInfo) {
@@ -72,6 +108,42 @@ void Application::_applicationKeyboardCallback(KeyboardInfo const &keyboardInfo)
     if (keyboardInfo.isKeyPressed(GLFW_KEY_E)) {
         _window->toggleCursor();
         return;
+    }
+    
+    // WASD控制猴子位置
+    if (_scriptEngine) {
+        auto view = _scriptEngine->registry.view<Transform, Mesh>();
+        for (auto entity : view) {
+            auto& transform = view.get<Transform>(entity);
+            auto& mesh = view.get<Mesh>(entity);
+            
+            if (mesh.modelId == 0) {  // 猴子模型
+                float moveSpeed = 0.1f;  // 猴子移动速度
+                
+                if (keyboardInfo.isKeyPressed(GLFW_KEY_W)) {
+                    transform.position.z -= moveSpeed;  // 向前
+                }
+                if (keyboardInfo.isKeyPressed(GLFW_KEY_S)) {
+                    transform.position.z += moveSpeed;  // 向后
+                }
+                if (keyboardInfo.isKeyPressed(GLFW_KEY_A)) {
+                    transform.position.x -= moveSpeed;  // 向左
+                }
+                if (keyboardInfo.isKeyPressed(GLFW_KEY_D)) {
+                    transform.position.x += moveSpeed;  // 向右
+                }
+                if (keyboardInfo.isKeyPressed(GLFW_KEY_Q)) {
+                    transform.position.y += moveSpeed;  // 向上
+                }
+                if (keyboardInfo.isKeyPressed(GLFW_KEY_Z)) {
+                    transform.position.y -= moveSpeed;  // 向下
+                }
+                
+                _logger->info("Monkey manual position: ({:.2f}, {:.2f}, {:.2f})", 
+                            transform.position.x, transform.position.y, transform.position.z);
+                break;
+            }
+        }
     }
 }
 
@@ -187,10 +259,33 @@ void Application::_drawFrame() {
         _logger->error("resizing is not allowed!");
     }
 
-    static glm::vec3 currentPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-    // currently, we alter the position in each call, with a sine pattern
-    // TODO: alter the position from the script!
-    currentPosition.y      = std::sin(glfwGetTime());
+    // 计算deltaTime并运行脚本引擎的update systems
+    static auto lastFrameTime = std::chrono::steady_clock::now();
+    auto currentTime = std::chrono::steady_clock::now();
+    float deltaTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
+    lastFrameTime = currentTime;
+
+    glm::vec3 currentPosition = glm::vec3(0.0f, 1.0f, 0.0f);  // 默认位置
+    
+    if (_scriptEngine) {
+        // 运行脚本引擎的update systems
+        for (auto &s : _scriptEngine->updateSystems) {
+            s(deltaTime);
+        }
+        
+        // 获取猴子当前位置（现在通过键盘控制）
+        auto view = _scriptEngine->registry.view<Transform, Mesh>();
+        for (auto entity : view) {
+            auto& transform = view.get<Transform>(entity);
+            auto& mesh = view.get<Mesh>(entity);
+            
+            if (mesh.modelId == 0) {  // 猴子模型
+                currentPosition = transform.position;
+                break;  // 只处理第一个找到的猴子entity
+            }
+        }
+    }
+
     auto const modelMatrix = glm::translate(glm::mat4(1.0f), currentPosition);
     _renderer->drawFrame(currentFrame, imageIndex, modelMatrix);
 
@@ -230,4 +325,15 @@ void Application::_drawFrame() {
     vkQueuePresentKHR(_appContext->getPresentQueue(), &presentInfo);
 
     currentFrame = (currentFrame + 1) % _configContainer->applicationInfo->framesInFlight;
+}
+
+void Application::_initScriptEngine() {
+    _scriptEngine = std::make_unique<App>();
+    
+    if (init_script_engine(*_scriptEngine)) {
+        _logger->info("Script engine initialized successfully");
+    } else {
+        _logger->error("Failed to initialize script engine");
+        _scriptEngine.reset();  // 清理失败的引擎
+    }
 }
