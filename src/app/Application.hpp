@@ -8,6 +8,8 @@
 
 // 添加脚本引擎相关头文件
 #include "dotnet/Engine.hpp"
+#include "input/InputSystem.hpp"
+#include "dotnet/InputTestSystem.hpp"
 
 #include <memory>
 
@@ -19,6 +21,11 @@ class FpsSink;
 class Renderer;
 class ShaderCompiler;
 class ImguiManager;
+
+enum class MonkeyControlMode {
+    RandomMovement,
+    ScriptControl
+};
 
 class Application {
   public:
@@ -53,6 +60,8 @@ class Application {
     std::vector<VkFence> _framesInFlightFences{};
 
     uint32_t _blockStateBits = 0;
+
+    MonkeyControlMode _monkeyControlMode = MonkeyControlMode::RandomMovement;
 
     void _applicationKeyboardCallback(KeyboardInfo const &keyboardInfo);
 

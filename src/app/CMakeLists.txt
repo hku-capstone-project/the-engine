@@ -6,6 +6,7 @@ target_link_libraries(src-app PRIVATE
         src-renderer
         src-vulkan-wrapper
         src-window
+        input
         src-imgui-manager
         src-app-context
         src-config-container

@@ -6,6 +6,7 @@ add_subdirectory(app-context/)
 
 # add_subdirectory(vulkan-wrapper/)
 add_subdirectory(window/)
+add_subdirectory(input/)
 
 add_subdirectory(camera/)
 add_subdirectory(imgui-manager/)

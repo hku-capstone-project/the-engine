@@ -58,6 +58,9 @@ void Application::_init() {
     _imguiManager->init();
     _createSemaphoresAndFences();
 
+    // 初始化InputSystem
+    InputSystem::Initialize();
+
     // attach application-level keyboard listeners
     _window->addKeyboardCallback(
         [this](KeyboardInfo const &keyboardInfo) { _applicationKeyboardCallback(keyboardInfo); });
@@ -88,6 +91,11 @@ void Application::_init() {
         _logger->info("  Space/Ctrl - Move up/down");
         _logger->info("  Mouse      - Look around (press E to toggle mouse capture)");
         _logger->info("");
+        _logger->info("Monkey Control Mode:");
+        _logger->info("  F1  - Random movement mode (default)");
+        _logger->info("  F2  - Script control mode (WASD to control monkey)");
+        _logger->info("  In script mode: WASD/QZ - Move monkey, Space - Print position");
+        _logger->info("");
         _logger->info("Other:");
         _logger->info("  E   - Toggle mouse cursor");
         _logger->info("  ESC - Exit");
@@ -103,6 +111,33 @@ void Application::_applicationKeyboardCallback(KeyboardInfo const &keyboardInfo)
 
     if (keyboardInfo.isKeyPressed(GLFW_KEY_E)) {
         _window->toggleCursor();
+        return;
+    }
+    
+    if (keyboardInfo.isKeyPressed(GLFW_KEY_F1)) {
+        if (_monkeyControlMode != MonkeyControlMode::RandomMovement) {
+            _monkeyControlMode = MonkeyControlMode::RandomMovement;
+            _logger->info("Switched to Random Movement mode");
+            
+            // 清除脚本系统的update systems
+            if (_scriptEngine) {
+                _scriptEngine->updateSystems.clear();
+            }
+        }
+        return;
+    }
+    
+    if (keyboardInfo.isKeyPressed(GLFW_KEY_F2)) {
+        if (_monkeyControlMode != MonkeyControlMode::ScriptControl) {
+            _monkeyControlMode = MonkeyControlMode::ScriptControl;
+            _logger->info("Switched to Script Control mode (use WASD to control monkey)");
+            
+            // 设置脚本控制系统
+            if (_scriptEngine) {
+                _scriptEngine->updateSystems.clear();
+                InputTestSystem::CreatePlayerControllerSystem(*_scriptEngine);
+            }
+        }
         return;
     }
 }
@@ -219,6 +254,9 @@ void Application::_drawFrame() {
         _logger->error("resizing is not allowed!");
     }
 
+    // 更新InputSystem状态
+    InputSystem::UpdateFrame(_window->getKeyboardInfo(), _window->getCursorInfo());
+    
     // 计算deltaTime并运行脚本引擎的update systems
     static auto lastFrameTime = std::chrono::steady_clock::now();
     auto currentTime = std::chrono::steady_clock::now();
@@ -234,23 +272,39 @@ void Application::_drawFrame() {
             s(deltaTime);
         }
         
-        // 随机更新猴子位置（小范围移动）
-        auto view = _scriptEngine->registry.view<Transform, Mesh>();
-        for (auto entity : view) {
-            auto& transform = view.get<Transform>(entity);
-            auto& mesh = view.get<Mesh>(entity);
-            
-            if (mesh.modelId == 0) {  // 猴子模型
-                static float time = 0.0f;
-                time += 0.02f;  // 缓慢时间增量
+        // 根据控制模式更新猴子位置
+        if (_monkeyControlMode == MonkeyControlMode::RandomMovement) {
+            // 随机更新猴子位置（小范围移动）
+            auto view = _scriptEngine->registry.view<Transform, Mesh>();
+            for (auto entity : view) {
+                auto& transform = view.get<Transform>(entity);
+                auto& mesh = view.get<Mesh>(entity);
                 
-                // 使用正弦波的组合实现随机移动
-                transform.position.x = 1.5f * std::sin(time * 0.7f) * std::cos(time * 0.5f);
-                transform.position.y = 0.5f * std::sin(time * 1.3f) + 1.0f;  // y轴基础高度1.0
-                transform.position.z = 1.2f * std::cos(time * 0.9f) * std::sin(time * 0.4f);
+                if (mesh.modelId == 0) {  // 猴子模型
+                    static float time = 0.0f;
+                    time += 0.02f;  // 缓慢时间增量
+                    
+                    // 使用正弦波的组合实现随机移动
+                    transform.position.x = 1.5f * std::sin(time * 0.7f) * std::cos(time * 0.5f);
+                    transform.position.y = 0.5f * std::sin(time * 1.3f) + 1.0f;  // y轴基础高度1.0
+                    transform.position.z = 1.2f * std::cos(time * 0.9f) * std::sin(time * 0.4f);
+                    
+                    currentPosition = transform.position;
+                    break;
+                }
+            }
+        } else {
+            // 脚本控制模式下，位置由脚本系统控制
+            // 只需要获取当前位置传递给渲染器
+            auto view = _scriptEngine->registry.view<Transform, Mesh>();
+            for (auto entity : view) {
+                auto& transform = view.get<Transform>(entity);
+                auto& mesh = view.get<Mesh>(entity);
                 
-                currentPosition = transform.position;
-                break;
+                if (mesh.modelId == 0) {  // 猴子模型
+                    currentPosition = transform.position;
+                    break;
+                }
             }
         }
     }
