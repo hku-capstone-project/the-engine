@@ -113,8 +113,8 @@ static const std::unordered_map<std::string, GetterFn> g_getters = {
      +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Transform>(e); }},
     {"Velocity", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Velocity>(e); }},
     {"Player", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Player>(e); }},
-    {"Mesh", +[](entt::registry& r, entt::entity e) -> void* { return &r.get<Mesh>(e); }},
-    {"Material", +[](entt::registry& r, entt::entity e) -> void* { return &r.get<Material>(e); }},
+    {"Mesh", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Mesh>(e); }},
+    {"Material", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Material>(e); }},
 };
 
 static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
@@ -124,8 +124,10 @@ static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
      [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Velocity>()); }},
     {"Player",
      [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Player>()); }},
-    {"Mesh", [](entt::runtime_view& view) { view.iterate(AppSingleton().registry.storage<Mesh>()); }},
-    {"Material", [](entt::runtime_view& view) { view.iterate(AppSingleton().registry.storage<Material>()); }},
+    {"Mesh",
+     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Mesh>()); }},
+    {"Material",
+     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Material>()); }},
 };
 
 void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
@@ -217,15 +219,20 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
     if (std::strcmp(name, "AddVelocity") == 0) return (void *)&AddVelocity;
     if (std::strcmp(name, "AddPlayer") == 0) return (void *)&AddPlayer;
-    if (std::strcmp(name, "AddMesh") == 0) return (void*)&AddMesh;
-    if (std::strcmp(name, "AddMaterial") == 0) return (void*)&AddMaterial;
-    if (std::strcmp(name, "HostRemoveComponentTransform") == 0) return (void*)&HostRemoveComponentTransform;
-    if (std::strcmp(name, "HostRemoveComponentVelocity") == 0) return (void*)&HostRemoveComponentVelocity;
-    if (std::strcmp(name, "HostRemoveComponentPlayer") == 0) return (void*)&HostRemoveComponentPlayer;
-    if (std::strcmp(name, "HostRemoveComponentMesh") == 0) return (void*)&HostRemoveComponentMesh;
-    if (std::strcmp(name, "HostRemoveComponentMaterial") == 0) return (void*)&HostRemoveComponentMaterial;
-    if (std::strcmp(name, "HostDestroyEntity") == 0) return (void*)&HostDestroyEntity;
-    if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0) return (void*)&HostRegisterPerEntityUpdate;
+    if (std::strcmp(name, "AddMesh") == 0) return (void *)&AddMesh;
+    if (std::strcmp(name, "AddMaterial") == 0) return (void *)&AddMaterial;
+    if (std::strcmp(name, "HostRemoveComponentTransform") == 0)
+        return (void *)&HostRemoveComponentTransform;
+    if (std::strcmp(name, "HostRemoveComponentVelocity") == 0)
+        return (void *)&HostRemoveComponentVelocity;
+    if (std::strcmp(name, "HostRemoveComponentPlayer") == 0)
+        return (void *)&HostRemoveComponentPlayer;
+    if (std::strcmp(name, "HostRemoveComponentMesh") == 0) return (void *)&HostRemoveComponentMesh;
+    if (std::strcmp(name, "HostRemoveComponentMaterial") == 0)
+        return (void *)&HostRemoveComponentMaterial;
+    if (std::strcmp(name, "HostDestroyEntity") == 0) return (void *)&HostDestroyEntity;
+    if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0)
+        return (void *)&HostRegisterPerEntityUpdate;
     return nullptr;
 }
 }

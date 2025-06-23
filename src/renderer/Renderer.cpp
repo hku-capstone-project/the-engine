@@ -58,7 +58,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
     _createDepthStencil();
     _createColorResources();
     _createFrameBuffers();
-    _recordTracingCommandBuffers();
+    _recordDrawingCommandBuffers();
     _recordDeliveryCommandBuffers();
 
     // attach camera's mouse handler to the window mouse callback
@@ -219,10 +219,10 @@ Renderer::~Renderer() {
     for (auto framebuffer : _frameBuffers) {
         vkDestroyFramebuffer(_appContext->getDevice(), framebuffer, nullptr);
     }
-    if (!_tracingCommandBuffers.empty()) {
+    if (!_drawingCommandBuffers.empty()) {
         vkFreeCommandBuffers(_appContext->getDevice(), _appContext->getCommandPool(),
-                             static_cast<uint32_t>(_tracingCommandBuffers.size()),
-                             _tracingCommandBuffers.data());
+                             static_cast<uint32_t>(_drawingCommandBuffers.size()),
+                             _drawingCommandBuffers.data());
     }
     if (!_deliveryCommandBuffers.empty()) {
         vkFreeCommandBuffers(_appContext->getDevice(), _appContext->getCommandPool(),
@@ -257,7 +257,7 @@ void Renderer::_updateUboData(size_t currentFrame) {
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
     _updateUboData(currentFrame);
 
-    auto &cmdBuffer = _tracingCommandBuffers[currentFrame];
+    auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 
     // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
     VkExtent2D currentSwapchainExtent = _appContext->getSwapchainExtent();
@@ -334,21 +334,21 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
 
 void Renderer::processInput(double deltaTime) { _camera->processInput(deltaTime); }
 
-void Renderer::_recordTracingCommandBuffers() {
-    for (auto &commandBuffer : _tracingCommandBuffers) {
+void Renderer::_recordDrawingCommandBuffers() {
+    for (auto &commandBuffer : _drawingCommandBuffers) {
         vkFreeCommandBuffers(_appContext->getDevice(), _appContext->getCommandPool(), 1,
                              &commandBuffer);
     }
-    _tracingCommandBuffers.clear();
+    _drawingCommandBuffers.clear();
 
-    _tracingCommandBuffers.resize(_appContext->getSwapchainImagesCount());
+    _drawingCommandBuffers.resize(_appContext->getSwapchainImagesCount());
     VkCommandBufferAllocateInfo allocateInfo{};
     allocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocateInfo.commandPool        = _appContext->getCommandPool();
     allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocateInfo.commandBufferCount = static_cast<uint32_t>(_tracingCommandBuffers.size());
+    allocateInfo.commandBufferCount = static_cast<uint32_t>(_drawingCommandBuffers.size());
     vkAllocateCommandBuffers(_appContext->getDevice(), &allocateInfo,
-                             _tracingCommandBuffers.data());
+                             _drawingCommandBuffers.data());
 }
 
 void Renderer::_recordDeliveryCommandBuffers() {

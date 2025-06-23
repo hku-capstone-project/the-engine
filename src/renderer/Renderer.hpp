@@ -37,8 +37,8 @@ class Renderer {
     void processInput(double deltaTime);
 
     void onSwapchainResize();
-    [[nodiscard]] inline VkCommandBuffer getTracingCommandBuffer(size_t currentFrame) {
-        return _tracingCommandBuffers[currentFrame];
+    [[nodiscard]] inline VkCommandBuffer getDrawingCommandBuffer(size_t currentFrame) {
+        return _drawingCommandBuffers[currentFrame];
     }
 
     [[nodiscard]] inline VkCommandBuffer getDeliveryCommandBuffer(size_t imageIndex) {
@@ -55,7 +55,7 @@ class Renderer {
     ConfigContainer *_configContainer;
 
     std::vector<VkCommandBuffer> _deliveryCommandBuffers{};
-    std::vector<VkCommandBuffer> _tracingCommandBuffers{};
+    std::vector<VkCommandBuffer> _drawingCommandBuffers{};
     std::vector<VkFramebuffer> _frameBuffers{};
 
     std::unique_ptr<Model> _model = nullptr;
@@ -87,7 +87,7 @@ class Renderer {
     std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
 
     void _recordDeliveryCommandBuffers();
-    void _recordTracingCommandBuffers();
+    void _recordDrawingCommandBuffers();
     void _createRenderPass();
     void _createFrameBuffers();
     void _createDepthStencil();

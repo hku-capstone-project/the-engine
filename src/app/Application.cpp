@@ -191,7 +191,7 @@ void Application::_drawFrame() {
 
     _imguiManager->recordCommandBuffer(currentFrame, imageIndex);
     std::vector<VkCommandBuffer> submitCommandBuffers = {
-        _renderer->getTracingCommandBuffer(currentFrame),
+        _renderer->getDrawingCommandBuffer(currentFrame),
         _renderer->getDeliveryCommandBuffer(imageIndex),
         _imguiManager->getCommandBuffer(currentFrame),
     };
