@@ -276,25 +276,23 @@ void Renderer::onSwapchainResize() {
     _logger->info("Renderer resources have been successfully recreated.");
 }
 
-void Renderer::_updateUboData(size_t currentFrame) {
+void Renderer::_updateBufferData(size_t currentFrame, glm::mat4 modelMatrix) {
     auto view = _camera->getViewMatrix();
 
     auto swapchainExtent = _appContext->getSwapchainExtent();
     auto proj            = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
                                                         static_cast<float>(swapchainExtent.height));
 
-    auto model = glm::mat4(1.0f);
-
     S_RenderInfo renderInfo{};
     renderInfo.view  = view;
     renderInfo.proj  = proj;
-    renderInfo.model = model;
+    renderInfo.model = modelMatrix;
 
     _renderInfoBufferBundle->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
-void Renderer::drawFrame(size_t currentFrame, size_t imageIndex) {
-    _updateUboData(currentFrame);
+void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix) {
+    _updateBufferData(currentFrame, modelMatrix);
 
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 

@@ -33,7 +33,7 @@ class Renderer {
     Renderer(Renderer &&)                 = delete;
     Renderer &operator=(Renderer &&)      = delete;
 
-    void drawFrame(size_t currentFrame, size_t imageIndex);
+    void drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix);
     void processInput(double deltaTime);
 
     void onSwapchainResize();
@@ -81,7 +81,7 @@ class Renderer {
     // buffers
     std::unique_ptr<BufferBundle> _renderInfoBufferBundle;
     void _createBuffersAndBufferBundles();
-    void _updateUboData(size_t currentFrame);
+    void _updateBufferData(size_t currentFrame, glm::mat4 model_matrix);
 
     // descriptor set
     std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;

@@ -187,7 +187,12 @@ void Application::_drawFrame() {
         _logger->error("resizing is not allowed!");
     }
 
-    _renderer->drawFrame(currentFrame, imageIndex);
+    static glm::vec3 currentPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    // currently, we alter the position in each call, with a sine pattern
+    // TODO: alter the position from the script!
+    currentPosition.y      = std::sin(glfwGetTime());
+    auto const modelMatrix = glm::translate(glm::mat4(1.0f), currentPosition);
+    _renderer->drawFrame(currentFrame, imageIndex, modelMatrix);
 
     _imguiManager->recordCommandBuffer(currentFrame, imageIndex);
     std::vector<VkCommandBuffer> submitCommandBuffers = {
