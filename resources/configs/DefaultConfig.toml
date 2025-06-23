@@ -8,8 +8,8 @@ framesInFlight = 2
 isFramerateLimited = false
 
 [Camera]
-initHeight = 0.8
-initYaw = 270.0
+initPosition = [ -5.0, 0.0, -5.0 ]
+initYaw = 230.0
 initPitch = 0.0
 vFov = 60.0
 movementSpeed = 0.2

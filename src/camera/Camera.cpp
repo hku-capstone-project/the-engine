@@ -11,8 +11,7 @@ glm::vec3 constexpr kWorldUp = {0.F, 1.F, 0.F};
 
 Camera::Camera(Window *window, Logger *logger, ConfigContainer *configContainer)
     : _window(window), _logger(logger), _configContainer(configContainer) {
-    auto const &h = _configContainer->cameraInfo->initHeight;
-    _position     = glm::vec3(0.0F, h, 0.0F);
+    _position = _configContainer->cameraInfo->initPosition;
     _yaw          = _configContainer->cameraInfo->initYaw;
     _pitch        = _configContainer->cameraInfo->initPitch;
 
