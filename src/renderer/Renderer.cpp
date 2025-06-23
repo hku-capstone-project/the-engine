@@ -219,7 +219,6 @@ Renderer::~Renderer() {
     for (auto framebuffer : _frameBuffers) {
         vkDestroyFramebuffer(_appContext->getDevice(), framebuffer, nullptr);
     }
-
     if (!_tracingCommandBuffers.empty()) {
         vkFreeCommandBuffers(_appContext->getDevice(), _appContext->getCommandPool(),
                              static_cast<uint32_t>(_tracingCommandBuffers.size()),
@@ -230,9 +229,7 @@ Renderer::~Renderer() {
                              static_cast<uint32_t>(_deliveryCommandBuffers.size()),
                              _deliveryCommandBuffers.data());
     }
-
     _pipeline.reset();
-
     vkDestroyRenderPass(_appContext->getDevice(), _renderPass, nullptr);
 }
 

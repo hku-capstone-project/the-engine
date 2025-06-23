@@ -50,10 +50,7 @@ void Application::_onRenderLoopBlockRequest(E_RenderLoopBlockRequest const &even
     _blockStateBits |= event.blockStateBits;
 }
 
-Application::~Application() {
-    _logger->info("Application is destroyed");
-    _cleanup();
-}
+Application::~Application() { _cleanup(); }
 
 void Application::run() { _mainLoop(); }
 
@@ -64,8 +61,6 @@ void Application::_init() {
     // attach application-level keyboard listeners
     _window->addKeyboardCallback(
         [this](KeyboardInfo const &keyboardInfo) { _applicationKeyboardCallback(keyboardInfo); });
-
-    // _buildScene();
 }
 
 void Application::_applicationKeyboardCallback(KeyboardInfo const &keyboardInfo) {
@@ -163,13 +158,11 @@ void Application::_mainLoop() {
 }
 
 void Application::_cleanup() {
-    _logger->info("application is cleaning up resources...");
     for (size_t i = 0; i < _configContainer->applicationInfo->framesInFlight; i++) {
         vkDestroySemaphore(_appContext->getDevice(), _renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(_appContext->getDevice(), _imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(_appContext->getDevice(), _framesInFlightFences[i], nullptr);
     }
-    _logger->info("application has cleaned up resources");
 }
 
 void Application::_drawFrame() {

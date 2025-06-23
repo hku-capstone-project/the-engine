@@ -18,8 +18,6 @@ static const std::vector<const char *> requiredDeviceExtensions = {VK_KHR_SWAPCH
 VulkanApplicationContext::VulkanApplicationContext() = default;
 
 VulkanApplicationContext::~VulkanApplicationContext() {
-    _logger->info("VulkanApplicationContext is being destroyed");
-
     vkDestroyCommandPool(_device, _commandPool, nullptr);
     vkDestroyCommandPool(_device, _guiCommandPool, nullptr);
 
@@ -41,8 +39,6 @@ VulkanApplicationContext::~VulkanApplicationContext() {
 #endif // NDEBUG
 
     vkDestroyInstance(_vkInstance, nullptr);
-    
-    _logger->info("VulkanApplicationContext is destroyed");
 }
 
 void VulkanApplicationContext::init(Logger *logger, GLFWwindow *window,
