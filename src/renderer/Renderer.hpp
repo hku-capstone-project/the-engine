@@ -20,6 +20,7 @@ class BufferBundle;
 class DescriptorSetBundle;
 class Camera;
 class Sampler;
+class ModelManager;
 
 class Renderer {
   public:
@@ -33,7 +34,13 @@ class Renderer {
     Renderer(Renderer &&)                 = delete;
     Renderer &operator=(Renderer &&)      = delete;
 
-    void drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix);
+    void drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix, int32_t modelId = 0);
+    
+    // 新的多模型渲染API
+    void beginFrame(size_t currentFrame, size_t imageIndex);
+    void drawModel(glm::mat4 modelMatrix, int32_t modelId);
+    void endFrame();
+    
     void processInput(double deltaTime);
 
     void onSwapchainResize();
@@ -58,7 +65,8 @@ class Renderer {
     std::vector<VkCommandBuffer> _drawingCommandBuffers{};
     std::vector<VkFramebuffer> _frameBuffers{};
 
-    std::unique_ptr<Model> _model = nullptr;
+    // 移除单个模型，使用模型管理器
+    // std::unique_ptr<Model> _model = nullptr;
     struct {
         std::unique_ptr<Sampler> sharedSampler;
         std::unique_ptr<Image> baseColor;
@@ -73,8 +81,14 @@ class Renderer {
     std::unique_ptr<Image> _colorResourcesImage = nullptr;
 
     size_t _framesInFlight = 0;
+    
+    // 当前渲染状态
+    size_t _currentFrame = 0;
+    size_t _currentImageIndex = 0;
+    VkCommandBuffer _currentCommandBuffer = VK_NULL_HANDLE;
 
     // pipeline
+    std::unique_ptr<ModelManager> _modelManager = nullptr;
     std::unique_ptr<GfxPipeline> _pipeline = nullptr;
     void _createGraphicsPipeline();
 

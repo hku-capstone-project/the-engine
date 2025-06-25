@@ -82,7 +82,17 @@ void Application::_init() {
         monkeyMesh.modelId = 0;  // 猴子模型ID
         _scriptEngine->registry.emplace<Mesh>(monkeyEntity, monkeyMesh);
         
-        _logger->info("Monkey entity created directly in Application");
+        // 创建汽车entity
+        auto carEntity = _scriptEngine->registry.create();
+        Transform carTransform;
+        carTransform.position = glm::vec3(0.0f, 0.0f, 0.0f);  // 汽车在中心
+        _scriptEngine->registry.emplace<Transform>(carEntity, carTransform);
+        
+        Mesh carMesh;
+        carMesh.modelId = 1;  // 汽车模型ID
+        _scriptEngine->registry.emplace<Mesh>(carEntity, carMesh);
+        
+        _logger->info("Monkey and car entities created directly in Application");
         
         // 输出控制说明
         _logger->info("=== CONTROLS ===");
@@ -272,45 +282,71 @@ void Application::_drawFrame() {
             s(deltaTime);
         }
         
-        // 根据控制模式更新猴子位置
+        // 根据控制模式更新实体位置
+        static float globalTime = 0.0f;
+        globalTime += deltaTime;  // 全局时间用于动画
+        
         if (_monkeyControlMode == MonkeyControlMode::RandomMovement) {
-            // 随机更新猴子位置（小范围移动）
+            // F1模式：让猴子围着汽车转圈，汽车静止
             auto view = _scriptEngine->registry.view<Transform, Mesh>();
+            
             for (auto entity : view) {
                 auto& transform = view.get<Transform>(entity);
                 auto& mesh = view.get<Mesh>(entity);
                 
-                if (mesh.modelId == 0) {  // 猴子模型
-                    static float time = 0.0f;
-                    time += 0.02f;  // 缓慢时间增量
+                if (mesh.modelId == 0) {  // 猴子模型 - 围着汽车转
+                    float radius = 3.0f;  // 转圈半径
+                    float speed = 1.0f;   // 转圈速度
                     
-                    // 使用正弦波的组合实现随机移动
-                    transform.position.x = 1.5f * std::sin(time * 0.7f) * std::cos(time * 0.5f);
-                    transform.position.y = 0.5f * std::sin(time * 1.3f) + 1.0f;  // y轴基础高度1.0
-                    transform.position.z = 1.2f * std::cos(time * 0.9f) * std::sin(time * 0.4f);
+                    transform.position.x = radius * std::cos(globalTime * speed);
+                    transform.position.y = 1.0f + 0.5f * std::sin(globalTime * 2.0f);  // 上下浮动
+                    transform.position.z = radius * std::sin(globalTime * speed);
                     
                     currentPosition = transform.position;
-                    break;
+                } else if (mesh.modelId == 1) {  // 汽车模型 - 保持在中心
+                    transform.position = glm::vec3(0.0f, 0.0f, 0.0f);
                 }
             }
         } else {
-            // 脚本控制模式下，位置由脚本系统控制
-            // 只需要获取当前位置传递给渲染器
+            // F2模式：脚本控制猴子，汽车原地震动
             auto view = _scriptEngine->registry.view<Transform, Mesh>();
             for (auto entity : view) {
                 auto& transform = view.get<Transform>(entity);
                 auto& mesh = view.get<Mesh>(entity);
                 
-                if (mesh.modelId == 0) {  // 猴子模型
+                if (mesh.modelId == 0) {  // 猴子模型 - 由脚本系统控制
                     currentPosition = transform.position;
-                    break;
+                } else if (mesh.modelId == 1) {  // 汽车模型 - 原地震动
+                    float shake = 0.02f;  // 震动幅度
+                    transform.position.x = shake * std::sin(globalTime * 30.0f);  // 快速震动
+                    transform.position.y = shake * std::cos(globalTime * 25.0f);
+                    transform.position.z = shake * std::sin(globalTime * 35.0f);
                 }
             }
         }
     }
 
-    auto const modelMatrix = glm::translate(glm::mat4(1.0f), currentPosition);
-    _renderer->drawFrame(currentFrame, imageIndex, modelMatrix);
+    // 先开始渲染pass
+    _renderer->beginFrame(currentFrame, imageIndex);
+    
+    // 渲染所有实体
+    if (_scriptEngine) {
+        auto view = _scriptEngine->registry.view<Transform, Mesh>();
+        for (auto entity : view) {
+            auto& transform = view.get<Transform>(entity);
+            auto& mesh = view.get<Mesh>(entity);
+            
+            auto const modelMatrix = glm::translate(glm::mat4(1.0f), transform.position);
+            _renderer->drawModel(modelMatrix, mesh.modelId);
+        }
+    } else {
+        // 后备方案：如果脚本引擎不可用，只渲染猴子
+        auto const modelMatrix = glm::translate(glm::mat4(1.0f), currentPosition);
+        _renderer->drawModel(modelMatrix, 0);
+    }
+    
+    // 结束渲染pass
+    _renderer->endFrame();
 
     _imguiManager->recordCommandBuffer(currentFrame, imageIndex);
     std::vector<VkCommandBuffer> submitCommandBuffers = {

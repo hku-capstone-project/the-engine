@@ -16,13 +16,19 @@ layout(location = 1) out vec3 vertWorldPosition;
 layout(set = 0, binding = 0) uniform U_RenderInfo { S_RenderInfo data; }
 renderInfo;
 
+// Push constants for per-object model matrix
+layout(push_constant) uniform ModelMatrix {
+    mat4 model;
+} pushConstants;
+
 void main() {
     vec4 modelSpacePosition = vec4(inPos, 1.0);
 
+    // Use push constants for model matrix instead of uniform buffer
     gl_Position =
-        renderInfo.data.proj * renderInfo.data.view * renderInfo.data.model * modelSpacePosition;
+        renderInfo.data.proj * renderInfo.data.view * pushConstants.model * modelSpacePosition;
 
-    vertWorldPosition = (renderInfo.data.model * modelSpacePosition).xyz;
+    vertWorldPosition = (pushConstants.model * modelSpacePosition).xyz;
 
     vertColor = vec3(1.0, 0.0, 0.0);
 

@@ -13,6 +13,7 @@
 #include "utils/vulkan-wrapper/memory/Model.hpp"
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 #include "utils/vulkan-wrapper/sampler/Sampler.hpp"
+#include "utils/model-loader/ModelManager.hpp"
 #include "window/Window.hpp"
 
 Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
@@ -33,9 +34,23 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    const auto testModelPath = kPathToResourceFolder + "models/blender-monkey/monkey.obj";
-    // const auto testModelPath = kPathToResourceFolder + "models/sci_sword/sword.gltf";
-    _model = std::make_unique<Model>(_appContext, _logger, testModelPath);
+    // 创建模型管理器并预加载一些模型
+    _modelManager = std::make_unique<ModelManager>(_appContext, _logger);
+    
+    // 预加载猴子模型 (ID = 0)
+    const auto monkeyModelPath = kPathToResourceFolder + "models/blender-monkey/monkey.obj";
+    int32_t monkeyId = _modelManager->loadModel(monkeyModelPath);
+    _logger->info("Loaded monkey model with ID: {}", monkeyId);
+    
+    // 预加载汽车模型 (ID = 1)
+    const auto carModelPath = kPathToResourceFolder + "models/car/car.obj";
+    int32_t carId = _modelManager->loadModel(carModelPath);
+    _logger->info("Loaded car model with ID: {}", carId);
+    
+    // 预留：设置材质信息示例
+    // MaterialInfo monkeyMaterial;
+    // monkeyMaterial.baseColorTexture = kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png";
+    // _modelManager->setModelMaterial(monkeyId, monkeyMaterial);
 
     auto samplerSettings = Sampler::Settings{
         Sampler::AddressMode::kClampToEdge, // U
@@ -291,7 +306,7 @@ void Renderer::_updateBufferData(size_t currentFrame, glm::mat4 modelMatrix) {
     _renderInfoBufferBundle->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
-void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix) {
+void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix, int32_t modelId) {
     _updateBufferData(currentFrame, modelMatrix);
 
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
@@ -321,9 +336,17 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 model
     vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
     vkCmdBeginRenderPass(cmdBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+    // 根据modelId获取对应的模型
+    Model* currentModel = _modelManager->getModel(modelId);
+    if (!currentModel) {
+        _logger->warn("Model with ID {} not found, skipping render", modelId);
+        vkEndCommandBuffer(cmdBuffer);
+        return;
+    }
+
     VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_model->vertexBuffer->getVkBuffer(), offsets);
-    vkCmdBindIndexBuffer(cmdBuffer, _model->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &currentModel->vertexBuffer->getVkBuffer(), offsets);
+    vkCmdBindIndexBuffer(cmdBuffer, currentModel->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
     VkViewport viewport{};
     viewport.x        = 0.0f;
@@ -341,9 +364,9 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 model
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
-    // TODO:
+    // TODO: 将来可以根据材质信息进行更复杂的渲染
     _pipeline->recordDrawIndexed(cmdBuffer, currentFrame);
-    vkCmdDrawIndexed(cmdBuffer, _model->idxCnt, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmdBuffer, currentModel->idxCnt, 1, 0, 0, 0);
     vkCmdEndRenderPass(cmdBuffer);
 
     // 添加渲染完成后的图像布局转换
@@ -367,6 +390,113 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 model
                          &barrier);
 
     vkEndCommandBuffer(cmdBuffer);
+}
+
+void Renderer::beginFrame(size_t currentFrame, size_t imageIndex) {
+    _currentFrame = currentFrame;
+    _currentImageIndex = imageIndex;
+    _currentCommandBuffer = _drawingCommandBuffers[currentFrame];
+
+    VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+    cmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    cmdBufferBeginInfo.pInheritanceInfo = nullptr;
+
+    std::array<VkClearValue, 2> clear_vals = {};
+    clear_vals[0].color        = {{0.1f, 0.1f, 0.1f, 1.0f}}; // 稍微亮一点的背景色
+    clear_vals[1].depthStencil = {1.0f, 0};
+
+    VkRenderPassBeginInfo rdrPassBeginInfo{};
+    rdrPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rdrPassBeginInfo.renderPass        = _renderPass;
+    rdrPassBeginInfo.renderArea.offset = {0, 0};
+    rdrPassBeginInfo.renderArea.extent = _appContext->getSwapchainExtent();
+    rdrPassBeginInfo.clearValueCount   = clear_vals.size();
+    rdrPassBeginInfo.pClearValues      = clear_vals.data();
+    rdrPassBeginInfo.framebuffer       = _frameBuffers[imageIndex];
+
+    vkBeginCommandBuffer(_currentCommandBuffer, &cmdBufferBeginInfo);
+    vkCmdBeginRenderPass(_currentCommandBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    // 设置视口和裁剪
+    VkExtent2D currentSwapchainExtent = _appContext->getSwapchainExtent();
+    VkViewport viewport{};
+    viewport.x        = 0.0f;
+    viewport.y        = 0.0f;
+    viewport.width    = static_cast<float>(currentSwapchainExtent.width);
+    viewport.height   = static_cast<float>(currentSwapchainExtent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(_currentCommandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = currentSwapchainExtent;
+    vkCmdSetScissor(_currentCommandBuffer, 0, 1, &scissor);
+
+    vkCmdBindPipeline(_currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
+    
+    // 在beginFrame时只更新一次view和projection矩阵
+    auto view = _camera->getViewMatrix();
+    auto swapchainExtent = _appContext->getSwapchainExtent();
+    auto proj = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
+                                            static_cast<float>(swapchainExtent.height));
+
+    S_RenderInfo renderInfo{};
+    renderInfo.view  = view;
+    renderInfo.proj  = proj;
+    renderInfo.model = glm::mat4(1.0f);  // 设置为单位矩阵，实际模型矩阵通过push constants传递
+
+    _renderInfoBufferBundle->getBuffer(_currentFrame)->fillData(&renderInfo);
+    
+    // 绑定描述符集
+    _pipeline->recordDrawIndexed(_currentCommandBuffer, _currentFrame);
+}
+
+void Renderer::drawModel(glm::mat4 modelMatrix, int32_t modelId) {
+    // 根据modelId获取对应的模型
+    Model* currentModel = _modelManager->getModel(modelId);
+    if (!currentModel) {
+        _logger->warn("Model with ID {} not found, skipping render", modelId);
+        return;
+    }
+
+    // 绑定顶点和索引缓冲区
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(_currentCommandBuffer, 0, 1, &currentModel->vertexBuffer->getVkBuffer(), offsets);
+    vkCmdBindIndexBuffer(_currentCommandBuffer, currentModel->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    
+    // 使用push constants传递模型矩阵
+    vkCmdPushConstants(_currentCommandBuffer, _pipeline->getPipelineLayout(), 
+                       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &modelMatrix);
+    
+    vkCmdDrawIndexed(_currentCommandBuffer, currentModel->idxCnt, 1, 0, 0, 0);
+}
+
+void Renderer::endFrame() {
+    vkCmdEndRenderPass(_currentCommandBuffer);
+
+    // 添加渲染完成后的图像布局转换
+    VkImageMemoryBarrier barrier{};
+    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    barrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image                           = _appContext->getSwapchainImages()[_currentImageIndex];
+    barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel   = 0;
+    barrier.subresourceRange.levelCount     = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount     = 1;
+    barrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barrier.dstAccessMask                   = 0;
+
+    vkCmdPipelineBarrier(_currentCommandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &barrier);
+
+    vkEndCommandBuffer(_currentCommandBuffer);
 }
 
 void Renderer::processInput(double deltaTime) { _camera->processInput(deltaTime); }
