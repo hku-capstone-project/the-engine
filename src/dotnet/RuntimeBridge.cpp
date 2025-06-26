@@ -90,7 +90,7 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
 }
 
 // Single‐instance App
-RuntimeApplication &AppSingleton() {
+RuntimeApplication &RuntimeBridge::getRuntimeApplication() {
     static RuntimeApplication app;
     return app;
 }
@@ -118,56 +118,75 @@ static const std::unordered_map<std::string, GetterFn> g_getters = {
 
 static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
     {"Transform",
-     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Transform>()); }},
+     [](entt::runtime_view &view) {
+         view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<Transform>());
+     }},
     {"Velocity",
-     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Velocity>()); }},
+     [](entt::runtime_view &view) {
+         view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<Velocity>());
+     }},
     {"Player",
-     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Player>()); }},
+     [](entt::runtime_view &view) {
+         view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<Player>());
+     }},
     {"Mesh",
-     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Mesh>()); }},
+     [](entt::runtime_view &view) {
+         view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<Mesh>());
+     }},
     {"Material",
-     [](entt::runtime_view &view) { view.iterate(AppSingleton().registry.storage<Material>()); }},
+     [](entt::runtime_view &view) {
+         view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<Material>());
+     }},
 };
 
-void HostRegisterStartup(void (*sys)()) { AppSingleton().add_startup_system(sys); }
+void HostRegisterStartup(void (*sys)()) {
+    RuntimeBridge::getRuntimeApplication().add_startup_system(sys);
+}
 
-void HostRegisterUpdate(void (*sys)(float)) { AppSingleton().add_update_system(sys); }
+void HostRegisterUpdate(void (*sys)(float)) {
+    RuntimeBridge::getRuntimeApplication().add_update_system(sys);
+}
 
-uint32_t CreateEntity() { return (uint32_t)AppSingleton().registry.create(); }
+uint32_t CreateEntity() {
+    return (uint32_t)RuntimeBridge::getRuntimeApplication().registry.create();
+}
 
 void AddTransform(uint32_t e, Transform t) {
-    AppSingleton().registry.emplace_or_replace<Transform>(entt::entity{e}, t);
+    RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Transform>(entt::entity{e},
+                                                                                  t);
 }
 void AddVelocity(uint32_t e, Velocity v) {
-    AppSingleton().registry.emplace_or_replace<Velocity>(entt::entity{e}, v);
+    RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Velocity>(entt::entity{e},
+                                                                                 v);
 }
 void AddPlayer(uint32_t e, Player p) {
-    AppSingleton().registry.emplace_or_replace<Player>(entt::entity{e}, p);
+    RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Player>(entt::entity{e}, p);
 }
 void AddMesh(uint32_t e, Mesh m) {
-    AppSingleton().registry.emplace_or_replace<Mesh>(entt::entity{e}, m);
+    RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Mesh>(entt::entity{e}, m);
 }
 void AddMaterial(uint32_t e, Material m) {
-    AppSingleton().registry.emplace_or_replace<Material>(entt::entity{e}, m);
+    RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Material>(entt::entity{e},
+                                                                                 m);
 }
 
 void HostRemoveComponentTransform(uint32_t entityId) {
-    AppSingleton().registry.remove<Transform>(entt::entity{entityId});
+    RuntimeBridge::getRuntimeApplication().registry.remove<Transform>(entt::entity{entityId});
 }
 void HostRemoveComponentVelocity(uint32_t entityId) {
-    AppSingleton().registry.remove<Velocity>(entt::entity{entityId});
+    RuntimeBridge::getRuntimeApplication().registry.remove<Velocity>(entt::entity{entityId});
 }
 void HostRemoveComponentPlayer(uint32_t entityId) {
-    AppSingleton().registry.remove<Player>(entt::entity{entityId});
+    RuntimeBridge::getRuntimeApplication().registry.remove<Player>(entt::entity{entityId});
 }
 void HostRemoveComponentMesh(uint32_t entityId) {
-    AppSingleton().registry.remove<Mesh>(entt::entity{entityId});
+    RuntimeBridge::getRuntimeApplication().registry.remove<Mesh>(entt::entity{entityId});
 }
 void HostRemoveComponentMaterial(uint32_t entityId) {
-    AppSingleton().registry.remove<Material>(entt::entity{entityId});
+    RuntimeBridge::getRuntimeApplication().registry.remove<Material>(entt::entity{entityId});
 }
 void HostDestroyEntity(uint32_t entityId) {
-    AppSingleton().registry.destroy(entt::entity{entityId});
+    RuntimeBridge::getRuntimeApplication().registry.destroy(entt::entity{entityId});
 }
 
 void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
@@ -190,7 +209,7 @@ void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *c
     }
 
     // register one native update‐system lambda
-    AppSingleton().add_update_system([=](float dt) {
+    RuntimeBridge::getRuntimeApplication().add_update_system([=](float dt) {
         // 1) build the dynamic view
         entt::runtime_view view{};
         for (auto &iter : iters) {
@@ -201,7 +220,7 @@ void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *c
         std::vector<void *> ptrs(count);
         for (auto e : view) {
             for (int i = 0; i < count; ++i) {
-                ptrs[i] = getters[i](AppSingleton().registry, e);
+                ptrs[i] = getters[i](RuntimeBridge::getRuntimeApplication().registry, e);
             }
             // single P/Invoke for this entity
             fn(dt, ptrs.data());
@@ -271,7 +290,4 @@ void RuntimeBridge::bootstrap(Logger *logger) {
 
     // now call it so managed code will self-register all systems:
     register_all_fn((void *)&HostGetProcAddress);
-
-    RuntimeApplication &app = AppSingleton();
-    app.run();
 }

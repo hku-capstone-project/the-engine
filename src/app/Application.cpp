@@ -2,6 +2,7 @@
 #include "BlockState.hpp"
 #include "config-container/ConfigContainer.hpp"
 #include "config-container/sub-config/ApplicationInfo.hpp"
+#include "dotnet/RuntimeApplication.hpp"
 #include "dotnet/RuntimeBridge.hpp"
 #include "imgui-manager/gui-manager/ImguiManager.hpp"
 #include "renderer/Renderer.hpp"
@@ -15,7 +16,11 @@
 #include <memory>
 
 Application::Application(Logger *logger) : _logger(logger) {
+    // bootstrap the runtime application, to be ready to connect with the managed code
     RuntimeBridge::bootstrap(logger);
+
+    // call every startup system
+    RuntimeBridge::getRuntimeApplication().start();
 
     _appContext      = std::make_unique<VulkanApplicationContext>();
     _configContainer = std::make_unique<ConfigContainer>(_logger);
@@ -141,6 +146,9 @@ void Application::_mainLoop() {
         auto currentTime  = std::chrono::steady_clock::now();
         auto deltaTime    = currentTime - fpsRecordLastTime;
         fpsRecordLastTime = currentTime;
+
+        float dt = std::chrono::duration<float>(deltaTime).count();
+        RuntimeBridge::getRuntimeApplication().update(dt);
 
         double deltaTimeInSec =
             std::chrono::duration<double, std::chrono::seconds::period>(deltaTime).count();
