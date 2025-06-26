@@ -20,9 +20,6 @@ Application::Application(Logger *logger) : _logger(logger) {
     // bootstrap the runtime application, to be ready to connect with the managed code
     RuntimeBridge::bootstrap(logger);
 
-    // call every startup system
-    RuntimeBridge::getRuntimeApplication().start();
-
     _appContext      = std::make_unique<VulkanApplicationContext>();
     _configContainer = std::make_unique<ConfigContainer>(_logger);
 
@@ -30,6 +27,9 @@ Application::Application(Logger *logger) : _logger(logger) {
         logger, [this](std::string const &fullPathToIncludedShaderFile) {});
 
     _window = std::make_unique<Window>(WindowStyle::kMaximized, logger);
+
+    // Set window reference for runtime application to access keyboard input
+    RuntimeBridge::getRuntimeApplication().setWindow(_window.get());
 
     VulkanApplicationContext::GraphicsSettings settings{};
     settings.isFramerateLimited = _configContainer->applicationInfo->isFramerateLimited;
@@ -45,6 +45,9 @@ Application::Application(Logger *logger) : _logger(logger) {
         _shaderCompiler.get(), _window.get(), _configContainer.get());
 
     _init();
+
+    // call every startup system after everything is initialized
+    RuntimeBridge::getRuntimeApplication().start();
 
     GlobalEventDispatcher::get()
         .sink<E_RenderLoopBlockRequest>()
@@ -149,6 +152,10 @@ void Application::_mainLoop() {
         fpsRecordLastTime = currentTime;
 
         float dt = std::chrono::duration<float>(deltaTime).count();
+        
+        // 更新新的游戏输入系统状态
+        _window->updateInputStates();
+        
         RuntimeBridge::getRuntimeApplication().update(dt);
 
         double deltaTimeInSec =

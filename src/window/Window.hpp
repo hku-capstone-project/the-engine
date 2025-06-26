@@ -13,6 +13,7 @@
 
 #include <functional>
 #include <vector>
+#include <unordered_map>
 
 enum class WindowStyle { kNone, kFullScreen, kMaximized, kHover };
 
@@ -75,6 +76,12 @@ class Window {
 
     CursorInfo getCursorInfo() const { return _cursorInfo; }
     KeyboardInfo getKeyboardInfo() const { return _keyboardInfo; }
+    
+    // 新的游戏输入系统
+    bool isKeyPressed(int keyCode) const;
+    bool isKeyJustPressed(int keyCode) const;
+    bool isKeyJustReleased(int keyCode) const;
+    void updateInputStates(); // 每帧调用，更新输入状态
 
   private:
     WindowStyle _windowStyle = WindowStyle::kNone;
@@ -89,6 +96,10 @@ class Window {
 
     CursorInfo _cursorInfo;
     KeyboardInfo _keyboardInfo;
+    
+    // 游戏输入状态管理
+    std::unordered_map<int, bool> _currentFrameKeys;
+    std::unordered_map<int, bool> _previousFrameKeys;
 
     // these are used to restore maximized window to its original size and pos
     int _titleBarHeight            = 0;

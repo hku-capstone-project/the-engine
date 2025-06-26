@@ -234,3 +234,48 @@ void Window::_frameBufferResizeCallback(GLFWwindow *window, int /*width*/, int /
     GlobalEventDispatcher::get().trigger<E_RenderLoopBlockRequest>(
         E_RenderLoopBlockRequest{blockStateBits});
 }
+
+// 新的游戏输入系统实现
+bool Window::isKeyPressed(int keyCode) const {
+    auto it = _currentFrameKeys.find(keyCode);
+    return it != _currentFrameKeys.end() && it->second;
+}
+
+bool Window::isKeyJustPressed(int keyCode) const {
+    auto currentIt = _currentFrameKeys.find(keyCode);
+    auto previousIt = _previousFrameKeys.find(keyCode);
+    
+    bool currentPressed = currentIt != _currentFrameKeys.end() && currentIt->second;
+    bool previousPressed = previousIt != _previousFrameKeys.end() && previousIt->second;
+    
+    return currentPressed && !previousPressed;
+}
+
+bool Window::isKeyJustReleased(int keyCode) const {
+    auto currentIt = _currentFrameKeys.find(keyCode);
+    auto previousIt = _previousFrameKeys.find(keyCode);
+    
+    bool currentPressed = currentIt != _currentFrameKeys.end() && currentIt->second;
+    bool previousPressed = previousIt != _previousFrameKeys.end() && previousIt->second;
+    
+    return !currentPressed && previousPressed;
+}
+
+void Window::updateInputStates() {
+    // 保存当前帧状态到上一帧
+    _previousFrameKeys = _currentFrameKeys;
+    
+    // 更新当前帧状态（从GLFW直接查询）
+    _currentFrameKeys.clear();
+    
+    // 查询常用的游戏按键
+    std::vector<int> gameKeys = {
+        GLFW_KEY_SPACE, GLFW_KEY_W, GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_D,
+        GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_LEFT, GLFW_KEY_RIGHT,
+        GLFW_KEY_ENTER, GLFW_KEY_ESCAPE, GLFW_KEY_TAB, GLFW_KEY_LEFT_SHIFT
+    };
+    
+    for (int key : gameKeys) {
+        _currentFrameKeys[key] = (glfwGetKey(_window, key) == GLFW_PRESS);
+    }
+}

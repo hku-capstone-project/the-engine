@@ -21,6 +21,8 @@ namespace Game
         public delegate void RemoveComponentDel(uint entityId);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void DestroyEntityDel(uint entityId);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate bool IsKeyPressedDel(int keyCode);
 
         public static CreateEntityDel CreateEntity = null!;
         public static AddTransformDel AddTransform = null!;
@@ -34,6 +36,9 @@ namespace Game
         public static RemoveComponentDel RemoveMesh = null!;
         public static RemoveComponentDel RemoveMaterial = null!;
         public static DestroyEntityDel DestroyEntity = null!;
+        public static IsKeyPressedDel IsKeyPressed = null!;
+        public static IsKeyPressedDel IsKeyJustPressed = null!;
+        public static IsKeyPressedDel IsKeyJustReleased = null!;
 
         public static void Init(Func<string, IntPtr> getProc)
         {
@@ -61,6 +66,12 @@ namespace Game
                                 getProc("HostRemoveComponentMaterial"));
             DestroyEntity = Marshal.GetDelegateForFunctionPointer<DestroyEntityDel>(
                                 getProc("HostDestroyEntity"));
+            IsKeyPressed = Marshal.GetDelegateForFunctionPointer<IsKeyPressedDel>(
+                                getProc("IsKeyPressed"));
+            IsKeyJustPressed = Marshal.GetDelegateForFunctionPointer<IsKeyPressedDel>(
+                                getProc("IsKeyJustPressed"));
+            IsKeyJustReleased = Marshal.GetDelegateForFunctionPointer<IsKeyPressedDel>(
+                                getProc("IsKeyJustReleased"));
         }
     }
 }

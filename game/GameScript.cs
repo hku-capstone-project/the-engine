@@ -10,6 +10,17 @@ using System.Numerics;
 
 namespace Game
 {
+    // GLFW Key codes (from GLFW/glfw3.h)
+    public static class Keys
+    {
+        public const int GLFW_KEY_SPACE = 32;
+        public const int GLFW_KEY_W = 87;
+        public const int GLFW_KEY_A = 65;
+        public const int GLFW_KEY_S = 83;
+        public const int GLFW_KEY_D = 68;
+        public const int GLFW_KEY_ESCAPE = 256;
+    }
+
     public static class GameSystems
     {
         private static float _jumpTimer = 0;
@@ -19,47 +30,12 @@ namespace Game
         private static uint _testEntityWithMesh = 0;
         private static uint _testEntityForDeletion = 0;
         private static StreamWriter _logWriter = null;
-
+        
         [StartupSystem]
         public static void CreateTestEntities()
         {
             // Initialize logging system
             InitializeLogging();
-
-            // previous code, kept for reference
-            // {
-            // uint playerId = EngineBindings.CreateEntity();
-            // var transform1 = new Transform { position = new Vector3(0, 0, 0) };
-            // EngineBindings.AddTransform(playerId, transform1);
-            // var velocity1 = new Velocity { velocity = new Vector3(1, 0, 0) };
-            // EngineBindings.AddVelocity(playerId, velocity1);
-            // var player = new Player { isJumping = false, jumpForce = 5.0f };
-            // EngineBindings.AddPlayer(playerId, player);
-
-            // uint objectId = EngineBindings.CreateEntity();
-            // var transform2 = new Transform { position = new Vector3(0, 2, 0) };
-            // EngineBindings.AddTransform(objectId, transform2);
-            // var velocity2 = new Velocity { velocity = new Vector3(0.5f, 0, 0) };
-            // EngineBindings.AddVelocity(objectId, velocity2);
-
-            // _testEntityWithMesh = EngineBindings.CreateEntity();
-
-            // var transform3 = new Transform { position = new Vector3(5, 0, 5) };
-            // EngineBindings.AddTransform(_testEntityWithMesh, transform3);
-
-            // var mesh = new Mesh { modelId = 1 };
-            // EngineBindings.AddMesh(_testEntityWithMesh, mesh);
-
-            // var material = new Material { color = new Vector3(1.0f, 0.5f, 0.2f) };
-            // EngineBindings.AddMaterial(_testEntityWithMesh, material);
-
-            // // Create test entity for deletion
-            // _testEntityForDeletion = EngineBindings.CreateEntity();
-            // var transformForDeletion = new Transform { position = new Vector3(-5, 3, -5) };
-            // EngineBindings.AddTransform(_testEntityForDeletion, transformForDeletion);
-            // var velocityForDeletion = new Velocity { velocity = new Vector3(0, 0, 0) };
-            // EngineBindings.AddVelocity(_testEntityForDeletion, velocityForDeletion);
-            // }
 
             // add a monkey here
             uint monkeyId = EngineBindings.CreateEntity();
@@ -67,6 +43,12 @@ namespace Game
             EngineBindings.AddTransform(monkeyId, transform);
             var velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(monkeyId, velocity);
+            
+            // 添加Player组件，让猴子可以被PlayerSystem处理
+            var player = new Player { isJumping = false, jumpForce = 8.0f };
+            EngineBindings.AddPlayer(monkeyId, player);
+            
+            Log($"Created monkey entity with ID {monkeyId} - Transform, Velocity, and Player components added");
         }
 
         private static void InitializeLogging()
@@ -116,24 +98,73 @@ namespace Game
             }
         }
 
+        // 物理系统 - 处理重力和基本物理
         [UpdateSystem]
         [Query(typeof(Transform), typeof(Velocity))]
-        private static void BouncingMonkeySystem(float dt, ref Transform transform, ref Velocity velocity)
+        public static void PhysicsSystem(float dt, ref Transform transform, ref Velocity velocity)
         {
-            // g = 9.81 m/s^2
-            // apply g into velocity, considering dt
+            // 应用重力
             velocity.velocity.Y -= 9.81f * dt;
-
-            // then apply the velocity to the transform
+            
+            // 更新位置
+            transform.position.X += velocity.velocity.X * dt;
             transform.position.Y += velocity.velocity.Y * dt;
+            transform.position.Z += velocity.velocity.Z * dt;
 
-            // if the monkey is below the ground (y < 0), bounce it
+            // 地面碰撞检测
             if (transform.position.Y < 0)
             {
-                velocity.velocity.Y = -velocity.velocity.Y;
+                transform.position.Y = 0;
+                velocity.velocity.Y = 0;
             }
 
-            Log($"BouncingMonkeySystem - Monkey - Position: {transform.position.X:F1}, {transform.position.Y:F1}, {transform.position.Z:F1}, Velocity: {velocity.velocity.X:F1}, {velocity.velocity.Y:F1}, {velocity.velocity.Z:F1}");
+            Log($"Physics - Y: {transform.position.Y:F2}, VelY: {velocity.velocity.Y:F2}");
+        }
+
+        // 玩家控制系统 - 处理输入和跳跃
+        [UpdateSystem]
+        [Query(typeof(Transform), typeof(Velocity), typeof(Player))]
+        public static void PlayerSystem(float dt, ref Transform transform, ref Velocity velocity, ref Player player)
+        {
+            // 使用新的游戏输入系统 - 简洁可靠的按键检测
+            bool spaceJustPressed = EngineBindings.IsKeyJustPressed(Keys.GLFW_KEY_SPACE);
+            bool isOnGround = transform.position.Y <= 0.1f;
+            
+            // 移动输入检测
+            bool leftPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_A) ;
+            bool rightPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_D) ;
+            bool upPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_W) ;
+            bool downPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_S) ;
+            
+            // 水平移动速度
+            const float moveSpeed = 5.0f;
+            float horizontalInput = 0.0f;
+            float verticalInput = 0.0f;
+            
+            if (leftPressed) horizontalInput -= 1.0f;
+            if (rightPressed) horizontalInput += 1.0f;
+            if (upPressed) verticalInput -= 1.0f;   
+            if (downPressed) verticalInput += 1.0f;  
+            
+            // 应用水平移动（不影响重力）
+            velocity.velocity.X = horizontalInput * moveSpeed;
+            velocity.velocity.Z = verticalInput * moveSpeed;
+            
+            // 跳跃逻辑：只有在按下瞬间且在地面时才跳跃
+            if (spaceJustPressed && isOnGround)
+            {
+                velocity.velocity.Y = 8.0f; // 跳跃力度
+                Log("Player jumped!");
+            }
+            
+            // 调试：每秒记录一次状态
+            if (_testTimer > 1.0f)
+            {
+                bool currentPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_SPACE);
+                Log($"Input - Space: {currentPressed}, JustPressed: {spaceJustPressed}, Move: ({horizontalInput:F1}, {verticalInput:F1})");
+                _testTimer = 0;
+            }
+            _testTimer += dt;
         }
 
         // // Basic physics system
@@ -229,3 +260,4 @@ namespace Game
         // }
     }
 }
+

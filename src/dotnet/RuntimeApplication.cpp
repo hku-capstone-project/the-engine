@@ -1,5 +1,7 @@
 #include "RuntimeApplication.hpp"
 #include "Components.hpp"
+#include "window/Window.hpp"
+#include "window/KeyboardInfo.hpp"
 
 #include <entt/entt.hpp>
 #include <functional>
@@ -48,4 +50,28 @@ void RuntimeApplication::update(float dt) {
     for (auto &s : updateSystems) {
         s(dt);
     }
+}
+
+bool RuntimeApplication::isKeyPressed(int keyCode) const {
+    if (_window == nullptr) {
+        return false;
+    }
+    
+    return _window->isKeyPressed(keyCode);
+}
+
+bool RuntimeApplication::isKeyJustPressed(int keyCode) const {
+    if (_window == nullptr) {
+        return false;
+    }
+    
+    return _window->isKeyJustPressed(keyCode);
+}
+
+bool RuntimeApplication::isKeyJustReleased(int keyCode) const {
+    if (_window == nullptr) {
+        return false;
+    }
+    
+    return _window->isKeyJustReleased(keyCode);
 }

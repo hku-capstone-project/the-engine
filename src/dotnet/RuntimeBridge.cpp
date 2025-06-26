@@ -189,6 +189,19 @@ void HostDestroyEntity(uint32_t entityId) {
     RuntimeBridge::getRuntimeApplication().registry.destroy(entt::entity{entityId});
 }
 
+// Add keyboard input function
+bool IsKeyPressed(int keyCode) {
+    return RuntimeBridge::getRuntimeApplication().isKeyPressed(keyCode);
+}
+
+bool IsKeyJustPressed(int keyCode) {
+    return RuntimeBridge::getRuntimeApplication().isKeyJustPressed(keyCode);
+}
+
+bool IsKeyJustReleased(int keyCode) {
+    return RuntimeBridge::getRuntimeApplication().isKeyJustReleased(keyCode);
+}
+
 void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
     assert(fn && count > 0);
 
@@ -251,6 +264,9 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "HostDestroyEntity") == 0) return (void *)&HostDestroyEntity;
     if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0)
         return (void *)&HostRegisterPerEntityUpdate;
+    if (std::strcmp(name, "IsKeyPressed") == 0) return (void *)&IsKeyPressed;
+    if (std::strcmp(name, "IsKeyJustPressed") == 0) return (void *)&IsKeyJustPressed;
+    if (std::strcmp(name, "IsKeyJustReleased") == 0) return (void *)&IsKeyJustReleased;
     return nullptr;
 }
 }

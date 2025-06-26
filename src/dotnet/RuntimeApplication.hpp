@@ -4,6 +4,8 @@
 #include <functional>
 #include <vector>
 
+class Window;
+
 class RuntimeApplication {
   public:
     entt::registry registry;
@@ -24,8 +26,17 @@ class RuntimeApplication {
     // Should be called every frame, timing should be namaged by the main application
     void update(float dt);
 
+    // Set the window reference for keyboard input access
+    void setWindow(Window* window) { _window = window; }
+
+    // Get keyboard input state
+    bool isKeyPressed(int keyCode) const;
+    bool isKeyJustPressed(int keyCode) const;
+    bool isKeyJustReleased(int keyCode) const;
+
   private:
     uint32_t _updateCount = 0;
+    Window* _window = nullptr;
 
     std::vector<StartupSystem> startSystems;
     std::vector<UpdateSystem> updateSystems;
