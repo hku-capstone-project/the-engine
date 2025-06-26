@@ -1,18 +1,16 @@
+#include "RuntimeBridge.hpp"
+#include "Components.hpp"
+#include "RuntimeApplication.hpp"
+#include "config/RootDir.h"
+#include "coreclr_delegates.h"
+#include "hostfxr.h"
+#include "nethost.h"
+
 #include <Windows.h>
 #include <cassert>
 #include <filesystem>
 #include <iostream>
 #include <string>
-
-#include "Components.hpp"
-#include "TestManaged.hpp"
-#include "config/RootDir.h"
-
-#include "Engine.hpp"
-
-#include "coreclr_delegates.h"
-#include "hostfxr.h"
-#include "nethost.h"
 
 using string_t = std::basic_string<char_t>;
 namespace fs   = std::filesystem;
@@ -91,8 +89,8 @@ load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t 
 }
 
 // Single‐instance App
-App &AppSingleton() {
-    static App app;
+RuntimeApplication &AppSingleton() {
+    static RuntimeApplication app;
     return app;
 }
 
@@ -269,9 +267,8 @@ int test_managed() {
     // now call it so managed code will self-register all systems:
     register_all_fn((void *)&HostGetProcAddress);
 
-    App &app = AppSingleton();
-
-    // finally run
+    RuntimeApplication &app = AppSingleton();
     app.run();
+
     return 0;
 }

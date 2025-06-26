@@ -1,14 +1,14 @@
 #pragma once
 
+#include "Components.hpp"
+
 #include <chrono> // added for timing
 #include <entt/entt.hpp>
 #include <functional>
 #include <iostream>
 #include <vector>
 
-#include "Components.hpp"
-
-class App {
+class RuntimeApplication {
   public:
     entt::registry registry;
 
@@ -78,8 +78,8 @@ class App {
         double elapsedSeconds =
             std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
 
-        std::cout << "App run complete after " << _updateCount << " updates in " << elapsedSeconds
-                  << " seconds.\n";
+        std::cout << "RuntimeApplication run complete after " << _updateCount << " updates in "
+                  << elapsedSeconds << " seconds.\n";
 
         print_reg();
     }

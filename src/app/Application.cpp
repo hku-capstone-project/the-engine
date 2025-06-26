@@ -2,6 +2,7 @@
 #include "BlockState.hpp"
 #include "config-container/ConfigContainer.hpp"
 #include "config-container/sub-config/ApplicationInfo.hpp"
+#include "dotnet/RuntimeBridge.hpp"
 #include "imgui-manager/gui-manager/ImguiManager.hpp"
 #include "renderer/Renderer.hpp"
 #include "utils/event-dispatcher/GlobalEventDispatcher.hpp"
@@ -10,8 +11,6 @@
 #include "utils/logger/Logger.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 #include "window/Window.hpp"
-
-#include "dotnet/TestManaged.hpp"
 
 #include <memory>
 

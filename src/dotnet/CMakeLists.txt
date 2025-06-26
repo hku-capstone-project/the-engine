@@ -1,5 +1,5 @@
 add_library(src-dotnet STATIC
-    TestManaged.cpp
+    RuntimeBridge.cpp
 )
 
 target_include_directories(src-dotnet PRIVATE ${vcpkg_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/src/ ${CMAKE_SOURCE_DIR}/dep/dotnet-runtime-8.0.16)
