@@ -2,6 +2,7 @@
 #include "BlockState.hpp"
 #include "config-container/ConfigContainer.hpp"
 #include "config-container/sub-config/ApplicationInfo.hpp"
+#include "dotnet/Components.hpp"
 #include "dotnet/RuntimeApplication.hpp"
 #include "dotnet/RuntimeBridge.hpp"
 #include "imgui-manager/gui-manager/ImguiManager.hpp"
@@ -194,10 +195,14 @@ void Application::_drawFrame() {
         _logger->error("resizing is not allowed!");
     }
 
-    static glm::vec3 currentPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-    // currently, we alter the position in each call, with a sine pattern
-    // TODO: alter the position from the script!
-    currentPosition.y      = std::sin(glfwGetTime());
+    auto const &reg        = RuntimeBridge::getRuntimeApplication().registry;
+    auto const &transforms = reg.view<Transform>();
+    // if not null, pick the first one for the currentPosition
+    glm::vec3 currentPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    if (transforms.size() > 0) {
+        currentPosition = transforms.get<Transform>(transforms.front()).position;
+    }
+
     auto const modelMatrix = glm::translate(glm::mat4(1.0f), currentPosition);
     _renderer->drawFrame(currentFrame, imageIndex, modelMatrix);
 

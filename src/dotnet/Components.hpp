@@ -12,9 +12,9 @@ struct Velocity {
     glm::vec3 velocity;
 };
 
-struct Model {
-    std::string modelPath;
-};
+// struct Model {
+//     std::string modelPath;
+// };
 
 struct Player {
     bool isJumping;
