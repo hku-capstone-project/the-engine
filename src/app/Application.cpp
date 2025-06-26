@@ -15,7 +15,7 @@
 #include <memory>
 
 Application::Application(Logger *logger) : _logger(logger) {
-    test_managed();
+    RuntimeBridge::bootstrap(logger);
 
     _appContext      = std::make_unique<VulkanApplicationContext>();
     _configContainer = std::make_unique<ConfigContainer>(_logger);

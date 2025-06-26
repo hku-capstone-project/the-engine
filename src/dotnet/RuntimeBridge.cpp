@@ -5,6 +5,7 @@
 #include "coreclr_delegates.h"
 #include "hostfxr.h"
 #include "nethost.h"
+#include "utils/logger/Logger.hpp"
 
 #include <Windows.h>
 #include <cassert>
@@ -235,9 +236,10 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
 }
 }
 
-int test_managed() {
+void RuntimeBridge::bootstrap(Logger *logger) {
     if (!load_hostfxr()) {
-        return -1;
+        logger->error("Failed to load hostfxr");
+        return;
     }
 
     // compute paths
@@ -247,21 +249,24 @@ int test_managed() {
     fs::path dll  = game / "Game.dll";
 
     if (!fs::exists(cfg) || !fs::exists(dll)) {
-        std::cerr << "Managed files missing\n";
-        return -1;
+        logger->error("Managed files missing");
+        return;
     }
 
     // get the load_assembly_and_get_function_pointer
     auto load_asm = get_dotnet_load_assembly(cfg.wstring().c_str());
-    if (!load_asm) return -1;
+    if (!load_asm) {
+        logger->error("Failed to get dotnet load assembly");
+        return;
+    }
 
     RegisterAllFn register_all_fn = nullptr;
 
     int rc = load_asm(dll.wstring().c_str(), L"Game.PluginBootstrap, Game", L"RegisterAll",
                       UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&register_all_fn);
     if (rc != 0 || register_all_fn == nullptr) {
-        std::cerr << "Failed to bind RegisterAll: 0x" << std::hex << rc << "\n";
-        return -1;
+        logger->error("Failed to bind RegisterAll: 0x" + std::to_string(rc));
+        return;
     }
 
     // now call it so managed code will self-register all systems:
@@ -269,6 +274,4 @@ int test_managed() {
 
     RuntimeApplication &app = AppSingleton();
     app.run();
-
-    return 0;
 }

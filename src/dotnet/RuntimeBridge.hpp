@@ -1,3 +1,7 @@
 #pragma once
 
-int test_managed();
+class Logger;
+
+namespace RuntimeBridge {
+void bootstrap(Logger *logger);
+}
