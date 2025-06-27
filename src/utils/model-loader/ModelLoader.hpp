@@ -52,12 +52,24 @@ struct Vertex {
     }
 };
 
-struct ModelAttributes {
+// 每个子模型的属性
+struct SubModel {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
+    std::string baseColorTexturePath; // baseColor 纹理路径
+    std::string emissiveTexturePath;  // 发光贴图路径
+    std::string metallicRoughnessTexturePath; // 金属粗糙度贴图路径
+    std::string normalTexturePath;    // 法线贴图路径
+};
+
+struct ModelAttributes {
+    std::vector<SubModel> subModels; // 按子模型分组
 };
 
 namespace ModelLoader {
 // The function now returns an optional, which will be empty if loading fails.
 std::optional<ModelAttributes> loadModelFromPath(const std::string &filePath, Logger *logger);
 }; // namespace ModelLoader
+
+ModelAttributes loadModelFromPath(const std::string &filePath, Logger *logger);
+};

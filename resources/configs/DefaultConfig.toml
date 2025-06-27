@@ -12,7 +12,7 @@ initPosition = [ 0.0, 0.0, 5.0 ]
 initYaw = 0.0
 initPitch = 0.0
 vFov = 60.0
-movementSpeed = 0.2
+movementSpeed = 1.2
 movementSpeedBoost = 3.0
 mouseSensitivity = 0.08
 

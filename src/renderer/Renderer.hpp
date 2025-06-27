@@ -1,28 +1,23 @@
 #pragma once
-#define VK_NO_PROTOTYPES
-
-#include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
-#include "vma/vk_mem_alloc.h"
-#include "volk.h"
-
 #include <memory>
 #include <vector>
+
+#include "utils/vulkan-wrapper/memory/Image.hpp"
+#include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 
 class VulkanApplicationContext;
 class Logger;
 class ShaderCompiler;
 class Window;
 class ConfigContainer;
+class Camera;
 class Model;
-class Image;
-class ImageForwardingPair;
 class BufferBundle;
 class DescriptorSetBundle;
-class Camera;
-class Sampler;
+class GfxPipeline;
 
 class Renderer {
-  public:
+public:
     Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
              ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer);
     ~Renderer();
@@ -35,25 +30,38 @@ class Renderer {
 
     void drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix);
     void processInput(double deltaTime);
-
     void onSwapchainResize();
     [[nodiscard]] inline VkCommandBuffer getDrawingCommandBuffer(size_t currentFrame) {
         return _drawingCommandBuffers[currentFrame];
     }
 
-    [[nodiscard]] inline VkCommandBuffer getDeliveryCommandBuffer(size_t imageIndex) {
-        return _deliveryCommandBuffers[imageIndex];
-    }
+    VkCommandBuffer getTracingCommandBuffer(size_t frame) const { return _tracingCommandBuffers[frame]; }
+    VkCommandBuffer getDeliveryCommandBuffer(size_t index) const { return _deliveryCommandBuffers[index]; }
 
-  private:
+private:
+    struct Images {
+        std::unique_ptr<Sampler> sharedSampler;
+        std::vector<std::unique_ptr<Image>> baseColors;
+        std::vector<std::unique_ptr<Image>> emissiveTextures;      // 发光贴图
+        std::vector<std::unique_ptr<Image>> metallicRoughnessTextures; // 金属粗糙度贴图
+        std::vector<std::unique_ptr<Image>> normalTextures;       // 法线贴图
+    } _images;
+
     VulkanApplicationContext *_appContext;
     Logger *_logger;
+    size_t _framesInFlight;
     ShaderCompiler *_shaderCompiler;
     Window *_window;
-    std::unique_ptr<Camera> _camera;
-
     ConfigContainer *_configContainer;
 
+    std::unique_ptr<Camera> _camera;
+    std::unique_ptr<Image> _renderTargetImage;
+    std::unique_ptr<Model> _model;
+    std::unique_ptr<BufferBundle> _renderInfoBufferBundle;
+    std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
+    std::unique_ptr<GfxPipeline> _pipeline;
+    std::unique_ptr<Image> _depthStencilImage;
+    std::unique_ptr<Image> _colorResourcesImage;
     std::vector<VkCommandBuffer> _deliveryCommandBuffers{};
     std::vector<VkCommandBuffer> _drawingCommandBuffers{};
     std::vector<VkFramebuffer> _frameBuffers{};
@@ -67,20 +75,12 @@ class Renderer {
     } _images;
 
     VkRenderPass _renderPass;
+    std::vector<VkFramebuffer> _frameBuffers;
+    std::vector<VkCommandBuffer> _tracingCommandBuffers;
+    std::vector<VkCommandBuffer> _deliveryCommandBuffers;
 
-    std::unique_ptr<Image> _renderTargetImage   = nullptr;
-    std::unique_ptr<Image> _depthStencilImage   = nullptr;
-    std::unique_ptr<Image> _colorResourcesImage = nullptr;
-
-    size_t _framesInFlight = 0;
-
-    // pipeline
-    std::unique_ptr<GfxPipeline> _pipeline = nullptr;
-    void _createGraphicsPipeline();
-
-    // buffers
-    std::unique_ptr<BufferBundle> _renderInfoBufferBundle;
     void _createBuffersAndBufferBundles();
+    void _createDescriptorSetBundle();
     void _updateBufferData(size_t currentFrame, glm::mat4 model_matrix);
 
     // descriptor set
@@ -89,9 +89,11 @@ class Renderer {
     void _recordDeliveryCommandBuffers();
     void _recordDrawingCommandBuffers();
     void _createRenderPass();
-    void _createFrameBuffers();
+    void _createGraphicsPipeline();
     void _createDepthStencil();
     void _createColorResources();
-
-    void _createDescriptorSetBundle();
+    void _createFrameBuffers();
+    void _updateUboData(size_t currentFrame);
+    void _recordTracingCommandBuffers();
+    void _recordDeliveryCommandBuffers();
 };
