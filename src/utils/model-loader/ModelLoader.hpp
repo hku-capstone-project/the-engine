@@ -71,5 +71,5 @@ namespace ModelLoader {
 std::optional<ModelAttributes> loadModelFromPath(const std::string &filePath, Logger *logger);
 }; // namespace ModelLoader
 
-ModelAttributes loadModelFromPath(const std::string &filePath, Logger *logger);
-};
+// ModelAttributes loadModelFromPath(const std::string &filePath, Logger *logger);
+// };

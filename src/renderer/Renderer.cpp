@@ -57,7 +57,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
 
     // 默认纹理路径（通用）
     std::string defaultTexturePath = kPathToResourceFolder + "textures/default_baseColor.png";
-    for (const auto &subModel : _model->getModelAttributes().subModels) {
+    for (const auto &subModel : _model->getModelAttributes()->subModels) {
         // 加载 baseColor 贴图
         std::string texturePath = !subModel.baseColorTexturePath.empty()
             ? textureBasePath + subModel.baseColorTexturePath

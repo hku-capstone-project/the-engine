@@ -5,6 +5,7 @@
 
 #include "utils/model-loader/ModelLoader.hpp"
 #include "utils/vulkan-wrapper/memory/Buffer.hpp"
+#include <functional> // For std::function
 
 class VulkanApplicationContext;
 class Logger;
@@ -35,10 +36,10 @@ public:
     };
     std::vector<SubModelBuffers> subModelBuffers; // 存每个子模型的缓冲区
 
-    const ModelAttributes& getModelAttributes() const { return _attributes; }
+    const std::optional<ModelAttributes>& getModelAttributes() const { return _attributes; }
 
 private:
     VulkanApplicationContext *_appContext;
     Logger *_logger;
-    ModelAttributes _attributes; // 存储加载的模型数据
+    std::optional<ModelAttributes> _attributes; // 存储加载的模型数据
 };

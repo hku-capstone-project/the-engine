@@ -4,7 +4,6 @@
 #include "include/sharedVariables.glsl"
 
 layout(set = 0, binding = 0) uniform U_RenderInfo { S_RenderInfo data; } renderInfo;
-layout(set = 0, binding = 1) uniform U_Camera { vec3 viewPos; } camera;
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inTexCoord;
@@ -36,6 +35,6 @@ void main() {
     fragPos = worldPos.xyz;
     fragTexCoord = inTexCoord;
     fragNormal = normalize(mat3(transpose(inverse(renderInfo.data.model))) * inNormal);
-    viewPos = camera.viewPos;
+    viewPos = renderInfo.data.viewPos;
     fragTangent = inTangent;
 }

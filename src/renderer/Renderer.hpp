@@ -4,6 +4,8 @@
 
 #include "utils/vulkan-wrapper/memory/Image.hpp"
 #include "utils/vulkan-wrapper/sampler/Sampler.hpp"
+#include <glm/glm.hpp>
+
 
 class VulkanApplicationContext;
 class Logger;
@@ -66,25 +68,14 @@ private:
     std::vector<VkCommandBuffer> _drawingCommandBuffers{};
     std::vector<VkFramebuffer> _frameBuffers{};
 
-    std::unique_ptr<Model> _model = nullptr;
-    struct {
-        std::unique_ptr<Sampler> sharedSampler;
-        std::unique_ptr<Image> baseColor;
-        std::unique_ptr<Image> normalMap;
-        std::unique_ptr<Image> metalRoughness;
-    } _images;
 
     VkRenderPass _renderPass;
-    std::vector<VkFramebuffer> _frameBuffers;
     std::vector<VkCommandBuffer> _tracingCommandBuffers;
-    std::vector<VkCommandBuffer> _deliveryCommandBuffers;
 
     void _createBuffersAndBufferBundles();
     void _createDescriptorSetBundle();
     void _updateBufferData(size_t currentFrame, glm::mat4 model_matrix);
 
-    // descriptor set
-    std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
 
     void _recordDeliveryCommandBuffers();
     void _recordDrawingCommandBuffers();
@@ -95,5 +86,5 @@ private:
     void _createFrameBuffers();
     void _updateUboData(size_t currentFrame);
     void _recordTracingCommandBuffers();
-    void _recordDeliveryCommandBuffers();
+
 };
