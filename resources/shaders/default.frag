@@ -18,7 +18,7 @@ layout(location = 4) in vec4 fragTangent;
 
 layout(location = 0) out vec4 outColor;
 
-const vec3 lightDir = normalize(vec3(0.95, 0.95, -0.02));
+const vec3 lightDir = normalize(vec3(0.35, -0.45, -0.32));
 const vec3 lightColor = vec3(1.0, 0.95, 0.9);
 const float ambientStrength = 0.62;
 const float emissiveStrength = 0.5;
@@ -31,17 +31,14 @@ void main() {
     vec4 baseColor = vec4(0.0, 0.0, 0.0, 1.0);
     if (textureSize(baseColors[idx], 0).x > 0) {
         baseColor = texture(baseColors[idx], flippedTexCoord);
+        baseColor.rgb = clamp(baseColor.rgb, 0.0, 1.0);
     }
 
     // emissive
     vec3 emissive = vec3(0.0);
     if (textureSize(emissiveTextures[idx], 0).x > 0) {
         emissive = texture(emissiveTextures[idx], flippedTexCoord).rgb * emissiveStrength;
-        vec3 obase = baseColor.rgb;
-        if (length(obase) < 0.05) {
-            baseColor = vec4(1.0);
-            emissive *= 0.0;
-        }
+        emissive = clamp(emissive, 0.0, 1.0);
     }
 
     // metallicRoughness with occlusion
@@ -50,25 +47,21 @@ void main() {
     float occlusion = 1.0;
     if (textureSize(metallicRoughnessTextures[idx], 0).x > 0) {
         vec4 mr = texture(metallicRoughnessTextures[idx], flippedTexCoord);
-        occlusion = mr.r;
-        roughness = mr.g;
-        metallic = mr.b;
+        occlusion = clamp(mr.x, 0.0, 1.0);
+        roughness = clamp(mr.y, 0.0, 1.0);
+        metallic = clamp(mr.z, 0.0, 1.0);
     }
 
     // normal (improved algorithm)
     vec3 normal = normalize(fragNormal);
     if (textureSize(normalTextures[idx], 0).x > 0) {
-        // Ensure tangent space is valid
         vec3 tangent = normalize(fragTangent.xyz);
-        vec3 bitangent = normalize(cross(fragNormal, tangent) * fragTangent.w); // Use fragNormal for robustness
+        vec3 bitangent = normalize(cross(fragNormal, tangent) * fragTangent.w);
+        // 容错：如果tangent接近0，重用normal
+        if (length(tangent) < 0.001) tangent = normalize(cross(bitangent, normal));
         mat3 TBN = mat3(tangent, bitangent, normal);
-        // Check if TBN is orthogonal
-        if (abs(determinant(TBN)) < 0.1) {
-            TBN = mat3(tangent, cross(tangent, normal), normal); // Reconstruct if degenerate
-        }
-        vec3 normalMap = texture(normalTextures[idx], flippedTexCoord).rgb;
-        normalMap = normalMap * 2.0 - 1.0; // Standard OpenGL format
-        normal = normalize(TBN * normalMap);
+        vec3 normalMap = texture(normalTextures[idx], flippedTexCoord).rgb * 2.0 - 1.0;
+        normal = normalize(normalMap * TBN);
     }
 
     // 光照计算

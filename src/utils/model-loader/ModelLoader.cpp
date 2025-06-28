@@ -16,13 +16,16 @@ ModelAttributes ModelLoader::loadModelFromPath(const std::string &filePath, Logg
     const aiScene *scene = importer.ReadFile(filePath, aiProcess_Triangulate | 
                                              aiProcess_FixInfacingNormals | 
                                              aiProcess_GenSmoothNormals | 
-                                             aiProcess_CalcTangentSpace);
+                                             aiProcess_CalcTangentSpace | 
+                                             aiProcess_SplitLargeMeshes | 
+                                             aiProcess_SortByPType);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         logger->error("failed to load model from: {}", filePath);
         exit(0);
     }
     ModelAttributes modelAttributes;
     std::function<void(aiNode *)> processNode = [&](aiNode *node) {
+        logger->info("Node {} Meshes: {}", node->mName.C_Str(), node->mNumMeshes);
         for (uint32_t i = 0; i < node->mNumMeshes; i++) {
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
             SubModel subModel;
@@ -54,7 +57,7 @@ ModelAttributes ModelLoader::loadModelFromPath(const std::string &filePath, Logg
             }
 
             // metallicRoughness 贴图
-            if (material->GetTexture(aiTextureType_UNKNOWN, 0, &texturePath) == AI_SUCCESS) {
+            if (material->GetTexture(aiTextureType_METALNESS, 0, &texturePath) == AI_SUCCESS) {
                 std::string basePath = texturePath.C_Str();
                 if (basePath.find("textures/") == 0) basePath = basePath.substr(9);
                 subModel.metallicRoughnessTexturePath = basePath;
@@ -81,7 +84,6 @@ ModelAttributes ModelLoader::loadModelFromPath(const std::string &filePath, Logg
                 vertex.pos = {mesh->mVertices[j].x, mesh->mVertices[j].y, mesh->mVertices[j].z};
                 if (mesh->HasNormals()) {
                     vertex.normal = {mesh->mNormals[j].x, mesh->mNormals[j].y, mesh->mNormals[j].z};
-                    logger->info("Mesh {} Vertex {}: Normal = ({}, {}, {})", i, j, vertex.normal.x, vertex.normal.y, vertex.normal.z);
                 } else {
                     vertex.normal = glm::vec3(0, 0, 1); // 默认向上
                     logger->warn("Mesh {} Vertex {}: No normals, defaulting to (0, 0, 1)", i, j);
@@ -94,13 +96,10 @@ ModelAttributes ModelLoader::loadModelFromPath(const std::string &filePath, Logg
                 }
                 if (mesh->HasTangentsAndBitangents()) {
                     vertex.tangent = {mesh->mTangents[j].x, mesh->mTangents[j].y, mesh->mTangents[j].z, 1.0f};
-                    // 手动计算手性
                     glm::vec3 bitangent = glm::vec3(mesh->mBitangents[j].x, mesh->mBitangents[j].y, mesh->mBitangents[j].z);
                     glm::vec3 crossCheck = glm::cross(vertex.normal, glm::vec3(vertex.tangent));
                     float handedness = glm::dot(crossCheck, bitangent) >= 0.0f ? 1.0f : -1.0f;
                     vertex.tangent.w = handedness;
-                    logger->info("Mesh {} Vertex {}: Tangent = ({}, {}, {}, {}), Handedness = {}", i, j, 
-                                  vertex.tangent.x, vertex.tangent.y, vertex.tangent.z, vertex.tangent.w, handedness);
                 } else {
                     vertex.tangent = {1, 0, 0, 1}; // 默认X轴，手性1
                     logger->warn("Mesh {} Vertex {}: No tangents, defaulting to (1, 0, 0, 1)", i, j);
