@@ -49,3 +49,5 @@ src/config/RootDir.h
 
 # ignore all files in logs folder
 logs/*
+
+repomix-output.*

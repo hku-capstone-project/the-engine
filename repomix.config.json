@@ -1,0 +1,18 @@
+{
+    "include": [
+        "**.md",
+        "src/dotnet/**",
+        "src/app/**",
+        "game/**"
+    ],
+    "ignore": {
+        "customPatterns": [
+            "dep/**",
+            "resources/**",
+            ".clang**"
+        ]
+    },
+    "output": {
+        "removeComments": false
+    }
+}
