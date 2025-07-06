@@ -337,10 +337,13 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
     auto proj            = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
                                                         static_cast<float>(swapchainExtent.height));
 
+    auto viewPos = _camera->getPosition(); // 获取摄像机位置
+                                                            
     S_RenderInfo renderInfo{};
     renderInfo.view  = view;
     renderInfo.proj  = proj;
     renderInfo.model = modelMatrix;
+    renderInfo.viewPos = viewPos; 
 
     _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
