@@ -33,25 +33,17 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    const auto testModelPath = kPathToResourceFolder + "models/blender-monkey/monkey.obj";
-    // const auto testModelPath = kPathToResourceFolder + "models/sci_sword/sword.gltf";
-    _model = std::make_unique<Model>(_appContext, _logger, testModelPath);
+    std::vector<std::string> testModelPaths{};
+    testModelPaths.push_back(kPathToResourceFolder + "models/blender-monkey/monkey.obj");
+    testModelPaths.push_back(kPathToResourceFolder + "models/sci_sword/sword.gltf");
 
-    auto samplerSettings = Sampler::Settings{
-        Sampler::AddressMode::kClampToEdge, // U
-        Sampler::AddressMode::kClampToEdge, // V
-        Sampler::AddressMode::kClampToEdge  // W
-    };
+    for (size_t i = 0; i < testModelPaths.size(); ++i) {
+        _models.push_back(std::make_unique<Model>(_appContext, _logger, testModelPaths[i]));
+    }
 
-    _images.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
-    _images.baseColor     = std::make_unique<Image>(
-        _appContext, _logger,
-        kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png",
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        _images.sharedSampler->getVkSampler());
-
+    _createModelImages();
     _createBuffersAndBufferBundles();
-    _createDescriptorSetBundle();
+    _createDescriptorSetBundles();
     _createRenderPass();
     _createGraphicsPipeline();
 
@@ -66,18 +58,74 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         [this](CursorMoveInfo const &mouseInfo) { _camera->handleMouseMovement(mouseInfo); });
 }
 
-void Renderer::_createBuffersAndBufferBundles() {
-    _renderInfoBufferBundle = std::make_unique<BufferBundle>(
-        _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        MemoryStyle::kHostVisible);
+void Renderer::_createModelImages() {
+    _modelImages.clear();
+    
+    auto samplerSettings = Sampler::Settings{
+        Sampler::AddressMode::kClampToEdge, // U
+        Sampler::AddressMode::kClampToEdge, // V
+        Sampler::AddressMode::kClampToEdge  // W
+    };
+
+    for (size_t i = 0; i < _models.size(); ++i) {
+        ModelImages modelImages;
+        
+        if (i == 0) {
+            modelImages.sharedSampler = nullptr;
+            modelImages.baseColor = nullptr;
+            modelImages.normalMap = nullptr;
+            modelImages.metalRoughness = nullptr;
+        } else {
+            modelImages.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
+            
+            std::string texturePath = kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png";
+            modelImages.baseColor = std::make_unique<Image>(
+                _appContext, _logger, texturePath,
+                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                modelImages.sharedSampler->getVkSampler());
+            
+            modelImages.normalMap = nullptr;
+            modelImages.metalRoughness = nullptr;
+        }
+        
+        _modelImages.push_back(std::move(modelImages));
+    }
 }
 
-void Renderer::_createDescriptorSetBundle() {
-    _descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
-        _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-    _descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundle.get());
-    _descriptorSetBundle->bindImageSampler(1, _images.baseColor.get());
-    _descriptorSetBundle->create();
+void Renderer::_createBuffersAndBufferBundles() {
+    _renderInfoBufferBundles.clear();
+    for (size_t i = 0; i < _models.size(); ++i) {
+        _renderInfoBufferBundles.push_back(std::make_unique<BufferBundle>(
+            _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            MemoryStyle::kHostVisible));
+    }
+}
+
+void Renderer::_createDescriptorSetBundles() {
+    _descriptorSetBundles.clear();
+    
+    Image* defaultTexture = nullptr;
+    for (size_t i = 0; i < _modelImages.size(); ++i) {
+        if (_modelImages[i].baseColor != nullptr) {
+            defaultTexture = _modelImages[i].baseColor.get();
+            break;
+        }
+    }
+    
+    for (size_t i = 0; i < _models.size(); ++i) {
+        auto descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
+            _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundles[i].get());
+        
+        if (_modelImages[i].baseColor != nullptr) {
+            descriptorSetBundle->bindImageSampler(1, _modelImages[i].baseColor.get());
+        } else if (defaultTexture != nullptr) {
+            descriptorSetBundle->bindImageSampler(1, defaultTexture);
+        }
+        
+        descriptorSetBundle->create();
+        _descriptorSetBundles.push_back(std::move(descriptorSetBundle));
+    }
 }
 
 void Renderer::_createRenderPass() {
@@ -156,8 +204,9 @@ void Renderer::_createRenderPass() {
 }
 
 void Renderer::_createGraphicsPipeline() {
+    DescriptorSetBundle* referenceDescriptorSet = _descriptorSetBundles.empty() ? nullptr : _descriptorSetBundles[0].get();
     _pipeline = std::make_unique<GfxPipeline>(
-        _appContext, _logger, kPathToResourceFolder + "shaders/default", _descriptorSetBundle.get(),
+        _appContext, _logger, kPathToResourceFolder + "shaders/default", referenceDescriptorSet,
         _shaderCompiler, _renderPass);
 }
 
@@ -269,6 +318,11 @@ void Renderer::onSwapchainResize() {
     _createColorResources();
     _createFrameBuffers();
 
+    // Recreate buffer bundles and descriptor sets
+    _createModelImages();
+    _createBuffersAndBufferBundles();
+    _createDescriptorSetBundles();
+
     // Re-allocate and re-record command buffers
     _recordDrawingCommandBuffers();
     _recordDeliveryCommandBuffers();
@@ -276,7 +330,7 @@ void Renderer::onSwapchainResize() {
     _logger->info("Renderer resources have been successfully recreated.");
 }
 
-void Renderer::_updateBufferData(size_t currentFrame, glm::mat4 modelMatrix) {
+void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 modelMatrix) {
     auto view = _camera->getViewMatrix();
 
     auto swapchainExtent = _appContext->getSwapchainExtent();
@@ -288,12 +342,10 @@ void Renderer::_updateBufferData(size_t currentFrame, glm::mat4 modelMatrix) {
     renderInfo.proj  = proj;
     renderInfo.model = modelMatrix;
 
-    _renderInfoBufferBundle->getBuffer(currentFrame)->fillData(&renderInfo);
+    _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix) {
-    _updateBufferData(currentFrame, modelMatrix);
-
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 
     // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
@@ -321,10 +373,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 model
     vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
     vkCmdBeginRenderPass(cmdBuffer, &rdrPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_model->vertexBuffer->getVkBuffer(), offsets);
-    vkCmdBindIndexBuffer(cmdBuffer, _model->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
     VkViewport viewport{};
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
@@ -341,9 +389,26 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 model
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
-    // TODO:
-    _pipeline->recordDrawIndexed(cmdBuffer, currentFrame);
-    vkCmdDrawIndexed(cmdBuffer, _model->idxCnt, 1, 0, 0, 0);
+    for (size_t i = 0; i < _models.size(); i++) {
+        glm::mat4 individualModelMatrix = modelMatrix;
+        individualModelMatrix = glm::translate(individualModelMatrix, glm::vec3(i * 3.0f, 0.0f, -2.0f));
+        if (i == 1) {
+            individualModelMatrix = glm::scale(individualModelMatrix, glm::vec3(10.0f, 10.0f, 10.0f));
+        }
+        _updateBufferData(currentFrame, i, individualModelMatrix);
+
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_models[i]->vertexBuffer->getVkBuffer(), offsets);
+        vkCmdBindIndexBuffer(cmdBuffer, _models[i]->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                               _pipeline->getPipelineLayout(), 0, 1, 
+                               &_descriptorSetBundles[i]->getDescriptorSet(currentFrame), 0, nullptr);
+
+        _pipeline->recordDrawIndexed(cmdBuffer, currentFrame);
+        vkCmdDrawIndexed(cmdBuffer, _models[i]->idxCnt, 1, 0, 0, 0);
+    }
+
     vkCmdEndRenderPass(cmdBuffer);
 
     // 添加渲染完成后的图像布局转换

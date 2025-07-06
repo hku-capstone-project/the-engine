@@ -58,13 +58,15 @@ class Renderer {
     std::vector<VkCommandBuffer> _drawingCommandBuffers{};
     std::vector<VkFramebuffer> _frameBuffers{};
 
-    std::unique_ptr<Model> _model = nullptr;
-    struct {
+    std::vector<std::unique_ptr<Model>> _models{};
+    
+    struct ModelImages {
         std::unique_ptr<Sampler> sharedSampler;
         std::unique_ptr<Image> baseColor;
         std::unique_ptr<Image> normalMap;
         std::unique_ptr<Image> metalRoughness;
-    } _images;
+    };
+    std::vector<ModelImages> _modelImages{};
 
     VkRenderPass _renderPass;
 
@@ -79,12 +81,8 @@ class Renderer {
     void _createGraphicsPipeline();
 
     // buffers
-    std::unique_ptr<BufferBundle> _renderInfoBufferBundle;
-    void _createBuffersAndBufferBundles();
-    void _updateBufferData(size_t currentFrame, glm::mat4 model_matrix);
-
-    // descriptor set
-    std::unique_ptr<DescriptorSetBundle> _descriptorSetBundle;
+    std::vector<std::unique_ptr<BufferBundle>> _renderInfoBufferBundles;
+    std::vector<std::unique_ptr<DescriptorSetBundle>> _descriptorSetBundles;
 
     void _recordDeliveryCommandBuffers();
     void _recordDrawingCommandBuffers();
@@ -93,5 +91,8 @@ class Renderer {
     void _createDepthStencil();
     void _createColorResources();
 
-    void _createDescriptorSetBundle();
+    void _createDescriptorSetBundles();
+    void _createModelImages();
+    void _createBuffersAndBufferBundles();
+    void _updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 model_matrix);
 };
