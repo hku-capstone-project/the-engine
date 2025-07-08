@@ -36,6 +36,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
     std::vector<std::string> testModelPaths{};
     testModelPaths.push_back(kPathToResourceFolder + "models/blender-monkey/monkey.obj");
     testModelPaths.push_back(kPathToResourceFolder + "models/sci_sword/sword.gltf");
+    testModelPaths.push_back(kPathToResourceFolder + "models/sci_sword/sword.gltf");
 
     for (size_t i = 0; i < testModelPaths.size(); ++i) {
         _models.push_back(std::make_unique<Model>(_appContext, _logger, testModelPaths[i]));
@@ -404,7 +405,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, const std::vect
         glm::mat4 finalMatrix = entityMatrix;
         
         // 为剑模型应用缩放（因为它原本太小）
-        if (modelId == 1) { // 剑模型
+        if (modelId == 1 || modelId == 2) { // 剑模型
             finalMatrix = glm::scale(finalMatrix, glm::vec3(10.0f, 10.0f, 10.0f));
         }
 

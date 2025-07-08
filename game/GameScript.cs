@@ -77,7 +77,7 @@ namespace Game
             EngineBindings.AddVelocity(fallingSwordId, fallingSwordVelocity);
             
             // 添加掉落剑的Mesh和Material组件
-            var fallingSwordMesh = new Mesh { modelId = 1 }; // 也使用剑模型
+            var fallingSwordMesh = new Mesh { modelId = 2 }; // 也使用剑模型
             EngineBindings.AddMesh(fallingSwordId, fallingSwordMesh);
             var fallingSwordMaterial = new Material { color = new Vector3(0.9f, 0.2f, 0.2f) }; // 红色
             EngineBindings.AddMaterial(fallingSwordId, fallingSwordMaterial);
