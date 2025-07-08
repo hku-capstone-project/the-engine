@@ -37,18 +37,57 @@ namespace Game
             // Initialize logging system
             InitializeLogging();
 
-            // add a monkey here
+            // 创建猴子实体 (实体1)
             uint monkeyId = EngineBindings.CreateEntity();
-            var transform = new Transform { position = new Vector3(0, 1, 0) };
-            EngineBindings.AddTransform(monkeyId, transform);
-            var velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
-            EngineBindings.AddVelocity(monkeyId, velocity);
+            var monkeyTransform = new Transform { position = new Vector3(0, 1, 0) };
+            EngineBindings.AddTransform(monkeyId, monkeyTransform);
+            var monkeyVelocity = new Velocity { velocity = new Vector3(0, 0, 0) };
+            EngineBindings.AddVelocity(monkeyId, monkeyVelocity);
             
             // 添加Player组件，让猴子可以被PlayerSystem处理
             var player = new Player { isJumping = false, jumpForce = 8.0f };
             EngineBindings.AddPlayer(monkeyId, player);
             
-            Log($"Created monkey entity with ID {monkeyId} - Transform, Velocity, and Player components added");
+            // 添加猴子的Mesh和Material组件
+            var monkeyMesh = new Mesh { modelId = 0 }; // 猴子是第一个模型
+            EngineBindings.AddMesh(monkeyId, monkeyMesh);
+            var monkeyMaterial = new Material { color = new Vector3(0.8f, 0.6f, 0.4f) }; // 棕色
+            EngineBindings.AddMaterial(monkeyId, monkeyMaterial);
+            
+            Log($"Created monkey entity with ID {monkeyId} - Transform, Velocity, Player, Mesh, and Material components added");
+
+            // 创建剑实体 (实体2) - 独立的静止物体
+            uint swordId = EngineBindings.CreateEntity();
+            var swordTransform = new Transform { position = new Vector3(3, 0, 0) }; // 放在猴子右侧3米处
+            EngineBindings.AddTransform(swordId, swordTransform);
+            
+            // 添加剑的Mesh和Material组件
+            var swordMesh = new Mesh { modelId = 1 }; // 剑是第二个模型
+            EngineBindings.AddMesh(swordId, swordMesh);
+            var swordMaterial = new Material { color = new Vector3(0.7f, 0.7f, 0.9f) }; // 银蓝色
+            EngineBindings.AddMaterial(swordId, swordMaterial);
+            
+            Log($"Created sword entity with ID {swordId} - Transform, Mesh, and Material components added");
+            
+            // 创建第三个实体 - 另一把剑，这次会掉落
+            uint fallingSwordId = EngineBindings.CreateEntity();
+            var fallingSwordTransform = new Transform { position = new Vector3(-3, 5, 0) }; // 左侧高空
+            EngineBindings.AddTransform(fallingSwordId, fallingSwordTransform);
+            var fallingSwordVelocity = new Velocity { velocity = new Vector3(0, 0, 0) };
+            EngineBindings.AddVelocity(fallingSwordId, fallingSwordVelocity);
+            
+            // 添加掉落剑的Mesh和Material组件
+            var fallingSwordMesh = new Mesh { modelId = 1 }; // 也使用剑模型
+            EngineBindings.AddMesh(fallingSwordId, fallingSwordMesh);
+            var fallingSwordMaterial = new Material { color = new Vector3(0.9f, 0.2f, 0.2f) }; // 红色
+            EngineBindings.AddMaterial(fallingSwordId, fallingSwordMaterial);
+            
+            Log($"Created falling sword entity with ID {fallingSwordId} - Transform, Velocity, Mesh, and Material components added");
+            
+            Log("=== Multi-Entity System Initialized ===");
+            Log("- Monkey (controllable): Brown, can move and jump");
+            Log("- Static Sword: Silver-blue, stationary at (3,0,0)");
+            Log("- Falling Sword: Red, will fall due to gravity at (-3,5,0)");
         }
 
         private static void InitializeLogging()

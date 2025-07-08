@@ -348,7 +348,7 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
     _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
-void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix) {
+void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, const std::vector<std::pair<glm::mat4, int>>& entityRenderData) {
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 
     // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
@@ -392,48 +392,38 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 model
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
-    for (size_t i = 0; i < _models.size(); i++) {
-        glm::mat4 individualModelMatrix = modelMatrix;
-        individualModelMatrix = glm::translate(individualModelMatrix, glm::vec3(i * 3.0f, 0.0f, -2.0f));
-        if (i == 1) {
-            individualModelMatrix = glm::scale(individualModelMatrix, glm::vec3(10.0f, 10.0f, 10.0f));
+    // 新的实体驱动渲染循环
+    for (const auto& [entityMatrix, modelId] : entityRenderData) {
+        // 验证modelId有效性
+        if (modelId < 0 || static_cast<size_t>(modelId) >= _models.size()) {
+            continue; // 跳过无效的模型ID
         }
-        _updateBufferData(currentFrame, i, individualModelMatrix);
+        
+        size_t modelIndex = static_cast<size_t>(modelId);
+        
+        glm::mat4 finalMatrix = entityMatrix;
+        
+        // 为剑模型应用缩放（因为它原本太小）
+        if (modelId == 1) { // 剑模型
+            finalMatrix = glm::scale(finalMatrix, glm::vec3(10.0f, 10.0f, 10.0f));
+        }
 
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_models[i]->vertexBuffer->getVkBuffer(), offsets);
-        vkCmdBindIndexBuffer(cmdBuffer, _models[i]->indexBuffer->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+        _updateBufferData(currentFrame, modelIndex, finalMatrix);
 
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
                                _pipeline->getPipelineLayout(), 0, 1, 
-                               &_descriptorSetBundles[i]->getDescriptorSet(currentFrame), 0, nullptr);
+                               &_descriptorSetBundles[modelIndex]->getDescriptorSet(currentFrame), 0, nullptr);
 
-        _pipeline->recordDrawIndexed(cmdBuffer, currentFrame);
-        vkCmdDrawIndexed(cmdBuffer, _models[i]->idxCnt, 1, 0, 0, 0);
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_models[modelIndex]->vertexBuffer->getVkBuffer(),
+                               offsets);
+        vkCmdBindIndexBuffer(cmdBuffer, _models[modelIndex]->indexBuffer->getVkBuffer(), 0,
+                             VK_INDEX_TYPE_UINT32);
+
+        vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, 1, 0, 0, 0);
     }
 
     vkCmdEndRenderPass(cmdBuffer);
-
-    // 添加渲染完成后的图像布局转换
-    VkImageMemoryBarrier barrier{};
-    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    barrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image                           = _appContext->getSwapchainImages()[imageIndex];
-    barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel   = 0;
-    barrier.subresourceRange.levelCount     = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount     = 1;
-    barrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    barrier.dstAccessMask                   = 0;
-
-    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
-                         &barrier);
-
     vkEndCommandBuffer(cmdBuffer);
 }
 
