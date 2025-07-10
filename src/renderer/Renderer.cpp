@@ -36,18 +36,18 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
     // Load models from RuntimeApplication mesh registry
-    // auto meshes = RuntimeBridge::getRuntimeApplication().getAllMeshes();
-    // _logger->info("Loading {} meshes from C# registry", meshes.size());
+    auto meshes = RuntimeBridge::getRuntimeApplication().getAllMeshes();
+    _logger->info("Loading {} meshes from C# registry", meshes.size());
 
-    std::vector<std::pair<int, std::string>> meshes{};
-    meshes.push_back({0, "models/blender-monkey/monkey.obj"});
-    meshes.push_back({1, "models/sci_sword/sword.gltf"});
-    meshes.push_back({2, "models/sci_sword/sword.gltf"});
-
-    for (const auto &[meshId, meshPath] : meshes) {
-        std::string fullPath = kPathToResourceFolder + meshPath;
-        _models.push_back(std::make_unique<Model>(_appContext, _logger, fullPath));
-        _logger->info("Loaded mesh ID {}: {}", meshId, fullPath);
+    if (meshes.empty()) {
+        _logger->warn("No meshes registered! Renderer will be created with empty mesh list.");
+        _logger->warn("This may cause rendering issues. Ensure mesh registration happens before Renderer creation.");
+    } else {
+        for (const auto &[meshId, meshPath] : meshes) {
+            std::string fullPath = kPathToResourceFolder + meshPath;
+            _models.push_back(std::make_unique<Model>(_appContext, _logger, fullPath));
+            _logger->info("Loaded mesh ID {}: {}", meshId, fullPath);
+        }
     }
 
     _createModelImages();
@@ -69,6 +69,11 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
 
 void Renderer::_createModelImages() {
     _modelImages.clear();
+
+    if (_models.empty()) {
+        _logger->warn("No models loaded, skipping model image creation");
+        return;
+    }
 
     auto samplerSettings = Sampler::Settings{
         Sampler::AddressMode::kClampToEdge, // U
@@ -114,6 +119,12 @@ void Renderer::_createModelImages() {
 
 void Renderer::_createBuffersAndBufferBundles() {
     _renderInfoBufferBundles.clear();
+    
+    if (_models.empty()) {
+        _logger->warn("No models loaded, skipping buffer bundle creation");
+        return;
+    }
+    
     for (size_t i = 0; i < _models.size(); ++i) {
         _renderInfoBufferBundles.push_back(std::make_unique<BufferBundle>(
             _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -123,6 +134,11 @@ void Renderer::_createBuffersAndBufferBundles() {
 
 void Renderer::_createDescriptorSetBundles() {
     _descriptorSetBundles.clear();
+
+    if (_models.empty()) {
+        _logger->warn("No models loaded, skipping descriptor set bundle creation");
+        return;
+    }
 
     Image *defaultTexture = nullptr;
     for (size_t i = 0; i < _modelImages.size(); ++i) {
@@ -227,6 +243,11 @@ void Renderer::_createRenderPass() {
 void Renderer::_createGraphicsPipeline() {
     DescriptorSetBundle *referenceDescriptorSet =
         _descriptorSetBundles.empty() ? nullptr : _descriptorSetBundles[0].get();
+    
+    if (referenceDescriptorSet == nullptr) {
+        _logger->warn("No descriptor sets available, creating pipeline without descriptor reference");
+    }
+    
     _pipeline = std::make_unique<GfxPipeline>(_appContext, _logger,
                                               kPathToResourceFolder + "shaders/default",
                                               referenceDescriptorSet, _shaderCompiler, _renderPass);
@@ -353,6 +374,11 @@ void Renderer::onSwapchainResize() {
 }
 
 void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 modelMatrix) {
+    if (modelIndex >= _renderInfoBufferBundles.size()) {
+        _logger->error("Invalid model index {} in _updateBufferData", modelIndex);
+        return;
+    }
+
     auto view = _camera->getViewMatrix();
 
     auto swapchainExtent = _appContext->getSwapchainExtent();
@@ -416,6 +442,13 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
     // 新的实体驱动渲染循环
+    if (_models.empty()) {
+        // No models loaded, skip rendering
+        vkCmdEndRenderPass(cmdBuffer);
+        vkEndCommandBuffer(cmdBuffer);
+        return;
+    }
+    
     for (const auto &[entityMatrix, modelId] : entityRenderData) {
         // 验证modelId有效性
         if (modelId < 0 || static_cast<size_t>(modelId) >= _models.size()) {

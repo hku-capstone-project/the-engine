@@ -40,14 +40,14 @@ Application::Application(Logger *logger) : _logger(logger) {
 
     _fpsSink = std::make_unique<FpsSink>();
 
+    _init();
+
+    // call every startup system to register meshes BEFORE creating the renderer
+    RuntimeBridge::getRuntimeApplication().start();
+
     _renderer = std::make_unique<Renderer>(
         _appContext.get(), _logger, _configContainer->applicationInfo->framesInFlight,
         _shaderCompiler.get(), _window.get(), _configContainer.get());
-
-    _init();
-
-    // call every startup system after everything is initialized
-    RuntimeBridge::getRuntimeApplication().start();
 
     GlobalEventDispatcher::get()
         .sink<E_RenderLoopBlockRequest>()
