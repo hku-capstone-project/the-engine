@@ -4,6 +4,8 @@
 #include "camera/Camera.hpp"
 #include "config-container/ConfigContainer.hpp"
 #include "config/RootDir.h"
+#include "dotnet/RuntimeApplication.hpp"
+#include "dotnet/RuntimeBridge.hpp"
 #include "utils/logger/Logger.hpp"
 #include "utils/shader-compiler/ShaderCompiler.hpp"
 #include "utils/vulkan-wrapper/descriptor-set/DescriptorSetBundle.hpp"
@@ -33,13 +35,19 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
-    std::vector<std::string> testModelPaths{};
-    testModelPaths.push_back(kPathToResourceFolder + "models/blender-monkey/monkey.obj");
-    testModelPaths.push_back(kPathToResourceFolder + "models/sci_sword/sword.gltf");
-    testModelPaths.push_back(kPathToResourceFolder + "models/sci_sword/sword.gltf");
+    // Load models from RuntimeApplication mesh registry
+    // auto meshes = RuntimeBridge::getRuntimeApplication().getAllMeshes();
+    // _logger->info("Loading {} meshes from C# registry", meshes.size());
 
-    for (size_t i = 0; i < testModelPaths.size(); ++i) {
-        _models.push_back(std::make_unique<Model>(_appContext, _logger, testModelPaths[i]));
+    std::vector<std::pair<int, std::string>> meshes{};
+    meshes.push_back({0, "models/blender-monkey/monkey.obj"});
+    meshes.push_back({1, "models/sci_sword/sword.gltf"});
+    meshes.push_back({2, "models/sci_sword/sword.gltf"});
+
+    for (const auto &[meshId, meshPath] : meshes) {
+        std::string fullPath = kPathToResourceFolder + meshPath;
+        _models.push_back(std::make_unique<Model>(_appContext, _logger, fullPath));
+        _logger->info("Loaded mesh ID {}: {}", meshId, fullPath);
     }
 
     _createModelImages();
@@ -61,34 +69,45 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
 
 void Renderer::_createModelImages() {
     _modelImages.clear();
-    
+
     auto samplerSettings = Sampler::Settings{
         Sampler::AddressMode::kClampToEdge, // U
         Sampler::AddressMode::kClampToEdge, // V
         Sampler::AddressMode::kClampToEdge  // W
     };
 
+    auto meshes = RuntimeBridge::getRuntimeApplication().getAllMeshes();
+
     for (size_t i = 0; i < _models.size(); ++i) {
         ModelImages modelImages;
-        
-        if (i == 0) {
-            modelImages.sharedSampler = nullptr;
-            modelImages.baseColor = nullptr;
-            modelImages.normalMap = nullptr;
+
+        // Get the mesh ID for this model index
+        int meshId = -1;
+        if (i < meshes.size()) {
+            meshId = meshes[i].first;
+        }
+
+        if (meshId == 0) {
+            // Monkey model - no textures
+            modelImages.sharedSampler  = nullptr;
+            modelImages.baseColor      = nullptr;
+            modelImages.normalMap      = nullptr;
             modelImages.metalRoughness = nullptr;
         } else {
+            // Sword models - has textures
             modelImages.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
-            
-            std::string texturePath = kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png";
+
+            std::string texturePath =
+                kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png";
             modelImages.baseColor = std::make_unique<Image>(
                 _appContext, _logger, texturePath,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 modelImages.sharedSampler->getVkSampler());
-            
-            modelImages.normalMap = nullptr;
+
+            modelImages.normalMap      = nullptr;
             modelImages.metalRoughness = nullptr;
         }
-        
+
         _modelImages.push_back(std::move(modelImages));
     }
 }
@@ -104,26 +123,27 @@ void Renderer::_createBuffersAndBufferBundles() {
 
 void Renderer::_createDescriptorSetBundles() {
     _descriptorSetBundles.clear();
-    
-    Image* defaultTexture = nullptr;
+
+    Image *defaultTexture = nullptr;
     for (size_t i = 0; i < _modelImages.size(); ++i) {
         if (_modelImages[i].baseColor != nullptr) {
             defaultTexture = _modelImages[i].baseColor.get();
             break;
         }
     }
-    
+
     for (size_t i = 0; i < _models.size(); ++i) {
         auto descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
-            _appContext, _framesInFlight, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+            _appContext, _framesInFlight,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
         descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundles[i].get());
-        
+
         if (_modelImages[i].baseColor != nullptr) {
             descriptorSetBundle->bindImageSampler(1, _modelImages[i].baseColor.get());
         } else if (defaultTexture != nullptr) {
             descriptorSetBundle->bindImageSampler(1, defaultTexture);
         }
-        
+
         descriptorSetBundle->create();
         _descriptorSetBundles.push_back(std::move(descriptorSetBundle));
     }
@@ -205,10 +225,11 @@ void Renderer::_createRenderPass() {
 }
 
 void Renderer::_createGraphicsPipeline() {
-    DescriptorSetBundle* referenceDescriptorSet = _descriptorSetBundles.empty() ? nullptr : _descriptorSetBundles[0].get();
-    _pipeline = std::make_unique<GfxPipeline>(
-        _appContext, _logger, kPathToResourceFolder + "shaders/default", referenceDescriptorSet,
-        _shaderCompiler, _renderPass);
+    DescriptorSetBundle *referenceDescriptorSet =
+        _descriptorSetBundles.empty() ? nullptr : _descriptorSetBundles[0].get();
+    _pipeline = std::make_unique<GfxPipeline>(_appContext, _logger,
+                                              kPathToResourceFolder + "shaders/default",
+                                              referenceDescriptorSet, _shaderCompiler, _renderPass);
 }
 
 void Renderer::_createDepthStencil() {
@@ -339,17 +360,18 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
                                                         static_cast<float>(swapchainExtent.height));
 
     auto viewPos = _camera->getPosition(); // 获取摄像机位置
-                                                            
+
     S_RenderInfo renderInfo{};
-    renderInfo.view  = view;
-    renderInfo.proj  = proj;
-    renderInfo.model = modelMatrix;
-    renderInfo.viewPos = viewPos; 
+    renderInfo.view    = view;
+    renderInfo.proj    = proj;
+    renderInfo.model   = modelMatrix;
+    renderInfo.viewPos = viewPos;
 
     _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
-void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, const std::vector<std::pair<glm::mat4, int>>& entityRenderData) {
+void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
+                         const std::vector<std::pair<glm::mat4, int>> &entityRenderData) {
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 
     // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
@@ -394,16 +416,16 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, const std::vect
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
 
     // 新的实体驱动渲染循环
-    for (const auto& [entityMatrix, modelId] : entityRenderData) {
+    for (const auto &[entityMatrix, modelId] : entityRenderData) {
         // 验证modelId有效性
         if (modelId < 0 || static_cast<size_t>(modelId) >= _models.size()) {
             continue; // 跳过无效的模型ID
         }
-        
+
         size_t modelIndex = static_cast<size_t>(modelId);
-        
+
         glm::mat4 finalMatrix = entityMatrix;
-        
+
         // 为剑模型应用缩放（因为它原本太小）
         if (modelId == 1 || modelId == 2) { // 剑模型
             finalMatrix = glm::scale(finalMatrix, glm::vec3(10.0f, 10.0f, 10.0f));
@@ -411,9 +433,9 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex, const std::vect
 
         _updateBufferData(currentFrame, modelIndex, finalMatrix);
 
-        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-                               _pipeline->getPipelineLayout(), 0, 1, 
-                               &_descriptorSetBundles[modelIndex]->getDescriptorSet(currentFrame), 0, nullptr);
+        vkCmdBindDescriptorSets(
+            cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1,
+            &_descriptorSetBundles[modelIndex]->getDescriptorSet(currentFrame), 0, nullptr);
 
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_models[modelIndex]->vertexBuffer->getVkBuffer(),

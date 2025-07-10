@@ -44,5 +44,13 @@ namespace Game
     {
         public Vector3 color;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MeshDefinition
+    {
+        public int modelId;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string modelPath;
+    }
     
 }

@@ -3,12 +3,17 @@
 #include <entt/entt.hpp>
 #include <functional>
 #include <vector>
+#include <unordered_map>
+#include <string>
 
 class Window;
 
 class RuntimeApplication {
   public:
     entt::registry registry;
+    
+    // Mesh registry: maps mesh ID to mesh path
+    std::unordered_map<int, std::string> meshRegistry;
 
     // A Startup system is just void()
     using StartupSystem = std::function<void()>;
@@ -33,6 +38,10 @@ class RuntimeApplication {
     bool isKeyPressed(int keyCode) const;
     bool isKeyJustPressed(int keyCode) const;
     bool isKeyJustReleased(int keyCode) const;
+    
+    // Mesh registry functions
+    void registerMesh(int meshId, const std::string& meshPath);
+    std::vector<std::pair<int, std::string>> getAllMeshes() const;
 
   private:
     uint32_t _updateCount = 0;

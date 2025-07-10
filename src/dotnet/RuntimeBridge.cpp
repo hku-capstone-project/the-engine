@@ -202,6 +202,10 @@ bool IsKeyJustReleased(int keyCode) {
     return RuntimeBridge::getRuntimeApplication().isKeyJustReleased(keyCode);
 }
 
+void RegisterMesh(int meshId, const char* meshPath) {
+    RuntimeBridge::getRuntimeApplication().registerMesh(meshId, std::string(meshPath));
+}
+
 void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
     assert(fn && count > 0);
 
@@ -267,6 +271,7 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "IsKeyPressed") == 0) return (void *)&IsKeyPressed;
     if (std::strcmp(name, "IsKeyJustPressed") == 0) return (void *)&IsKeyJustPressed;
     if (std::strcmp(name, "IsKeyJustReleased") == 0) return (void *)&IsKeyJustReleased;
+    if (std::strcmp(name, "RegisterMesh") == 0) return (void *)&RegisterMesh;
     return nullptr;
 }
 }

@@ -37,6 +37,9 @@ namespace Game
         {
             // Initialize logging system
             InitializeLogging();
+            
+            // Register all meshes first
+            RegisterAllMeshes();
 
             // === 创建玩家猴子实体 ===
             _playerId = EngineBindings.CreateEntity();
@@ -147,6 +150,28 @@ namespace Game
             {
                 Console.WriteLine($"Log write failed: {ex.Message}");
             }
+        }
+
+        private static void RegisterAllMeshes()
+        {
+            Log("=== 🎯 Registering all meshes with the engine ===");
+            
+            // Define all meshes that the game will use
+            var meshDefinitions = new List<MeshDefinition>
+            {
+                new MeshDefinition { modelId = 0, modelPath = "models/blender-monkey/monkey.obj" },
+                new MeshDefinition { modelId = 1, modelPath = "models/sci_sword/sword.gltf" },
+                new MeshDefinition { modelId = 2, modelPath = "models/sci_sword/sword.gltf" }
+            };
+
+            // Register each mesh with the native engine
+            foreach (var meshDef in meshDefinitions)
+            {
+                EngineBindings.RegisterMesh(meshDef.modelId, meshDef.modelPath);
+                Log($"📦 Registered mesh ID {meshDef.modelId}: {meshDef.modelPath}");
+            }
+            
+            Log("=== ✅ All meshes registered successfully ===");
         }
 
         // 玩家物理系统 - 只处理玩家的重力和碰撞

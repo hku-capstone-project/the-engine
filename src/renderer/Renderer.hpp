@@ -5,10 +5,13 @@
 #include "vma/vk_mem_alloc.h"
 #include "volk.h"
 
+#include "utils/incl/GlmIncl.hpp" // IWYU pragma: keep
 #include <memory>
-#include <vector>
 #include <utility>
-#include "utils/incl/GlmIncl.hpp"
+#include <vector>
+
+class RuntimeApplication;
+
 
 class VulkanApplicationContext;
 class Logger;
@@ -35,7 +38,8 @@ class Renderer {
     Renderer(Renderer &&)                 = delete;
     Renderer &operator=(Renderer &&)      = delete;
 
-    void drawFrame(size_t currentFrame, size_t imageIndex, const std::vector<std::pair<glm::mat4, int>>& entityRenderData);
+    void drawFrame(size_t currentFrame, size_t imageIndex,
+                   const std::vector<std::pair<glm::mat4, int>> &entityRenderData);
     void processInput(double deltaTime);
 
     void onSwapchainResize();
@@ -61,7 +65,7 @@ class Renderer {
     std::vector<VkFramebuffer> _frameBuffers{};
 
     std::vector<std::unique_ptr<Model>> _models{};
-    
+
     struct ModelImages {
         std::unique_ptr<Sampler> sharedSampler;
         std::unique_ptr<Image> baseColor;

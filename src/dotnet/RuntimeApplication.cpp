@@ -75,3 +75,16 @@ bool RuntimeApplication::isKeyJustReleased(int keyCode) const {
     
     return _window->isKeyJustReleased(keyCode);
 }
+
+void RuntimeApplication::registerMesh(int meshId, const std::string& meshPath) {
+    meshRegistry[meshId] = meshPath;
+    printf("Registered mesh: ID=%d, Path=%s\n", meshId, meshPath.c_str());
+}
+
+std::vector<std::pair<int, std::string>> RuntimeApplication::getAllMeshes() const {
+    std::vector<std::pair<int, std::string>> meshes;
+    for (const auto& [id, path] : meshRegistry) {
+        meshes.push_back({id, path});
+    }
+    return meshes;
+}
