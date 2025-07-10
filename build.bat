@@ -1,19 +1,22 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-set BUILD_TYPE=release
+REM default to debug build instead of release
+set BUILD_TYPE=debug
 set WITH_PORTABLE_RESOURCES=OFF
 
 FOR %%a IN (%*) DO (
-    if [%%a] == [--debug] set BUILD_TYPE=debug
+    REM switch to release only when --release is explicitly passed
+    if [%%a] == [--release] set BUILD_TYPE=release
 )
 
 set BINARY_DIR=build/%BUILD_TYPE%/
 set PROJECT_EXECUTABLE_PATH=%BINARY_DIR%apps/
 
-@REM delete build/Game folder if it exists
+REM delete build/Game folder if it exists
 if exist build\Game rd /s /q build\Game
-@REM publish the game project in cs
+
+REM publish the game project in cs
 pushd game
 dotnet publish -c Release -r win-x64 --self-contained false -o ../build/Game
 if %ERRORLEVEL% neq 0 (
@@ -58,10 +61,10 @@ if %WITH_PORTABLE_RESOURCES%==ON (
     robocopy "resources/" "!RESOURCES_PATH!" /E /IS /NFL /NDL /NJH /NJS /nc /ns /np
 )
 
-@REM run the application
-@REM /wait blocks the terminal to wait for the application to exit
-@REM /b means to stay in the command line below, 
-@REM /d xxx specifies the startup directory
-@REM ENGINE_ROOT is for Logs in the game folder
+REM run the application
+REM /wait blocks the terminal to wait for the application to exit
+REM /b means to stay in the command line below, 
+REM /d xxx specifies the startup directory
+REM ENGINE_ROOT is for Logs in the game folder
 set ENGINE_ROOT=%CD%
 start /wait /b /d "%PROJECT_EXECUTABLE_PATH%" run.exe
