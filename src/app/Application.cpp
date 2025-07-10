@@ -203,15 +203,26 @@ void Application::_drawFrame() {
     }
 
     auto const &reg        = RuntimeBridge::getRuntimeApplication().registry;
-    auto const &transforms = reg.view<Transform>();
-    // if not null, pick the first one for the currentPosition
-    glm::vec3 currentPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-    if (transforms.size() > 0) {
-        currentPosition = transforms.get<Transform>(transforms.front()).position;
+    
+    // 改为基于ECS实体的渲染系统
+    // 遍历所有有Transform和Mesh组件的实体
+    auto renderableEntities = reg.view<Transform, Mesh>();
+    
+    std::vector<std::pair<glm::mat4, int>> entityRenderData;
+    
+    for (auto entity : renderableEntities) {
+        auto& transform = renderableEntities.get<Transform>(entity);
+        auto& mesh = renderableEntities.get<Mesh>(entity);
+        
+        // 为每个实体创建模型矩阵
+        glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), transform.position);
+        
+        // 存储实体的渲染数据（变换矩阵 + 模型ID）
+        entityRenderData.emplace_back(modelMatrix, mesh.modelId);
     }
-
-    auto const modelMatrix = glm::translate(glm::mat4(1.0f), currentPosition);
-    _renderer->drawFrame(currentFrame, imageIndex, modelMatrix);
+    
+    // 传递实体渲染数据给渲染器
+    _renderer->drawFrame(currentFrame, imageIndex, entityRenderData);
 
     _imguiManager->recordCommandBuffer(currentFrame, imageIndex);
     std::vector<VkCommandBuffer> submitCommandBuffers = {

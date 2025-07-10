@@ -23,13 +23,14 @@ namespace Game
 
     public static class GameSystems
     {
-        private static float _jumpTimer = 0;
-        private static float _testTimer = 0;  // New: Test timer
-        private static bool _testPhase1Complete = false;  // New: Phase 1 completion flag
-        private static bool _testPhase2Complete = false;  // New: Phase 2 completion flag
-        private static uint _testEntityWithMesh = 0;
-        private static uint _testEntityForDeletion = 0;
+        private static float _testTimer = 0;  // 用于降低日志频率
         private static StreamWriter _logWriter = null;
+        
+        // 吸血鬼幸存者游戏变量
+        private static uint _playerId = 0;  // 玩家实体ID
+        private static List<uint> _vampireIds = new List<uint>();  // 吸血鬼实体ID列表
+        private static Vector3 _playerPosition = Vector3.Zero;  // 玩家位置（全局共享）
+        private static Dictionary<uint, float> _vampireSpeeds = new Dictionary<uint, float>();  // 吸血鬼移动速度
         
         [StartupSystem]
         public static void CreateTestEntities()
@@ -37,18 +38,68 @@ namespace Game
             // Initialize logging system
             InitializeLogging();
 
-            // add a monkey here
-            uint monkeyId = EngineBindings.CreateEntity();
-            var transform = new Transform { position = new Vector3(0, 1, 0) };
-            EngineBindings.AddTransform(monkeyId, transform);
-            var velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
-            EngineBindings.AddVelocity(monkeyId, velocity);
+            // === 创建玩家猴子实体 ===
+            _playerId = EngineBindings.CreateEntity();
+            var monkeyTransform = new Transform { position = new Vector3(0, 1, 0) };
+            EngineBindings.AddTransform(_playerId, monkeyTransform);
+            var monkeyVelocity = new Velocity { velocity = new Vector3(0, 0, 0) };
+            EngineBindings.AddVelocity(_playerId, monkeyVelocity);
             
             // 添加Player组件，让猴子可以被PlayerSystem处理
             var player = new Player { isJumping = false, jumpForce = 8.0f };
-            EngineBindings.AddPlayer(monkeyId, player);
+            EngineBindings.AddPlayer(_playerId, player);
             
-            Log($"Created monkey entity with ID {monkeyId} - Transform, Velocity, and Player components added");
+            // 添加猴子的Mesh和Material组件
+            var monkeyMesh = new Mesh { modelId = 0 }; // 猴子是第一个模型
+            EngineBindings.AddMesh(_playerId, monkeyMesh);
+            var monkeyMaterial = new Material { color = new Vector3(0.8f, 0.6f, 0.4f) }; // 棕色
+            EngineBindings.AddMaterial(_playerId, monkeyMaterial);
+            
+            // 初始化全局玩家位置
+            _playerPosition = monkeyTransform.position;
+            
+            Log($"🐵 Created PLAYER monkey entity with ID {_playerId}");
+
+            // === 创建吸血鬼剑实体1 ===
+            uint vampire1Id = EngineBindings.CreateEntity();
+            var vampire1Transform = new Transform { position = new Vector3(5, 1, 5) }; // 远一点的位置
+            EngineBindings.AddTransform(vampire1Id, vampire1Transform);
+            var vampire1Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
+            EngineBindings.AddVelocity(vampire1Id, vampire1Velocity);
+            
+            // 添加剑的Mesh和Material组件
+            var vampire1Mesh = new Mesh { modelId = 1 }; // 剑模型
+            EngineBindings.AddMesh(vampire1Id, vampire1Mesh);
+            var vampire1Material = new Material { color = new Vector3(0.8f, 0.1f, 0.1f) }; // 血红色
+            EngineBindings.AddMaterial(vampire1Id, vampire1Material);
+            
+            // 记录吸血鬼属性
+            _vampireIds.Add(vampire1Id);
+            _vampireSpeeds[vampire1Id] = 0.5f;  // 移动速度
+            Log($"🧛‍♀️ Created VAMPIRE 1 entity with ID {vampire1Id}");
+            
+            // === 创建吸血鬼剑实体2 ===
+            uint vampire2Id = EngineBindings.CreateEntity();
+            var vampire2Transform = new Transform { position = new Vector3(-4, 1, -4) }; // 另一边的位置
+            EngineBindings.AddTransform(vampire2Id, vampire2Transform);
+            var vampire2Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
+            EngineBindings.AddVelocity(vampire2Id, vampire2Velocity);
+            
+            // 添加剑的Mesh和Material组件
+            var vampire2Mesh = new Mesh { modelId = 2 }; // 剑模型
+            EngineBindings.AddMesh(vampire2Id, vampire2Mesh);
+            var vampire2Material = new Material { color = new Vector3(0.6f, 0.0f, 0.6f) }; // 紫红色
+            EngineBindings.AddMaterial(vampire2Id, vampire2Material);
+            
+            // 记录吸血鬼属性
+            _vampireIds.Add(vampire2Id);
+            _vampireSpeeds[vampire2Id] = 0.5f;  // 移动速度
+            Log($"🧛‍♀️ Created VAMPIRE 2 entity with ID {vampire2Id}");
+            
+            Log("=== 🎮 吸血鬼幸存者3D 游戏初始化完成 ===");
+            Log("🐵 玩家: 棕色猴子 - 使用WASD移动，空格跳跃");
+            Log("🧛‍♀️ 吸血鬼1: 血红色剑 - 会慢慢追踪玩家");
+            Log("🧛‍♀️ 吸血鬼2: 紫红色剑 - 会慢慢追踪玩家");
         }
 
         private static void InitializeLogging()
@@ -98,15 +149,15 @@ namespace Game
             }
         }
 
-        // 物理系统 - 处理重力和基本物理
+        // 玩家物理系统 - 只处理玩家的重力和碰撞
         [UpdateSystem]
-        [Query(typeof(Transform), typeof(Velocity))]
-        public static void PhysicsSystem(float dt, ref Transform transform, ref Velocity velocity)
+        [Query(typeof(Transform), typeof(Velocity), typeof(Player))]
+        public static void PlayerPhysicsSystem(float dt, ref Transform transform, ref Velocity velocity, ref Player player)
         {
-            // 应用重力
+            // 对玩家应用重力
             velocity.velocity.Y -= 9.81f * dt;
             
-            // 更新位置
+            // 更新玩家位置
             transform.position.X += velocity.velocity.X * dt;
             transform.position.Y += velocity.velocity.Y * dt;
             transform.position.Z += velocity.velocity.Z * dt;
@@ -118,7 +169,143 @@ namespace Game
                 velocity.velocity.Y = 0;
             }
 
-            Log($"Physics - Y: {transform.position.Y:F2}, VelY: {velocity.velocity.Y:F2}");
+            // 更新全局玩家位置供吸血鬼AI使用
+            _playerPosition = transform.position;
+
+            // 玩家位置调试日志（降低频率）
+            if (_testTimer > 2.0f)
+            {
+                Log($"🐵 Player - Position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
+            }
+        }
+
+        // 吸血鬼物理系统 - 只处理吸血鬼的移动（不受重力影响）
+        [UpdateSystem]
+        [Query(typeof(Transform), typeof(Velocity))]
+        public static void VampirePhysicsSystem(float dt, ref Transform transform, ref Velocity velocity)
+        {
+            // 更精确的吸血鬼识别：排除有Player组件的实体
+            // 检查是否为玩家（通过距离玩家位置很近来判断）
+            if (_playerPosition != Vector3.Zero)
+            {
+                float playerDistanceCheck = Vector3.Distance(transform.position, _playerPosition);
+                if (playerDistanceCheck < 0.5f) // 如果距离玩家很近，说明这就是玩家实体
+                {
+                    return; // 跳过玩家实体
+                }
+            }
+            
+            // 检查是否在吸血鬼可能的活动区域
+            bool couldBeVampire = false;
+            
+            // 吸血鬼1的活动区域（初始位置5,1,5附近）
+            if (Math.Abs(transform.position.X - 5) < 15.0f && Math.Abs(transform.position.Z - 5) < 15.0f)
+            {
+                couldBeVampire = true;
+            }
+            // 吸血鬼2的活动区域（初始位置-4,1,-4附近）  
+            else if (Math.Abs(transform.position.X - (-4)) < 15.0f && Math.Abs(transform.position.Z - (-4)) < 15.0f)
+            {
+                couldBeVampire = true;
+            }
+
+            if (!couldBeVampire) return;
+
+            // 吸血鬼不受重力影响，直接更新位置
+            transform.position.X += velocity.velocity.X * dt;
+            transform.position.Y += velocity.velocity.Y * dt;
+            transform.position.Z += velocity.velocity.Z * dt;
+
+            // 保持在地面以上一定高度
+            if (transform.position.Y < 1.0f)
+            {
+                transform.position.Y = 1.0f;
+                velocity.velocity.Y = 0;
+            }
+        }
+
+        // 吸血鬼AI系统 - 追踪玩家
+        [UpdateSystem]
+        [Query(typeof(Transform), typeof(Velocity))]
+        public static void VampireAISystem(float dt, ref Transform transform, ref Velocity velocity)
+        {
+            // 更精确的吸血鬼识别：排除玩家实体
+            bool isVampire = false;
+            float vampireSpeed = 2.0f;
+            
+            // 首先检查是否为玩家（通过距离玩家位置很近来判断）
+            if (_playerPosition != Vector3.Zero)
+            {
+                float distanceCheck = Vector3.Distance(transform.position, _playerPosition);
+                if (distanceCheck < 0.5f) // 如果距离玩家很近，说明这就是玩家实体
+                {
+                    return; // 跳过玩家实体
+                }
+            }
+            
+            // 检查是否在吸血鬼可能的活动区域
+            // 吸血鬼1的活动区域（初始位置5,1,5附近）
+            if (Math.Abs(transform.position.X - 5) < 15.0f && Math.Abs(transform.position.Z - 5) < 15.0f)
+            {
+                isVampire = true;
+                vampireSpeed = 0.5f; // 吸血鬼1速度（用户修改为0.5f）
+            }
+            // 吸血鬼2的活动区域（初始位置-4,1,-4附近）  
+            else if (Math.Abs(transform.position.X - (-4)) < 15.0f && Math.Abs(transform.position.Z - (-4)) < 15.0f)
+            {
+                isVampire = true;
+                vampireSpeed = 0.5f; // 吸血鬼2速度（用户修改为0.5f）
+            }
+
+            if (!isVampire) return;
+
+            // 确保玩家位置已更新
+            if (_playerPosition == Vector3.Zero)
+            {
+                _playerPosition = new Vector3(0, 1, 0); // 默认玩家位置
+            }
+
+            // 计算到玩家的距离和方向
+            Vector3 toPlayer = _playerPosition - transform.position;
+            float distanceToPlayer = toPlayer.Length();
+            const float detectionRange = 15.0f; // 增大探测范围
+
+            // 如果在探测范围内，追踪玩家
+            if (distanceToPlayer <= detectionRange && distanceToPlayer > 0.5f) // 避免太近时抖动
+            {
+                // 标准化方向向量
+                Vector3 direction = Vector3.Normalize(toPlayer);
+                
+                // 设置朝向玩家的速度（只在水平面移动，保持高度）
+                velocity.velocity.X = direction.X * vampireSpeed;
+                velocity.velocity.Z = direction.Z * vampireSpeed;
+                velocity.velocity.Y = 0; // 保持高度恒定
+                
+                // 调试日志（降低频率）
+                if (_testTimer > 3.0f)
+                {
+                    Log($"🧛‍♀️ Vampire at ({transform.position.X:F2}, {transform.position.Z:F2}) " +
+                        $"chasing player at ({_playerPosition.X:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
+                }
+            }
+            else if (distanceToPlayer <= 0.5f)
+            {
+                // 太近了，停止移动
+                velocity.velocity = Vector3.Zero;
+                if (_testTimer > 3.0f)
+                {
+                    Log($"🧛‍♀️ Vampire reached player! Game over condition could trigger here.");
+                }
+            }
+            else
+            {
+                // 超出探测范围，停止移动
+                velocity.velocity = Vector3.Zero;
+                if (_testTimer > 5.0f)
+                {
+                    Log($"🧛‍♀️ Vampire out of range, distance: {distanceToPlayer:F2}");
+                }
+            }
         }
 
         // 玩家控制系统 - 处理输入和跳跃
@@ -131,10 +318,10 @@ namespace Game
             bool isOnGround = transform.position.Y <= 0.1f;
             
             // 移动输入检测
-            bool leftPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_A) ;
-            bool rightPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_D) ;
-            bool upPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_W) ;
-            bool downPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_S) ;
+            bool leftPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_A);
+            bool rightPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_D);
+            bool upPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_W);
+            bool downPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_S);
             
             // 水平移动速度
             const float moveSpeed = 5.0f;
@@ -146,7 +333,7 @@ namespace Game
             if (upPressed) verticalInput -= 1.0f;   
             if (downPressed) verticalInput += 1.0f;  
             
-            // 应用水平移动（不影响重力）
+            // 应用水平移动（不影响Y方向的速度，保持重力和跳跃的完整性）
             velocity.velocity.X = horizontalInput * moveSpeed;
             velocity.velocity.Z = verticalInput * moveSpeed;
             
@@ -154,110 +341,19 @@ namespace Game
             if (spaceJustPressed && isOnGround)
             {
                 velocity.velocity.Y = 8.0f; // 跳跃力度
-                Log("Player jumped!");
+                Log("🐵 Player jumped!");
             }
             
-            // 调试：每秒记录一次状态
-            if (_testTimer > 1.0f)
+            // 调试：输入状态（降低频率）
+            if (_testTimer > 3.0f)
             {
-                bool currentPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_SPACE);
-                Log($"Input - Space: {currentPressed}, JustPressed: {spaceJustPressed}, Move: ({horizontalInput:F1}, {verticalInput:F1})");
+                Log($"🎮 Input - Move: ({horizontalInput:F1}, {verticalInput:F1}), Jump: {spaceJustPressed}, Ground: {isOnGround}");
                 _testTimer = 0;
             }
             _testTimer += dt;
         }
 
-        // // Basic physics system
-        // [UpdateSystem]
-        // [Query(typeof(Transform), typeof(Velocity))]
-        // public static void PhysicsSystem(float dt, ref Transform transform, ref Velocity velocity)
-        // {
-        //     transform.position.X += velocity.velocity.X * dt;
-        //     transform.position.Y += velocity.velocity.Y * dt;
-        //     transform.position.Z += velocity.velocity.Z * dt;
 
-        //     velocity.velocity.Y -= 9.8f * dt;  // Gravity
-
-        //     if (transform.position.Y < 0)
-        //     {
-        //         transform.position.Y = 0;
-        //         velocity.velocity.Y = 0;
-        //     }
-
-        //     Log($"PhysicsSystem - Entity - Position: {transform.position.X:F1}, {transform.position.Y:F1}, {transform.position.Z:F1}");
-        // }
-
-        // // Player system
-        // [UpdateSystem]
-        // [Query(typeof(Transform), typeof(Velocity), typeof(Player))]
-        // public static void PlayerSystem(float dt, ref Transform transform, ref Velocity velocity, ref Player player)
-        // {
-        //     _jumpTimer += dt;
-        //     if (_jumpTimer >= 0.1f)
-        //     {
-        //         player.isJumping = true;
-        //         _jumpTimer = 0;
-        //     }
-
-        //     if (player.isJumping)
-        //     {
-        //         velocity.velocity.Y = player.jumpForce;
-        //         player.isJumping = false;
-        //     }
-
-        //     Log($"PlayerSystem - Player Entity - Position: {transform.position.X:F1}, {transform.position.Y:F1}, {transform.position.Z:F1}, Jumping: {player.isJumping}");
-        // }
-
-        // // Test multi-component query: Mesh + Material
-        // [UpdateSystem]
-        // [Query(typeof(Transform), typeof(Mesh), typeof(Material))]
-        // public static void RenderSystem(float dt, ref Transform transform, ref Mesh mesh, ref Material material)
-        // {
-        //     Log($"🎨 RenderSystem - Entity - Position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2}), " +
-        //                      $"ModelID: {mesh.modelId}, Color: ({material.color.X:F2}, {material.color.Y:F2}, {material.color.Z:F2})");
-
-        //     // Simple animation
-        //     transform.position.X += 0.1f * dt;
-        //     material.color.X = 0.5f + 0.5f * MathF.Sin(_testTimer * 0.01f);
-        // }
-
-        // // Deletion test system - using time control
-        // [UpdateSystem]
-        // [Query(typeof(Transform))]
-        // public static void DeletionTestSystem(float dt, ref Transform transform)
-        // {
-        //     // Only execute deletion logic for test entity (identified by X and Z coordinates, Y will change due to gravity)
-        //     if (transform.position.X == -5 && transform.position.Z == -5)
-        //     {
-        //         _testTimer += dt;
-
-        //         // Phase 1: Test component deletion after 0.1s
-        //         if (!_testPhase1Complete && _testTimer >= 0.1f)
-        //         {
-        //             Log("🔥 === Test Point 3: Component Deletion Feature ===");
-        //             Log($"Removing Velocity component from entity ID {_testEntityForDeletion}...");
-        //             EngineBindings.RemoveVelocity(_testEntityForDeletion);
-        //             Log("✅ Velocity component removed. This entity should no longer appear in PhysicsSystem.");
-
-        //             Log($"Removing Material component from entity ID {_testEntityWithMesh}...");
-        //             EngineBindings.RemoveMaterial(_testEntityWithMesh);
-        //             Log("✅ Material component removed. This entity should no longer appear in RenderSystem.");
-
-        //             _testPhase1Complete = true;
-        //         }
-
-        //         // Phase 2: Test entity deletion after 0.2s
-        //         if (!_testPhase2Complete && _testTimer >= 0.2f)
-        //         {
-        //             Log("💀 === Test Point 3: Entity Deletion Feature ===");
-        //             Log($"Deleting entity ID {_testEntityForDeletion}...");
-        //             EngineBindings.DestroyEntity(_testEntityForDeletion);
-        //             Log("✅ Entity deleted. This entity should no longer appear in any system.");
-
-        //             _testPhase2Complete = true;
-        //         }
-        //     }
-        // }
     }
 }
 

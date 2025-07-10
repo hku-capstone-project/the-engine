@@ -7,6 +7,8 @@
 
 #include <memory>
 #include <vector>
+#include <utility>
+#include "utils/incl/GlmIncl.hpp"
 
 class VulkanApplicationContext;
 class Logger;
@@ -33,7 +35,7 @@ class Renderer {
     Renderer(Renderer &&)                 = delete;
     Renderer &operator=(Renderer &&)      = delete;
 
-    void drawFrame(size_t currentFrame, size_t imageIndex, glm::mat4 modelMatrix);
+    void drawFrame(size_t currentFrame, size_t imageIndex, const std::vector<std::pair<glm::mat4, int>>& entityRenderData);
     void processInput(double deltaTime);
 
     void onSwapchainResize();
