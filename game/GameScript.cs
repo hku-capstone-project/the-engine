@@ -65,7 +65,7 @@ namespace Game
 
             // === 创建吸血鬼剑实体1 ===
             uint vampire1Id = EngineBindings.CreateEntity();
-            var vampire1Transform = new Transform { position = new Vector3(5, 1, 5) }; // 远一点的位置
+            var vampire1Transform = new Transform { position = new Vector3(5, 1, 5) }; // 修正Y坐标为1
             EngineBindings.AddTransform(vampire1Id, vampire1Transform);
             var vampire1Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire1Id, vampire1Velocity);
@@ -83,7 +83,7 @@ namespace Game
             
             // === 创建吸血鬼剑实体2 ===
             uint vampire2Id = EngineBindings.CreateEntity();
-            var vampire2Transform = new Transform { position = new Vector3(-4, 1, -4) }; // 另一边的位置
+            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4) }; // 修正Y坐标为1
             EngineBindings.AddTransform(vampire2Id, vampire2Transform);
             var vampire2Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire2Id, vampire2Velocity);
@@ -206,35 +206,20 @@ namespace Game
 
         // 吸血鬼物理系统 - 只处理吸血鬼的移动（不受重力影响）
         [UpdateSystem]
-        [Query(typeof(Transform), typeof(Velocity))]
-        public static void VampirePhysicsSystem(float dt, ref Transform transform, ref Velocity velocity)
+        [Query(typeof(Transform), typeof(Velocity), typeof(Mesh))]
+        public static void VampirePhysicsSystem(float dt, ref Transform transform, ref Velocity velocity, ref Mesh mesh)
         {
-            // 更精确的吸血鬼识别：排除有Player组件的实体
-            // 检查是否为玩家（通过距离玩家位置很近来判断）
-            if (_playerPosition != Vector3.Zero)
+            // 通过Model ID精确区分：0=玩家猴子，1&2=吸血鬼剑
+            if (mesh.modelId == 0)
             {
-                float playerDistanceCheck = Vector3.Distance(transform.position, _playerPosition);
-                if (playerDistanceCheck < 0.5f) // 如果距离玩家很近，说明这就是玩家实体
-                {
-                    return; // 跳过玩家实体
-                }
+                return; // 跳过玩家（猴子模型）
             }
             
-            // 检查是否在吸血鬼可能的活动区域
-            bool couldBeVampire = false;
-            
-            // 吸血鬼1的活动区域（初始位置5,1,5附近）
-            if (Math.Abs(transform.position.X - 5) < 15.0f && Math.Abs(transform.position.Z - 5) < 15.0f)
+            // 只处理吸血鬼（剑模型ID为1或2）
+            if (mesh.modelId != 1 && mesh.modelId != 2)
             {
-                couldBeVampire = true;
+                return; // 跳过其他实体
             }
-            // 吸血鬼2的活动区域（初始位置-4,1,-4附近）  
-            else if (Math.Abs(transform.position.X - (-4)) < 15.0f && Math.Abs(transform.position.Z - (-4)) < 15.0f)
-            {
-                couldBeVampire = true;
-            }
-
-            if (!couldBeVampire) return;
 
             // 吸血鬼不受重力影响，直接更新位置
             transform.position.X += velocity.velocity.X * dt;
@@ -251,38 +236,22 @@ namespace Game
 
         // 吸血鬼AI系统 - 追踪玩家
         [UpdateSystem]
-        [Query(typeof(Transform), typeof(Velocity))]
-        public static void VampireAISystem(float dt, ref Transform transform, ref Velocity velocity)
+        [Query(typeof(Transform), typeof(Velocity), typeof(Mesh))]
+        public static void VampireAISystem(float dt, ref Transform transform, ref Velocity velocity, ref Mesh mesh)
         {
-            // 更精确的吸血鬼识别：排除玩家实体
-            bool isVampire = false;
-            float vampireSpeed = 2.0f;
-            
-            // 首先检查是否为玩家（通过距离玩家位置很近来判断）
-            if (_playerPosition != Vector3.Zero)
+            // 通过Model ID精确区分：0=玩家猴子，1&2=吸血鬼剑
+            if (mesh.modelId == 0)
             {
-                float distanceCheck = Vector3.Distance(transform.position, _playerPosition);
-                if (distanceCheck < 0.5f) // 如果距离玩家很近，说明这就是玩家实体
-                {
-                    return; // 跳过玩家实体
-                }
+                return; // 跳过玩家（猴子模型）
             }
             
-            // 检查是否在吸血鬼可能的活动区域
-            // 吸血鬼1的活动区域（初始位置5,1,5附近）
-            if (Math.Abs(transform.position.X - 5) < 15.0f && Math.Abs(transform.position.Z - 5) < 15.0f)
+            // 只处理吸血鬼（剑模型ID为1或2）
+            if (mesh.modelId != 1 && mesh.modelId != 2)
             {
-                isVampire = true;
-                vampireSpeed = 0.5f; // 吸血鬼1速度（用户修改为0.5f）
-            }
-            // 吸血鬼2的活动区域（初始位置-4,1,-4附近）  
-            else if (Math.Abs(transform.position.X - (-4)) < 15.0f && Math.Abs(transform.position.Z - (-4)) < 15.0f)
-            {
-                isVampire = true;
-                vampireSpeed = 0.5f; // 吸血鬼2速度（用户修改为0.5f）
+                return; // 跳过其他实体
             }
 
-            if (!isVampire) return;
+            float vampireSpeed = 0.5f; // 统一的吸血鬼速度
 
             // 确保玩家位置已更新
             if (_playerPosition == Vector3.Zero)
