@@ -43,7 +43,7 @@ namespace Game
 
             // === 创建玩家猴子实体 ===
             _playerId = EngineBindings.CreateEntity();
-            var monkeyTransform = new Transform { position = new Vector3(0, 1, 0) };
+            var monkeyTransform = new Transform { position = new Vector3(0, 1, 0), scale = new Vector3(1) }; // 修正Y坐标为1，添加缩放
             EngineBindings.AddTransform(_playerId, monkeyTransform);
             var monkeyVelocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(_playerId, monkeyVelocity);
@@ -65,7 +65,7 @@ namespace Game
 
             // === 创建吸血鬼剑实体1 ===
             uint vampire1Id = EngineBindings.CreateEntity();
-            var vampire1Transform = new Transform { position = new Vector3(5, 1, 5) }; // 修正Y坐标为1
+            var vampire1Transform = new Transform { position = new Vector3(5, 1, 5), scale = new Vector3(10) }; // 修正Y坐标为1
             EngineBindings.AddTransform(vampire1Id, vampire1Transform);
             var vampire1Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire1Id, vampire1Velocity);
@@ -83,7 +83,7 @@ namespace Game
             
             // === 创建吸血鬼剑实体2 ===
             uint vampire2Id = EngineBindings.CreateEntity();
-            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4) }; // 修正Y坐标为1
+            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4), scale = new Vector3(5)}; // 修正Y坐标为1
             EngineBindings.AddTransform(vampire2Id, vampire2Transform);
             var vampire2Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire2Id, vampire2Velocity);

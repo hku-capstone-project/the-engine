@@ -488,10 +488,8 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
 
         glm::mat4 finalMatrix = glm::translate(glm::mat4(1.0f), component->transform.position);
 
-        // 为剑模型应用缩放（因为它原本太小）
-        if (modelId == 1 || modelId == 2) { // 剑模型
-            finalMatrix = glm::scale(finalMatrix, glm::vec3(10.0f, 10.0f, 10.0f));
-        }
+        //缩放
+        finalMatrix = glm::scale(finalMatrix, component->transform.scale);
 
         _updateBufferData(currentFrame, modelIndex, finalMatrix);
         

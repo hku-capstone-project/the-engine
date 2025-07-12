@@ -8,6 +8,7 @@ namespace Game
     public struct Transform
     {
         public Vector3 position;
+        public Vector3 scale; // 缩放
     }
 
     [StructLayout(LayoutKind.Sequential)]
