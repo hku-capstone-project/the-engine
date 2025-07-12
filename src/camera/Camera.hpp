@@ -36,15 +36,49 @@ class Camera {
     // processes input received from a mouse scroll-wheel event. Only requires
     // input on the vertical wheel-axis void processMouseScroll(float yoffset);
     // TODO: zNear and zFar should be configurable? useful?
-    [[nodiscard]] glm::mat4 getProjectionMatrix(float aspectRatio, float zNear = 0.1F,
-                                                float zFar = 10000.F) const;
+    [[nodiscard]] glm::mat4 getProjectionMatrix() const;
 
     [[nodiscard]] glm::vec3 getPosition() const { return _position; }
     [[nodiscard]] glm::vec3 getFront() const { return _front; }
     [[nodiscard]] glm::vec3 getUp() const { return _up; }
     [[nodiscard]] glm::vec3 getRight() const { return _right; }
-    [[nodiscard]] float getVFov() const;
+    // get fov
+    [[nodiscard]] float getFov() const { return _fov; }
+    // get near plane
+    [[nodiscard]] float getNearPlane() const { return _nearPlane; }
+    // get far plane
+    [[nodiscard]] float getFarPlane() const { return _farPlane; }
 
+    [[nodiscard]] float getAspectRatio() const { return aspectRatio; }
+    [[nodiscard]] float getYaw() const { return _yaw; }
+    [[nodiscard]] float getPitch() const { return _pitch; }
+
+    // add setters for position,rotation, fov, near plane, far plane, yaw and pitch
+    void setPosition(const glm::vec3 &position) { 
+      _position = position;
+      _updateCameraVectors();  
+    }
+
+    void setRotation(const glm::vec3 &rotation) {
+        _yaw   = rotation.y;
+        _pitch = rotation.x;
+        _updateCameraVectors();
+    }
+
+    void setFov(float fov) { _fov = fov; }
+    void setNearPlane(float nearPlane) { _nearPlane = nearPlane; }
+    void setFarPlane(float farPlane) { _farPlane = farPlane; }
+
+    void setAspectRatio(float ratio) { aspectRatio = ratio; }
+
+    void setYaw(float yaw) {
+        _yaw = yaw;
+        _updateCameraVectors();
+    }
+    void setPitch(float pitch) {
+        _pitch = pitch;
+        _updateCameraVectors();
+    }
   private:
     Logger *_logger;
 
@@ -57,6 +91,13 @@ class Camera {
     ConfigContainer *_configContainer;
 
     glm::vec3 _position{};
+    glm::vec3 _rotation{};
+
+    float _fov;
+    float _nearPlane;
+    float _farPlane;
+    float aspectRatio = 16.F / 9.F; // default aspect ratio
+
     float _yaw{};
     float _pitch{};
 

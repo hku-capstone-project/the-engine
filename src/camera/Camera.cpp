@@ -14,23 +14,19 @@ Camera::Camera(Window *window, Logger *logger, ConfigContainer *configContainer)
     _position = _configContainer->cameraInfo->initPosition;
     _yaw          = _configContainer->cameraInfo->initYaw;
     _pitch        = _configContainer->cameraInfo->initPitch;
-
+    _fov          = _configContainer->cameraInfo->vFov;
     _updateCameraVectors();
 }
 
 Camera::~Camera() = default;
 
-glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float zNear, float zFar) const {
+glm::mat4 Camera::getProjectionMatrix() const {
     // right handed
     glm::mat4 projection = glm::perspective(
-        glm::radians(_configContainer->cameraInfo
-                         ->vFov), // The vertical Field of View, in radians: the amount
-                                  // of "zoom". Think "camera lens". Usually between
-                                  // 90° (extra wide) and 30° (quite zoomed in)
+        glm::radians(_fov), 
         aspectRatio,
-        zNear, // Near clipping plane. Keep as big as possible, or you'll get
-               // precision issues.
-        zFar   // Far clipping plane. Keep as little as possible.
+        _nearPlane, 
+        _farPlane  
     );
     // make a scale matrix to flip y
     glm::mat4 scale = glm::mat4(1.0F);
@@ -39,70 +35,70 @@ glm::mat4 Camera::getProjectionMatrix(float aspectRatio, float zNear, float zFar
     return projection;
 }
 
-float Camera::getVFov() const { return _configContainer->cameraInfo->vFov; }
-
-void Camera::processInput(double deltaTime) { processKeyboard(deltaTime); }
+void Camera::processInput(double deltaTime) { 
+    // processKeyboard(deltaTime); 
+}
 
 void Camera::processKeyboard(double deltaTime) {
-    if (!canMove()) {
-        return;
-    }
+    // if (!canMove()) {
+    //     return;
+    // }
 
-    float velocity = _movementSpeedMultiplier * _configContainer->cameraInfo->movementSpeed *
-                     static_cast<float>(deltaTime);
+    // float velocity = _movementSpeedMultiplier * _configContainer->cameraInfo->movementSpeed *
+    //                  static_cast<float>(deltaTime);
 
-    KeyboardInfo const &ki = _window->getKeyboardInfo();
+    // KeyboardInfo const &ki = _window->getKeyboardInfo();
 
-    if (ki.isKeyPressed(GLFW_KEY_W)) {
-        _position += _front * velocity;
-    }
-    if (ki.isKeyPressed(GLFW_KEY_S)) {
-        _position -= _front * velocity;
-    }
-    if (ki.isKeyPressed(GLFW_KEY_A)) {
-        _position -= _right * velocity;
-    }
-    if (ki.isKeyPressed(GLFW_KEY_D)) {
-        _position += _right * velocity;
-    }
-    if (ki.isKeyPressed(GLFW_KEY_SPACE)) {
-        _position += kWorldUp * velocity;
-    }
-    if (ki.isKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
-        _movementSpeedMultiplier = _configContainer->cameraInfo->movementSpeedBoost;
-    } else {
-        _movementSpeedMultiplier = 1.F;
-    }
-    if (ki.isKeyPressed(GLFW_THUMB_KEY)) {
-        _position -= kWorldUp * velocity;
-    }
+    // if (ki.isKeyPressed(GLFW_KEY_W)) {
+    //     _position += _front * velocity;
+    // }
+    // if (ki.isKeyPressed(GLFW_KEY_S)) {
+    //     _position -= _front * velocity;
+    // }
+    // if (ki.isKeyPressed(GLFW_KEY_A)) {
+    //     _position -= _right * velocity;
+    // }
+    // if (ki.isKeyPressed(GLFW_KEY_D)) {
+    //     _position += _right * velocity;
+    // }
+    // if (ki.isKeyPressed(GLFW_KEY_SPACE)) {
+    //     _position += kWorldUp * velocity;
+    // }
+    // if (ki.isKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
+    //     _movementSpeedMultiplier = _configContainer->cameraInfo->movementSpeedBoost;
+    // } else {
+    //     _movementSpeedMultiplier = 1.F;
+    // }
+    // if (ki.isKeyPressed(GLFW_THUMB_KEY)) {
+    //     _position -= kWorldUp * velocity;
+    // }
 }
 
 void Camera::handleMouseMovement(CursorMoveInfo const &mouseInfo) {
-    if (!canMove()) {
-        return;
-    }
+    // if (!canMove()) {
+    //     return;
+    // }
 
-    float mouseDx = mouseInfo.dx;
-    float mouseDy = mouseInfo.dy;
+    // float mouseDx = mouseInfo.dx;
+    // float mouseDy = mouseInfo.dy;
 
-    mouseDx *= _configContainer->cameraInfo->mouseSensitivity;
-    mouseDy *= _configContainer->cameraInfo->mouseSensitivity;
+    // mouseDx *= _configContainer->cameraInfo->mouseSensitivity;
+    // mouseDy *= _configContainer->cameraInfo->mouseSensitivity;
 
-    _yaw -= mouseDx;
-    _pitch += mouseDy;
+    // _yaw -= mouseDx;
+    // _pitch += mouseDy;
 
-    constexpr float cameraLim = 89.9F;
-    // make sure that when mPitch is out of bounds, screen doesn't get flipped
-    if (_pitch > cameraLim) {
-        _pitch = cameraLim;
-    }
-    if (_pitch < -cameraLim) {
-        _pitch = -cameraLim;
-    }
+    // constexpr float cameraLim = 89.9F;
+    // // make sure that when mPitch is out of bounds, screen doesn't get flipped
+    // if (_pitch > cameraLim) {
+    //     _pitch = cameraLim;
+    // }
+    // if (_pitch < -cameraLim) {
+    //     _pitch = -cameraLim;
+    // }
 
-    // update Front, Right and Up Vectors using the updated Euler angles
-    _updateCameraVectors();
+    // // update Front, Right and Up Vectors using the updated Euler angles
+    // _updateCameraVectors();
 }
 
 void Camera::_updateCameraVectors() {

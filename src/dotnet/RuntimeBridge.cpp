@@ -110,6 +110,8 @@ using IteratorFn = std::function<void(entt::runtime_view &)>;
 static const std::unordered_map<std::string, GetterFn> g_getters = {
     {"Transform",
      +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Transform>(e); }},
+    {"iCamera",
+     +[](entt::registry &r, entt::entity e) -> void * { return &r.get<iCamera>(e); }},
     {"Velocity", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Velocity>(e); }},
     {"Player", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Player>(e); }},
     {"Mesh", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Mesh>(e); }},
@@ -120,6 +122,10 @@ static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
     {"Transform",
      [](entt::runtime_view &view) {
          view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<Transform>());
+     }},
+     {"iCamera",
+     [](entt::runtime_view &view) {
+         view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<iCamera>());
      }},
     {"Velocity",
      [](entt::runtime_view &view) {
@@ -155,6 +161,10 @@ void AddTransform(uint32_t e, Transform t) {
     RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Transform>(entt::entity{e},
                                                                                   t);
 }
+void AddCamera(uint32_t e, iCamera c) {
+    RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<iCamera>(entt::entity{e},
+                                                                                  c);
+}
 void AddVelocity(uint32_t e, Velocity v) {
     RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Velocity>(entt::entity{e},
                                                                                  v);
@@ -173,6 +183,11 @@ void AddMaterial(uint32_t e, Material m) {
 void HostRemoveComponentTransform(uint32_t entityId) {
     RuntimeBridge::getRuntimeApplication().registry.remove<Transform>(entt::entity{entityId});
 }
+
+void HostRemoveComponentCamera(uint32_t entityId) {
+    RuntimeBridge::getRuntimeApplication().registry.remove<iCamera>(entt::entity{entityId});
+}
+
 void HostRemoveComponentVelocity(uint32_t entityId) {
     RuntimeBridge::getRuntimeApplication().registry.remove<Velocity>(entt::entity{entityId});
 }
@@ -252,12 +267,15 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "HostRegisterStartup") == 0) return (void *)&HostRegisterStartup;
     if (std::strcmp(name, "HostRegisterUpdate") == 0) return (void *)&HostRegisterUpdate;
     if (std::strcmp(name, "AddTransform") == 0) return (void *)&AddTransform;
+    if (std::strcmp(name, "AddCamera") == 0) return (void *)&AddCamera;
     if (std::strcmp(name, "AddVelocity") == 0) return (void *)&AddVelocity;
     if (std::strcmp(name, "AddPlayer") == 0) return (void *)&AddPlayer;
     if (std::strcmp(name, "AddMesh") == 0) return (void *)&AddMesh;
     if (std::strcmp(name, "AddMaterial") == 0) return (void *)&AddMaterial;
     if (std::strcmp(name, "HostRemoveComponentTransform") == 0)
         return (void *)&HostRemoveComponentTransform;
+    if (std::strcmp(name, "HostRemoveComponentCamera") == 0)
+        return (void *)&HostRemoveComponentCamera;
     if (std::strcmp(name, "HostRemoveComponentVelocity") == 0)
         return (void *)&HostRemoveComponentVelocity;
     if (std::strcmp(name, "HostRemoveComponentPlayer") == 0)

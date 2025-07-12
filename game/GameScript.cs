@@ -25,21 +25,25 @@ namespace Game
     {
         private static float _testTimer = 0;  // 用于降低日志频率
         private static StreamWriter _logWriter = null;
-        
+
         // 吸血鬼幸存者游戏变量
         private static uint _playerId = 0;  // 玩家实体ID
+
+        private static uint _cameraId = 0;  // 摄像机实体ID
+
         private static List<uint> _vampireIds = new List<uint>();  // 吸血鬼实体ID列表
         private static Vector3 _playerPosition = Vector3.Zero;  // 玩家位置（全局共享）
         private static Dictionary<uint, float> _vampireSpeeds = new Dictionary<uint, float>();  // 吸血鬼移动速度
-        
+
         [StartupSystem]
         public static void CreateTestEntities()
         {
             // Initialize logging system
             InitializeLogging();
-            
+
             // Register all meshes first
             RegisterAllMeshes();
+
 
             // === 创建玩家猴子实体 ===
             _playerId = EngineBindings.CreateEntity();
@@ -47,20 +51,20 @@ namespace Game
             EngineBindings.AddTransform(_playerId, monkeyTransform);
             var monkeyVelocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(_playerId, monkeyVelocity);
-            
+
             // 添加Player组件，让猴子可以被PlayerSystem处理
             var player = new Player { isJumping = false, jumpForce = 8.0f };
             EngineBindings.AddPlayer(_playerId, player);
-            
+
             // 添加猴子的Mesh和Material组件
             var monkeyMesh = new Mesh { modelId = 0 }; // 猴子是第一个模型
             EngineBindings.AddMesh(_playerId, monkeyMesh);
-            var monkeyMaterial = new Material { color = new Vector3(0.8f, 0.6f, 0.4f), metallic = .1f, roughness = .9f,occlusion = .5f,emissive = new Vector3(.0f) }; // 棕色
+            var monkeyMaterial = new Material { color = new Vector3(0.8f, 0.6f, 0.4f), metallic = .1f, roughness = .9f, occlusion = .5f, emissive = new Vector3(.0f) }; // 棕色
             EngineBindings.AddMaterial(_playerId, monkeyMaterial);
-            
+
             // 初始化全局玩家位置
             _playerPosition = monkeyTransform.position;
-            
+
             Log($"🐵 Created PLAYER monkey entity with ID {_playerId}");
 
             // === 创建吸血鬼剑实体1 ===
@@ -69,36 +73,41 @@ namespace Game
             EngineBindings.AddTransform(vampire1Id, vampire1Transform);
             var vampire1Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire1Id, vampire1Velocity);
-            
+
             // 添加剑的Mesh和Material组件
             var vampire1Mesh = new Mesh { modelId = 1 }; // 剑模型
             EngineBindings.AddMesh(vampire1Id, vampire1Mesh);
-            var vampire1Material = new Material { color = new Vector3(0.8f, 0.1f, 0.1f), metallic = .9f, roughness = .1f,occlusion = .5f,emissive = new Vector3(.10f) }; // 血红色
+            var vampire1Material = new Material { color = new Vector3(0.8f, 0.1f, 0.1f), metallic = .9f, roughness = .1f, occlusion = .5f, emissive = new Vector3(.10f) }; // 血红色
             EngineBindings.AddMaterial(vampire1Id, vampire1Material);
-            
+
             // 记录吸血鬼属性
             _vampireIds.Add(vampire1Id);
             _vampireSpeeds[vampire1Id] = 0.5f;  // 移动速度
             Log($"🧛‍♀️ Created VAMPIRE 1 entity with ID {vampire1Id}");
-            
+
             // === 创建吸血鬼剑实体2 ===
             uint vampire2Id = EngineBindings.CreateEntity();
-            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4), scale = new Vector3(5)}; // 修正Y坐标为1
+            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4), scale = new Vector3(5) }; // 修正Y坐标为1
             EngineBindings.AddTransform(vampire2Id, vampire2Transform);
             var vampire2Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire2Id, vampire2Velocity);
-            
+
             // 添加剑的Mesh和Material组件
             var vampire2Mesh = new Mesh { modelId = 2 }; // 剑模型
             EngineBindings.AddMesh(vampire2Id, vampire2Mesh);
             var vampire2Material = new Material { color = new Vector3(0.6f, 0.0f, 0.6f) }; // 紫红色
             EngineBindings.AddMaterial(vampire2Id, vampire2Material);
-            
+
+            _cameraId = EngineBindings.CreateEntity();
+            EngineBindings.AddCamera(_cameraId, new iCamera { fov = 60.0f, nearPlane = 0.1f, farPlane = 1000.0f });
+            EngineBindings.AddTransform(_cameraId, new Transform { position = new Vector3(0, 0, 0), rotation = new Vector3(0), scale = new Vector3(.05f) });
+            EngineBindings.AddVelocity(_cameraId, new Velocity { velocity = new Vector3(0, 0, 0) });
+
             // 记录吸血鬼属性
             _vampireIds.Add(vampire2Id);
             _vampireSpeeds[vampire2Id] = 0.5f;  // 移动速度
             Log($"🧛‍♀️ Created VAMPIRE 2 entity with ID {vampire2Id}");
-            
+
             Log("=== 🎮 吸血鬼幸存者3D 游戏初始化完成 ===");
             Log("🐵 玩家: 棕色猴子 - 使用WASD移动，空格跳跃");
             Log("🧛‍♀️ 吸血鬼1: 血红色剑 - 会慢慢追踪玩家");
@@ -155,13 +164,14 @@ namespace Game
         private static void RegisterAllMeshes()
         {
             Log("=== 🎯 Registering all meshes with the engine ===");
-            
+
             // Define all meshes that the game will use
             var meshDefinitions = new List<MeshDefinition>
             {
                 new MeshDefinition { modelId = 0, modelPath = "models/blender-monkey/monkey.obj" },
                 new MeshDefinition { modelId = 1, modelPath = "models/sci_sword/sword.gltf" },
-                new MeshDefinition { modelId = 2, modelPath = "models/sci_sword/sword.gltf" }
+                new MeshDefinition { modelId = 2, modelPath = "models/sci_sword/sword.gltf" },
+                new MeshDefinition { modelId = 3, modelPath = "models/chest/Futuristic_Chest_1.gltf" }
             };
 
             // Register each mesh with the native engine
@@ -170,7 +180,7 @@ namespace Game
                 EngineBindings.RegisterMesh(meshDef.modelId, meshDef.modelPath);
                 Log($"📦 Registered mesh ID {meshDef.modelId}: {meshDef.modelPath}");
             }
-            
+
             Log("=== ✅ All meshes registered successfully ===");
         }
 
@@ -181,7 +191,7 @@ namespace Game
         {
             // 对玩家应用重力
             velocity.velocity.Y -= 9.81f * dt;
-            
+
             // 更新玩家位置
             transform.position.X += velocity.velocity.X * dt;
             transform.position.Y += velocity.velocity.Y * dt;
@@ -214,7 +224,7 @@ namespace Game
             {
                 return; // 跳过玩家（猴子模型）
             }
-            
+
             // 只处理吸血鬼（剑模型ID为1或2）
             if (mesh.modelId != 1 && mesh.modelId != 2)
             {
@@ -244,7 +254,7 @@ namespace Game
             {
                 return; // 跳过玩家（猴子模型）
             }
-            
+
             // 只处理吸血鬼（剑模型ID为1或2）
             if (mesh.modelId != 1 && mesh.modelId != 2)
             {
@@ -269,12 +279,12 @@ namespace Game
             {
                 // 标准化方向向量
                 Vector3 direction = Vector3.Normalize(toPlayer);
-                
+
                 // 设置朝向玩家的速度（只在水平面移动，保持高度）
                 velocity.velocity.X = direction.X * vampireSpeed;
                 velocity.velocity.Z = direction.Z * vampireSpeed;
                 velocity.velocity.Y = 0; // 保持高度恒定
-                
+
                 // 调试日志（降低频率）
                 if (_testTimer > 3.0f)
                 {
@@ -310,34 +320,34 @@ namespace Game
             // 使用新的游戏输入系统 - 简洁可靠的按键检测
             bool spaceJustPressed = EngineBindings.IsKeyJustPressed(Keys.GLFW_KEY_SPACE);
             bool isOnGround = transform.position.Y <= 0.1f;
-            
+
             // 移动输入检测
             bool leftPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_A);
             bool rightPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_D);
             bool upPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_W);
             bool downPressed = EngineBindings.IsKeyPressed(Keys.GLFW_KEY_S);
-            
+
             // 水平移动速度
             const float moveSpeed = 5.0f;
             float horizontalInput = 0.0f;
             float verticalInput = 0.0f;
-            
+
             if (leftPressed) horizontalInput -= 1.0f;
             if (rightPressed) horizontalInput += 1.0f;
-            if (upPressed) verticalInput -= 1.0f;   
-            if (downPressed) verticalInput += 1.0f;  
-            
+            if (upPressed) verticalInput -= 1.0f;
+            if (downPressed) verticalInput += 1.0f;
+
             // 应用水平移动（不影响Y方向的速度，保持重力和跳跃的完整性）
             velocity.velocity.X = horizontalInput * moveSpeed;
             velocity.velocity.Z = verticalInput * moveSpeed;
-            
+
             // 跳跃逻辑：只有在按下瞬间且在地面时才跳跃
             if (spaceJustPressed && isOnGround)
             {
                 velocity.velocity.Y = 8.0f; // 跳跃力度
                 Log("🐵 Player jumped!");
             }
-            
+
             // 调试：输入状态（降低频率）
             if (_testTimer > 3.0f)
             {
@@ -345,6 +355,54 @@ namespace Game
                 _testTimer = 0;
             }
             _testTimer += dt;
+        }
+
+
+        //摄像机系统 - 处理摄像机位置和视角[UpdateSystem]
+        [Query(typeof(Transform), typeof(iCamera))]
+        public static void CameraSystem(float dt, ref Transform transform, ref iCamera camera)
+        {
+
+
+            Log($"📷 CameraSystem - PlayerPosition: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
+            Log($"📷 CameraSystem - CameraPosition: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
+
+
+            // 设置摄像机位置在玩家上方和后方
+            float height = 5f; // 摄像机高度
+            float distance = 10f; // 摄像机与玩家的水平距离
+            float pitchAngle = MathF.PI / 6; // 俯仰角，30度（可调整）
+
+            // 计算摄像机相对于玩家的偏移
+            Vector3 offset = new Vector3(0, height, -distance);
+            transform.position = _playerPosition + offset;
+
+            // 计算摄像机朝向玩家的方向
+            Vector3 directionToPlayer = _playerPosition - transform.position;
+            directionToPlayer = Vector3.Normalize(directionToPlayer);
+
+            // 计算旋转角度（Y轴旋转：偏航，X轴旋转：俯仰）
+            float yaw = MathF.Atan2(directionToPlayer.X, directionToPlayer.Z); // 水平旋转
+            float pitch = MathF.Asin(directionToPlayer.Y); // 垂直旋转（俯仰）
+
+            // 应用旋转（俯仰角可手动调整以固定视角）
+            transform.rotation = new Vector3(pitchAngle, yaw, 0); // 固定俯仰角，保持Y轴旋转
+        }
+
+        [UpdateSystem]
+        [Query(typeof(iCamera))]
+        public static void CameraSystemTest(float dt, ref iCamera camera)
+        {
+
+
+            if (_testTimer > 1.0f)
+            {
+                Log($"📷 CameraSystem - PlayerPosition: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
+                _testTimer = 0;
+            }
+            _testTimer += 1.0f;
+
+    
         }
 
 

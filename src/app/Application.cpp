@@ -225,6 +225,16 @@ void Application::_drawFrame() {
         comp->material = material;
         entityRenderData.emplace_back(comp);
     }
+
+    auto camEntities = reg.view<Transform, iCamera>();
+    
+    for (auto entity : camEntities) {
+        auto &transform = camEntities.get<Transform>(entity);
+        auto &camera = camEntities.get<iCamera>(entity);
+
+        // 更新摄像机位置和投影矩阵
+        _renderer->updateCamera(transform, camera);
+    }
     
     // 传递实体渲染数据给渲染器
     _renderer->drawFrame(currentFrame, imageIndex, entityRenderData);
