@@ -32,3 +32,13 @@ struct Material {
     float occlusion = 1.0;
     glm::vec3 emissive = glm::vec3(0.0f);
 };
+
+class Components{
+    public:
+    Transform transform;
+    Velocity velocity;
+    Player player;
+    Mesh mesh;
+    Material material;
+    // 可以添加更多组件
+};

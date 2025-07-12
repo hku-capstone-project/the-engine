@@ -1,14 +1,17 @@
 #pragma once
 #define VK_NO_PROTOTYPES
 
+
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 #include "vma/vk_mem_alloc.h"
 #include "volk.h"
+#include "dotnet/Components.hpp"
 
 #include "utils/incl/GlmIncl.hpp" // IWYU pragma: keep
 #include <memory>
 #include <utility>
 #include <vector>
+
 
 class RuntimeApplication;
 
@@ -39,7 +42,7 @@ class Renderer {
     Renderer &operator=(Renderer &&)      = delete;
 
     void drawFrame(size_t currentFrame, size_t imageIndex,
-                   const std::vector<std::pair<glm::mat4, int>> &entityRenderData);
+                  const  std::vector<std::unique_ptr<Components>> &entityRenderData);
     void processInput(double deltaTime);
 
     void onSwapchainResize();
@@ -89,6 +92,7 @@ class Renderer {
     // buffers
     std::vector<std::unique_ptr<BufferBundle>> _renderInfoBufferBundles;
     std::vector<std::unique_ptr<DescriptorSetBundle>> _descriptorSetBundles;
+    std::vector<std::unique_ptr<BufferBundle>> _materialBufferBundles;
 
     void _recordDeliveryCommandBuffers();
     void _recordDrawingCommandBuffers();
@@ -101,4 +105,7 @@ class Renderer {
     void _createModelImages();
     void _createBuffersAndBufferBundles();
     void _updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 model_matrix);
+    void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
+                                  const glm::vec3& color, float metallic, float roughness,
+                                  float occlusion, const glm::vec3& emissive);
 };

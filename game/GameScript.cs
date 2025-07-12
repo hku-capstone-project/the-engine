@@ -55,7 +55,7 @@ namespace Game
             // 添加猴子的Mesh和Material组件
             var monkeyMesh = new Mesh { modelId = 0 }; // 猴子是第一个模型
             EngineBindings.AddMesh(_playerId, monkeyMesh);
-            var monkeyMaterial = new Material { color = new Vector3(0.8f, 0.6f, 0.4f) }; // 棕色
+            var monkeyMaterial = new Material { color = new Vector3(0.8f, 0.6f, 0.4f), metallic = .1f, roughness = .9f,occlusion = .5f,emissive = new Vector3(.0f) }; // 棕色
             EngineBindings.AddMaterial(_playerId, monkeyMaterial);
             
             // 初始化全局玩家位置
@@ -73,7 +73,7 @@ namespace Game
             // 添加剑的Mesh和Material组件
             var vampire1Mesh = new Mesh { modelId = 1 }; // 剑模型
             EngineBindings.AddMesh(vampire1Id, vampire1Mesh);
-            var vampire1Material = new Material { color = new Vector3(0.8f, 0.1f, 0.1f) }; // 血红色
+            var vampire1Material = new Material { color = new Vector3(0.8f, 0.1f, 0.1f), metallic = .9f, roughness = .1f,occlusion = .5f,emissive = new Vector3(.10f) }; // 血红色
             EngineBindings.AddMaterial(vampire1Id, vampire1Material);
             
             // 记录吸血鬼属性

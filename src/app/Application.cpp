@@ -206,19 +206,24 @@ void Application::_drawFrame() {
     
     // 改为基于ECS实体的渲染系统
     // 遍历所有有Transform和Mesh组件的实体
-    auto renderableEntities = reg.view<Transform, Mesh>();
+    auto renderableEntities = reg.view<Transform, Mesh, Material>();
     
-    std::vector<std::pair<glm::mat4, int>> entityRenderData;
+    std::vector<std::unique_ptr<Components>> entityRenderData;
     
     for (auto entity : renderableEntities) {
         auto& transform = renderableEntities.get<Transform>(entity);
         auto& mesh = renderableEntities.get<Mesh>(entity);
-        
+        auto& material = renderableEntities.get<Material>(entity);
+
         // 为每个实体创建模型矩阵
         glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), transform.position);
         
         // 存储实体的渲染数据（变换矩阵 + 模型ID）
-        entityRenderData.emplace_back(modelMatrix, mesh.modelId);
+        Components* comp = new Components();
+        comp->transform = transform;
+        comp->mesh = mesh;
+        comp->material = material;
+        entityRenderData.emplace_back(comp);
     }
     
     // 传递实体渲染数据给渲染器

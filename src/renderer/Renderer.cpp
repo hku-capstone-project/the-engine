@@ -1,5 +1,6 @@
 #include "Renderer.hpp"
 #include "ShaderSharedVariables.hpp"
+#include "dotnet/Components.hpp"
 #include "app-context/VulkanApplicationContext.hpp"
 #include "camera/Camera.hpp"
 #include "config-container/ConfigContainer.hpp"
@@ -119,15 +120,22 @@ void Renderer::_createModelImages() {
 
 void Renderer::_createBuffersAndBufferBundles() {
     _renderInfoBufferBundles.clear();
-    
+    _materialBufferBundles.clear();
+
     if (_models.empty()) {
         _logger->warn("No models loaded, skipping buffer bundle creation");
         return;
     }
-    
+
     for (size_t i = 0; i < _models.size(); ++i) {
+        // S_RenderInfo 缓冲区
         _renderInfoBufferBundles.push_back(std::make_unique<BufferBundle>(
             _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            MemoryStyle::kHostVisible));
+
+        // MaterialUBO 缓冲区
+        _materialBufferBundles.push_back(std::make_unique<BufferBundle>(
+            _appContext, _framesInFlight, sizeof(S_MaterialInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             MemoryStyle::kHostVisible));
     }
 }
@@ -153,6 +161,7 @@ void Renderer::_createDescriptorSetBundles() {
             _appContext, _framesInFlight,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
         descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundles[i].get());
+        descriptorSetBundle->bindUniformBufferBundle(2, _materialBufferBundles[i].get());
 
         if (_modelImages[i].baseColor != nullptr) {
             descriptorSetBundle->bindImageSampler(1, _modelImages[i].baseColor.get());
@@ -396,8 +405,27 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
     _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
+void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
+                                  const glm::vec3& color, float metallic, float roughness,
+                                  float occlusion, const glm::vec3& emissive) {
+    if (modelIndex >= _materialBufferBundles.size()) {
+        _logger->error("Invalid model index {} in _updateMaterialData", modelIndex);
+        return;
+    }
+    S_MaterialInfo materialInfo{};
+    materialInfo.color      = color;
+    materialInfo.metallic   = metallic;
+    materialInfo.roughness  = roughness;
+    materialInfo.occlusion  = occlusion;
+    materialInfo.emissive   = emissive;
+    materialInfo.padding    = 0.0f; // 填充对齐
+
+    _materialBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&materialInfo);
+}
+
+
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
-                         const std::vector<std::pair<glm::mat4, int>> &entityRenderData) {
+                         const std::vector<std::unique_ptr<Components>> &entityRenderData) {
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 
     // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
@@ -449,15 +477,16 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         return;
     }
     
-    for (const auto &[entityMatrix, modelId] : entityRenderData) {
+    for (const auto &component : entityRenderData) {
         // 验证modelId有效性
+        int32_t modelId = component->mesh.modelId;
         if (modelId < 0 || static_cast<size_t>(modelId) >= _models.size()) {
             continue; // 跳过无效的模型ID
         }
 
         size_t modelIndex = static_cast<size_t>(modelId);
 
-        glm::mat4 finalMatrix = entityMatrix;
+        glm::mat4 finalMatrix = glm::translate(glm::mat4(1.0f), component->transform.position);
 
         // 为剑模型应用缩放（因为它原本太小）
         if (modelId == 1 || modelId == 2) { // 剑模型
@@ -465,6 +494,15 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         }
 
         _updateBufferData(currentFrame, modelIndex, finalMatrix);
+        
+        // 更新 MaterialUBO
+        _updateMaterialData(currentFrame, modelIndex,
+                           component->material.color,
+                           component->material.metallic,
+                           component->material.roughness,
+                           component->material.occlusion,
+                           component->material.emissive);
+
 
         vkCmdBindDescriptorSets(
             cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1,
@@ -477,6 +515,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
                              VK_INDEX_TYPE_UINT32);
 
         vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, 1, 0, 0, 0);
+
     }
 
     vkCmdEndRenderPass(cmdBuffer);
