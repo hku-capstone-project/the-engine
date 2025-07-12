@@ -27,4 +27,8 @@ struct Mesh {
 
 struct Material {
     glm::vec3 color;
+    float metallic = 0.0;
+    float roughness = 0.5;
+    float occlusion = 1.0;
+    glm::vec3 emissive = glm::vec3(0.0f);
 };

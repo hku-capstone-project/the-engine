@@ -43,6 +43,10 @@ namespace Game
     public struct Material
     {
         public Vector3 color;
+        public float metallic = 0.0;
+        public float roughness = 0.5;
+        public float occlusion = 1.0;
+        public Vector3 emissive = new Vector3(0.0f);
     }
 
     [StructLayout(LayoutKind.Sequential)]
