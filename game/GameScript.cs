@@ -358,7 +358,8 @@ namespace Game
         }
 
 
-        //摄像机系统 - 处理摄像机位置和视角[UpdateSystem]
+        //摄像机系统 - 处理摄像机位置和视角
+        [UpdateSystem]
         [Query(typeof(Transform), typeof(iCamera))]
         public static void CameraSystem(float dt, ref Transform transform, ref iCamera camera)
         {
@@ -389,21 +390,6 @@ namespace Game
             transform.rotation = new Vector3(pitchAngle, yaw, 0); // 固定俯仰角，保持Y轴旋转
         }
 
-        [UpdateSystem]
-        [Query(typeof(iCamera))]
-        public static void CameraSystemTest(float dt, ref iCamera camera)
-        {
-
-
-            if (_testTimer > 1.0f)
-            {
-                Log($"📷 CameraSystem - PlayerPosition: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
-                _testTimer = 0;
-            }
-            _testTimer += 1.0f;
-
-    
-        }
 
 
     }
