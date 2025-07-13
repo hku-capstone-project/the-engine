@@ -332,10 +332,10 @@ namespace Game
             float horizontalInput = 0.0f;
             float verticalInput = 0.0f;
 
-            if (leftPressed) horizontalInput -= 1.0f;
-            if (rightPressed) horizontalInput += 1.0f;
-            if (upPressed) verticalInput -= 1.0f;
-            if (downPressed) verticalInput += 1.0f;
+            if (leftPressed) horizontalInput += 1.0f;
+            if (rightPressed) horizontalInput -= 1.0f;
+            if (upPressed) verticalInput += 1.0f;
+            if (downPressed) verticalInput -= 1.0f;
 
             // 应用水平移动（不影响Y方向的速度，保持重力和跳跃的完整性）
             velocity.velocity.X = horizontalInput * moveSpeed;
@@ -363,31 +363,35 @@ namespace Game
         [Query(typeof(Transform), typeof(iCamera))]
         public static void CameraSystem(float dt, ref Transform transform, ref iCamera camera)
         {
-
-
             Log($"📷 CameraSystem - PlayerPosition: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
             Log($"📷 CameraSystem - CameraPosition: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
+      
+            float distance = 15f; 
+
+            // 设置摄像机朝向为垂直向下
+            transform.rotation = new Vector3(0, -3.14f/4.0f, 0); // 俯仰角90度（垂直向下），无偏航
+
+            // 计算玩家的 forward 向量
+            Vector3 GetForwardVector(Vector3 rotation)
+            {
+                float pitch = rotation.Y; // 俯仰角（弧度）
+                float yaw = rotation.X;   // 偏航角（弧度）
+
+                // 计算 forward 向量
+                Vector3 forward = new Vector3(
+                    MathF.Cos(pitch) * MathF.Sin(yaw),
+                    MathF.Sin(pitch),
+                    MathF.Cos(pitch) * MathF.Cos(yaw)
+                );
 
 
-            // 设置摄像机位置在玩家上方和后方
-            float height = 5f; // 摄像机高度
-            float distance = 10f; // 摄像机与玩家的水平距离
-            float pitchAngle = MathF.PI / 6; // 俯仰角，30度（可调整）
+                // 归一化确保单位向量
+                return Vector3.Normalize(forward);
+            }
 
-            // 计算摄像机相对于玩家的偏移
-            Vector3 offset = new Vector3(0, height, -distance);
-            transform.position = _playerPosition + offset;
-
-            // 计算摄像机朝向玩家的方向
-            Vector3 directionToPlayer = _playerPosition - transform.position;
-            directionToPlayer = Vector3.Normalize(directionToPlayer);
-
-            // 计算旋转角度（Y轴旋转：偏航，X轴旋转：俯仰）
-            float yaw = MathF.Atan2(directionToPlayer.X, directionToPlayer.Z); // 水平旋转
-            float pitch = MathF.Asin(directionToPlayer.Y); // 垂直旋转（俯仰）
-
-            // 应用旋转（俯仰角可手动调整以固定视角）
-            transform.rotation = new Vector3(pitchAngle, yaw, 0); // 固定俯仰角，保持Y轴旋转
+            // 获取玩家的 forward 向量
+            Vector3 camForward = GetForwardVector(transform.rotation);
+            transform.position = _playerPosition - camForward* distance;
         }
 
 

@@ -436,8 +436,8 @@ void Renderer::updateCamera(const Transform &transform, const iCamera &camera) {
         static_cast<float>(_appContext->getSwapchainExtent().width) /
         static_cast<float>(_appContext->getSwapchainExtent().height));
     
-    _logger->info("Updated camera: Position ({}, {}, {}), FOV {}, Near {}, Far {}",
-                transform.position.x, transform.position.y, transform.position.z,
+    _logger->info("Updated camera: Rotation ({}, {}, {}), FOV {}, Near {}, Far {}",
+                transform.rotation.x, transform.rotation.y, transform.rotation.z,
                 camera.fov, camera.nearPlane, camera.farPlane);
     
 }

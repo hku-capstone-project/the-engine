@@ -7,6 +7,8 @@
 struct ConfigContainer;
 class Logger;
 
+glm::vec3 constexpr kWorldUp = {0.F, 1.F, 0.F};
+
 class Camera {
   public:
     Camera(Window *window, Logger *logger, ConfigContainer *configContainer);
@@ -19,7 +21,7 @@ class Camera {
     Camera &operator=(Camera &&)      = delete;
 
     [[nodiscard]] glm::mat4 getViewMatrix() const {
-        return glm::lookAt(_position, _position + _front, _up);
+        return glm::lookAt(_position, _position + _front, kWorldUp);
     }
 
     void processInput(double deltaTime);
@@ -54,14 +56,15 @@ class Camera {
     [[nodiscard]] float getPitch() const { return _pitch; }
 
     // add setters for position,rotation, fov, near plane, far plane, yaw and pitch
-    void setPosition(const glm::vec3 &position) { 
-      _position = position;
-      _updateCameraVectors();  
+    void setPosition(const glm::vec3 &position) {
+        _position = position;
+        _updateCameraVectors();
     }
 
     void setRotation(const glm::vec3 &rotation) {
-        _yaw   = rotation.y;
-        _pitch = rotation.x;
+
+        _rotation = rotation;
+        // 更新相机向量
         _updateCameraVectors();
     }
 
@@ -79,6 +82,7 @@ class Camera {
         _pitch = pitch;
         _updateCameraVectors();
     }
+
   private:
     Logger *_logger;
 
