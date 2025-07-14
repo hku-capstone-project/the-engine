@@ -34,7 +34,10 @@ namespace Game
         private static List<uint> _vampireIds = new List<uint>();  // 吸血鬼实体ID列表
         private static Vector3 _playerPosition = Vector3.Zero;  // 玩家位置（全局共享）
         private static Dictionary<uint, float> _vampireSpeeds = new Dictionary<uint, float>();  // 吸血鬼移动速度
-
+        
+        // 游戏状态
+        private static bool _gameOver = false;  // 游戏是否结束
+        
         [StartupSystem]
         public static void CreateTestEntities()
         {
@@ -47,7 +50,7 @@ namespace Game
 
             // === 创建玩家猴子实体 ===
             _playerId = EngineBindings.CreateEntity();
-            var monkeyTransform = new Transform { position = new Vector3(0, 1, 0), scale = new Vector3(1) }; // 修正Y坐标为1，添加缩放
+            var monkeyTransform = new Transform { position = new Vector3(0, 2, 0), scale = new Vector3(1) }; 
             EngineBindings.AddTransform(_playerId, monkeyTransform);
             var monkeyVelocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(_playerId, monkeyVelocity);
@@ -69,7 +72,7 @@ namespace Game
 
             // === 创建吸血鬼剑实体1 ===
             uint vampire1Id = EngineBindings.CreateEntity();
-            var vampire1Transform = new Transform { position = new Vector3(5, 1, 5), scale = new Vector3(10) }; // 修正Y坐标为1
+            var vampire1Transform = new Transform { position = new Vector3(5, 0, 5), scale = new Vector3(10) }; 
             EngineBindings.AddTransform(vampire1Id, vampire1Transform);
             var vampire1Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire1Id, vampire1Velocity);
@@ -87,7 +90,9 @@ namespace Game
 
             // === 创建吸血鬼剑实体2 ===
             uint vampire2Id = EngineBindings.CreateEntity();
-            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4), scale = new Vector3(5) }; // 修正Y坐标为1
+          
+            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4), scale = new Vector3(5) }; 
+
             EngineBindings.AddTransform(vampire2Id, vampire2Transform);
             var vampire2Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(vampire2Id, vampire2Velocity);
@@ -237,9 +242,9 @@ namespace Game
             transform.position.Z += velocity.velocity.Z * dt;
 
             // 保持在地面以上一定高度
-            if (transform.position.Y < 1.0f)
+            if (transform.position.Y < 0)
             {
-                transform.position.Y = 1.0f;
+                transform.position.Y = 0;
                 velocity.velocity.Y = 0;
             }
         }
@@ -249,6 +254,13 @@ namespace Game
         [Query(typeof(Transform), typeof(Velocity), typeof(Mesh))]
         public static void VampireAISystem(float dt, ref Transform transform, ref Velocity velocity, ref Mesh mesh)
         {
+            // 游戏结束时停止吸血鬼AI
+            if (_gameOver)
+            {
+                velocity.velocity = Vector3.Zero;
+                return;
+            }
+            
             // 通过Model ID精确区分：0=玩家猴子，1&2=吸血鬼剑
             if (mesh.modelId == 0)
             {
@@ -296,9 +308,23 @@ namespace Game
             {
                 // 太近了，停止移动
                 velocity.velocity = Vector3.Zero;
-                if (_testTimer > 3.0f)
+                
+                // 触发游戏结束 - 将玩家变成红色！
+                if (!_gameOver)
                 {
-                    Log($"🧛‍♀️ Vampire reached player! Game over condition could trigger here.");
+                    _gameOver = true;
+                    Log("💀💀💀 GAME OVER! 💀💀💀");
+                    Log("🧛‍♀️ 吸血鬼抓到了玩家！玩家变成红色了！");
+                    
+                    // 将玩家的颜色改为红色表示死亡
+                    var deadPlayerMaterial = new Material { 
+                        color = new Vector3(1.0f, 0.0f, 0.0f),  // 鲜红色
+                        metallic = 0.1f, 
+                        roughness = 0.9f, 
+                        occlusion = 0.5f, 
+                        emissive = new Vector3(0.3f, 0.0f, 0.0f)  // 红色发光效果
+                    };
+                    EngineBindings.AddMaterial(_playerId, deadPlayerMaterial);
                 }
             }
             else
@@ -317,6 +343,14 @@ namespace Game
         [Query(typeof(Transform), typeof(Velocity), typeof(Player))]
         public static void PlayerSystem(float dt, ref Transform transform, ref Velocity velocity, ref Player player)
         {
+            // 游戏结束时停止玩家控制
+            if (_gameOver)
+            {
+                velocity.velocity.X = 0;
+                velocity.velocity.Z = 0;
+                return;
+            }
+            
             // 使用新的游戏输入系统 - 简洁可靠的按键检测
             bool spaceJustPressed = EngineBindings.IsKeyJustPressed(Keys.GLFW_KEY_SPACE);
             bool isOnGround = transform.position.Y <= 0.1f;
