@@ -39,6 +39,10 @@ class RuntimeApplication {
     bool isKeyJustPressed(int keyCode) const;
     bool isKeyJustReleased(int keyCode) const;
     
+    // Get mouse input state
+    std::pair<float, float> getMousePosition() const;
+    std::pair<float, float> getMouseDelta() const;
+    
     // Mesh registry functions
     void registerMesh(int meshId, const std::string& meshPath);
     std::vector<std::pair<int, std::string>> getAllMeshes() const;

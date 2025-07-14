@@ -221,6 +221,19 @@ void RegisterMesh(int meshId, const char* meshPath) {
     RuntimeBridge::getRuntimeApplication().registerMesh(meshId, std::string(meshPath));
 }
 
+// Add mouse input functions
+void GetMousePosition(float* x, float* y) {
+    auto mousePos = RuntimeBridge::getRuntimeApplication().getMousePosition();
+    *x = mousePos.first;
+    *y = mousePos.second;
+}
+
+void GetMouseDelta(float* dx, float* dy) {
+    auto mouseDelta = RuntimeBridge::getRuntimeApplication().getMouseDelta();
+    *dx = mouseDelta.first;
+    *dy = mouseDelta.second;
+}
+
 void HostRegisterPerEntityUpdate(ManagedPerEntityFn fn, int count, const char *const *names) {
     assert(fn && count > 0);
 
@@ -290,6 +303,8 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "IsKeyJustPressed") == 0) return (void *)&IsKeyJustPressed;
     if (std::strcmp(name, "IsKeyJustReleased") == 0) return (void *)&IsKeyJustReleased;
     if (std::strcmp(name, "RegisterMesh") == 0) return (void *)&RegisterMesh;
+    if (std::strcmp(name, "GetMousePosition") == 0) return (void *)&GetMousePosition;
+    if (std::strcmp(name, "GetMouseDelta") == 0) return (void *)&GetMouseDelta;
     return nullptr;
 }
 }

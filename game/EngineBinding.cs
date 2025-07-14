@@ -27,6 +27,10 @@ namespace Game
         public delegate bool IsKeyPressedDel(int keyCode);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void RegisterMeshDel(int meshId, [MarshalAs(UnmanagedType.LPStr)] string meshPath);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void GetMousePositionDel(out float x, out float y);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void GetMouseDeltaDel(out float dx, out float dy);
 
         public static CreateEntityDel CreateEntity = null!;
         public static AddTransformDel AddTransform = null!;
@@ -45,6 +49,8 @@ namespace Game
         public static IsKeyPressedDel IsKeyJustPressed = null!;
         public static IsKeyPressedDel IsKeyJustReleased = null!;
         public static RegisterMeshDel RegisterMesh = null!;
+        public static GetMousePositionDel GetMousePosition = null!;
+        public static GetMouseDeltaDel GetMouseDelta = null!;
 
         public static void Init(Func<string, IntPtr> getProc)
         {
@@ -82,6 +88,10 @@ namespace Game
                                 getProc("IsKeyJustReleased"));
             RegisterMesh = Marshal.GetDelegateForFunctionPointer<RegisterMeshDel>(
                                 getProc("RegisterMesh"));
+            GetMousePosition = Marshal.GetDelegateForFunctionPointer<GetMousePositionDel>(
+                                getProc("GetMousePosition"));
+            GetMouseDelta = Marshal.GetDelegateForFunctionPointer<GetMouseDeltaDel>(
+                                getProc("GetMouseDelta"));
         }
     }
 }

@@ -38,6 +38,13 @@ namespace Game
         // 游戏状态
         private static bool _gameOver = false;  // 游戏是否结束
         
+        // 摄像机控制变量
+        private static float _cameraYaw = 0f;     // 水平角度（绕Y轴旋转）
+        private static float _cameraPitch = 0f;   // 俯仰角度（初始平视 = 0度）
+        private static float _mouseSensitivity = 0.0005f;  // 鼠标灵敏度（降低敏感度）
+        private static float _cameraDistance = 8f;  // 摄像机距离玩家的距离
+        private static float _cameraFixedHeight = 2f;  // 摄像机固定高度
+        
         [StartupSystem]
         public static void CreateTestEntities()
         {
@@ -67,6 +74,7 @@ namespace Game
 
             // 初始化全局玩家位置
             _playerPosition = monkeyTransform.position;
+            Log($"🎯 初始化玩家位置: ({_playerPosition.X:F1}, {_playerPosition.Y:F1}, {_playerPosition.Z:F1})");
 
             Log($"🐵 Created PLAYER monkey entity with ID {_playerId}");
 
@@ -103,10 +111,14 @@ namespace Game
             var vampire2Material = new Material { color = new Vector3(0.6f, 0.0f, 0.6f) }; // 紫红色
             EngineBindings.AddMaterial(vampire2Id, vampire2Material);
 
+            // === 创建摄像机实体 ===
             _cameraId = EngineBindings.CreateEntity();
             EngineBindings.AddCamera(_cameraId, new iCamera { fov = 60.0f, nearPlane = 0.1f, farPlane = 1000.0f });
-            EngineBindings.AddTransform(_cameraId, new Transform { position = new Vector3(0, 0, 0), rotation = new Vector3(0), scale = new Vector3(.05f) });
-            EngineBindings.AddVelocity(_cameraId, new Velocity { velocity = new Vector3(0, 0, 0) });
+            EngineBindings.AddTransform(_cameraId, new Transform { 
+                position = new Vector3(0, 10, -15),  // 摄像机在玩家后上方
+                rotation = new Vector3(0, 0, 0),     // 朝前看
+                scale = new Vector3(1) 
+            });
 
             // 记录吸血鬼属性
             _vampireIds.Add(vampire2Id);
@@ -275,11 +287,6 @@ namespace Game
 
             float vampireSpeed = 0.5f; // 统一的吸血鬼速度
 
-            // 确保玩家位置已更新
-            if (_playerPosition == Vector3.Zero)
-            {
-                _playerPosition = new Vector3(0, 1, 0); // 默认玩家位置
-            }
 
             // 计算到玩家的距离和方向
             Vector3 toPlayer = _playerPosition - transform.position;
@@ -287,7 +294,7 @@ namespace Game
             const float detectionRange = 15.0f; // 增大探测范围
 
             // 如果在探测范围内，追踪玩家
-            if (distanceToPlayer <= detectionRange && distanceToPlayer > 0.5f) // 避免太近时抖动
+            if (distanceToPlayer <= detectionRange && distanceToPlayer > 0.5f) // 增加碰撞距离
             {
                 // 标准化方向向量
                 Vector3 direction = Vector3.Normalize(toPlayer);
@@ -300,8 +307,8 @@ namespace Game
                 // 调试日志（降低频率）
                 if (_testTimer > 3.0f)
                 {
-                    Log($"🧛‍♀️ Vampire at ({transform.position.X:F2}, {transform.position.Z:F2}) " +
-                        $"chasing player at ({_playerPosition.X:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
+                    Log($"🧛‍♀️ Vampire ID={mesh.modelId} at ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2}) " +
+                        $"chasing player at ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
                 }
             }
             else if (distanceToPlayer <= 0.5f)
@@ -314,7 +321,9 @@ namespace Game
                 {
                     _gameOver = true;
                     Log("💀💀💀 GAME OVER! 💀💀💀");
-                    Log("🧛‍♀️ 吸血鬼抓到了玩家！玩家变成红色了！");
+                    Log($"🧛‍♀️ Vampire ID={mesh.modelId} caught player! Distance: {distanceToPlayer:F2}");
+                    Log($"🧛‍♀️ Player position: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
+                    Log($"🧛‍♀️ Vampire position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
                     
                     // 将玩家的颜色改为红色表示死亡
                     var deadPlayerMaterial = new Material { 
@@ -366,10 +375,10 @@ namespace Game
             float horizontalInput = 0.0f;
             float verticalInput = 0.0f;
 
-            if (leftPressed) horizontalInput += 1.0f;
-            if (rightPressed) horizontalInput -= 1.0f;
-            if (upPressed) verticalInput += 1.0f;
-            if (downPressed) verticalInput -= 1.0f;
+            if (leftPressed) horizontalInput -= 1.0f;
+            if (rightPressed) horizontalInput += 1.0f;
+            if (upPressed) verticalInput -= 1.0f;
+            if (downPressed) verticalInput += 1.0f;
 
             // 应用水平移动（不影响Y方向的速度，保持重力和跳跃的完整性）
             velocity.velocity.X = horizontalInput * moveSpeed;
@@ -392,40 +401,69 @@ namespace Game
         }
 
 
-        //摄像机系统 - 处理摄像机位置和视角
+        //摄像机系统 - 鼠标自由操控的第三人称摄像机
         [UpdateSystem]
         [Query(typeof(Transform), typeof(iCamera))]
         public static void CameraSystem(float dt, ref Transform transform, ref iCamera camera)
         {
-            Log($"📷 CameraSystem - PlayerPosition: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
-            Log($"📷 CameraSystem - CameraPosition: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
-      
-            float distance = 15f; 
-
-            // 设置摄像机朝向为垂直向下
-            transform.rotation = new Vector3(0, -3.14f/4.0f, 0); // 俯仰角90度（垂直向下），无偏航
-
-            // 计算玩家的 forward 向量
-            Vector3 GetForwardVector(Vector3 rotation)
+            // 获取鼠标移动量
+            EngineBindings.GetMouseDelta(out float mouseDx, out float mouseDy);
+            
+            // 只有当鼠标实际移动时才更新角度
+            if (MathF.Abs(mouseDx) > 1f || MathF.Abs(mouseDy) > 1f)
             {
-                float pitch = rotation.Y; // 俯仰角（弧度）
-                float yaw = rotation.X;   // 偏航角（弧度）
-
-                // 计算 forward 向量
-                Vector3 forward = new Vector3(
-                    MathF.Cos(pitch) * MathF.Sin(yaw),
-                    MathF.Sin(pitch),
-                    MathF.Cos(pitch) * MathF.Cos(yaw)
-                );
-
-
-                // 归一化确保单位向量
-                return Vector3.Normalize(forward);
+                // 如果鼠标移动量过大，进行限制（防止疯狂移动）
+                mouseDx = MathF.Max(-10f, MathF.Min(10f, mouseDx));
+                mouseDy = MathF.Max(-10f, MathF.Min(10f, mouseDy));
+                
+                // 更新摄像机角度
+                _cameraYaw += mouseDx * _mouseSensitivity;
+                _cameraPitch += mouseDy * _mouseSensitivity;
+                
+                // 限制俯仰角度范围 (-89度到89度)
+                _cameraPitch = MathF.Max(-1.55f, MathF.Min(1.55f, _cameraPitch));
             }
-
-            // 获取玩家的 forward 向量
-            Vector3 camForward = GetForwardVector(transform.rotation);
-            transform.position = _playerPosition - camForward* distance;
+            
+            // 计算摄像机在水平面上的位置（使用固定高度）
+            float cosYaw = MathF.Cos(_cameraYaw);
+            float sinYaw = MathF.Sin(_cameraYaw);
+            float cosPitch = MathF.Cos(_cameraPitch);
+            float sinPitch = MathF.Sin(_cameraPitch);
+            
+            // 计算摄像机相对于玩家的水平偏移量
+            Vector3 horizontalOffset = new Vector3(
+                _cameraDistance * cosPitch * sinYaw,    // X轴偏移
+                0,                                      // 不使用Y轴偏移
+                _cameraDistance * cosPitch * cosYaw     // Z轴偏移
+            );
+            
+            // 设置摄像机位置（使用玩家的X、Z坐标，但固定高度）
+            transform.position = new Vector3(
+                _playerPosition.X + horizontalOffset.X,
+                _cameraFixedHeight,  // 固定高度，不跟随玩家
+                _playerPosition.Z + horizontalOffset.Z
+            );
+            
+            // 摄像机朝向玩家位置（但看向玩家的固定高度）
+            Vector3 playerLookTarget = new Vector3(_playerPosition.X, _cameraFixedHeight, _playerPosition.Z);
+            Vector3 directionToPlayer = playerLookTarget - transform.position;
+            directionToPlayer = Vector3.Normalize(directionToPlayer);
+            
+            // 转换为欧拉角
+            float lookYaw = MathF.Atan2(directionToPlayer.X, directionToPlayer.Z);
+            float lookPitch = _cameraPitch;  // 使用鼠标控制的俯仰角
+            
+            // 设置摄像机旋转
+            transform.rotation = new Vector3(lookYaw, lookPitch, 0);
+            
+            // 调试信息（降低频率）
+            if (_testTimer > 4.0f)
+            {
+                Log($"📷 Player: ({_playerPosition.X:F1}, {_playerPosition.Y:F1}, {_playerPosition.Z:F1})");
+                Log($"📷 Camera: ({transform.position.X:F1}, {transform.position.Y:F1}, {transform.position.Z:F1})");
+                Log($"📷 Angles - Yaw: {_cameraYaw:F2}, Pitch: {_cameraPitch:F2}");
+                Log($"📷 Mouse Delta: ({mouseDx:F3}, {mouseDy:F3})");
+            }
         }
 
 

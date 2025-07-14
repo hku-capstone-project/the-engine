@@ -51,3 +51,5 @@ src/config/RootDir.h
 logs/*
 
 repomix-output.*
+/.claude
+CLAUDE.md
