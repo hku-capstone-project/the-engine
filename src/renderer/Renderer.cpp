@@ -391,8 +391,7 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
     auto view = _camera->getViewMatrix();
 
     auto swapchainExtent = _appContext->getSwapchainExtent();
-    auto proj            = _camera->getProjectionMatrix(static_cast<float>(swapchainExtent.width) /
-                                                        static_cast<float>(swapchainExtent.height));
+    auto proj            = _camera->getProjectionMatrix();
 
     auto viewPos = _camera->getPosition(); // 获取摄像机位置
 
@@ -423,6 +422,25 @@ void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
     _materialBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&materialInfo);
 }
 
+void Renderer::updateCamera(const Transform &transform, const iCamera &camera) {
+    // 更新摄像机位置
+    _camera->setPosition(transform.position);
+    
+    _camera->setRotation(transform.rotation);
+
+    // 更新摄像机投影矩阵
+    _camera->setFov(camera.fov);
+    _camera->setNearPlane(camera.nearPlane);
+    _camera->setFarPlane(camera.farPlane);
+    _camera->setAspectRatio(
+        static_cast<float>(_appContext->getSwapchainExtent().width) /
+        static_cast<float>(_appContext->getSwapchainExtent().height));
+    
+    _logger->info("Updated camera: Rotation ({}, {}, {}), FOV {}, Near {}, Far {}",
+                transform.rotation.x, transform.rotation.y, transform.rotation.z,
+                camera.fov, camera.nearPlane, camera.farPlane);
+    
+}
 
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
                          const std::vector<std::unique_ptr<Components>> &entityRenderData) {
@@ -488,6 +506,12 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
 
         glm::mat4 finalMatrix = glm::translate(glm::mat4(1.0f), component->transform.position);
 
+        // 旋转
+        // 注意：glm::rotate的角度是弧度制
+        finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.x, glm::vec3(1, 0, 0));
+        finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.y, glm::vec3(0, 1, 0));
+        finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.z, glm::vec3(0, 0, 1));
+        
         //缩放
         finalMatrix = glm::scale(finalMatrix, component->transform.scale);
 

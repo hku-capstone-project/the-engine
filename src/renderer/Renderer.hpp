@@ -41,10 +41,13 @@ class Renderer {
     Renderer(Renderer &&)                 = delete;
     Renderer &operator=(Renderer &&)      = delete;
 
+    //update camera position and projection matrix
+    void updateCamera(const Transform &transform, const iCamera &camera) ;
+
     void drawFrame(size_t currentFrame, size_t imageIndex,
                   const  std::vector<std::unique_ptr<Components>> &entityRenderData);
     void processInput(double deltaTime);
-
+    
     void onSwapchainResize();
     [[nodiscard]] inline VkCommandBuffer getDrawingCommandBuffer(size_t currentFrame) {
         return _drawingCommandBuffers[currentFrame];

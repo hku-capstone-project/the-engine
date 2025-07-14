@@ -10,6 +10,8 @@ namespace Game
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddTransformDel(uint e, Transform t);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void AddCameraDel(uint e, iCamera c);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddVelocityDel(uint e, Velocity v);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddPlayerDel(uint e, Player p);
@@ -28,6 +30,7 @@ namespace Game
 
         public static CreateEntityDel CreateEntity = null!;
         public static AddTransformDel AddTransform = null!;
+        public static AddCameraDel AddCamera = null!;
         public static AddVelocityDel AddVelocity = null!;
         public static AddPlayerDel AddPlayer = null!;
         public static AddMeshDel AddMesh = null!;
@@ -49,6 +52,8 @@ namespace Game
                                 getProc("CreateEntity"));
             AddTransform = Marshal.GetDelegateForFunctionPointer<AddTransformDel>(
                                 getProc("AddTransform"));
+            AddCamera = Marshal.GetDelegateForFunctionPointer<AddCameraDel>(
+                                getProc("AddCamera"));
             AddVelocity = Marshal.GetDelegateForFunctionPointer<AddVelocityDel>(
                                 getProc("AddVelocity"));
             AddPlayer = Marshal.GetDelegateForFunctionPointer<AddPlayerDel>(

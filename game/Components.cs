@@ -8,8 +8,18 @@ namespace Game
     public struct Transform
     {
         public Vector3 position;
+        public Vector3 rotation; // 欧拉角
         public Vector3 scale; // 缩放
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct iCamera
+    {
+        public float fov; // 视场角
+        public float nearPlane; // 近裁剪面
+        public float farPlane; // 远裁剪面
+    }
+
 
     [StructLayout(LayoutKind.Sequential)]
     public struct Velocity
