@@ -46,7 +46,7 @@ namespace Game
 
             // === 创建玩家猴子实体 ===
             _playerId = EngineBindings.CreateEntity();
-            var monkeyTransform = new Transform { position = new Vector3(0, 1, 0), scale = new Vector3(1) }; // 修正Y坐标为1，添加缩放
+            var monkeyTransform = new Transform { position = new Vector3(0, 2, 0), scale = new Vector3(1) }; 
             EngineBindings.AddTransform(_playerId, monkeyTransform);
             var monkeyVelocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(_playerId, monkeyVelocity);
@@ -230,9 +230,9 @@ namespace Game
             transform.position.Z += velocity.velocity.Z * dt;
 
             // 保持在地面以上一定高度
-            if (transform.position.Y < 1.0f)
+            if (transform.position.Y < 0)
             {
-                transform.position.Y = 1.0f;
+                transform.position.Y = 0;
                 velocity.velocity.Y = 0;
             }
         }
