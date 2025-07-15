@@ -15,7 +15,7 @@ namespace Game
         // 基准测试变量
         private static List<uint> _benchmarkEntityIds = new List<uint>();
         private static uint _cameraId = 0;
-        private static int _entityCount = 10;
+        private static int _entityCount = 10000;
         private static float _diskRadius = 10.0f;  // Configurable disk radius for entity placement
         private static Stopwatch _creationStopwatch = new Stopwatch();
         private static Stopwatch _frameStopwatch = new Stopwatch();
