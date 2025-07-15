@@ -15,7 +15,7 @@ namespace Game
         // 基准测试变量
         private static List<uint> _benchmarkEntityIds = new List<uint>();
         private static uint _cameraId = 0;
-        private static int _entityCount = 10000;
+        private static int _entityCount = 100;
         private static Stopwatch _creationStopwatch = new Stopwatch();
         private static Stopwatch _frameStopwatch = new Stopwatch();
         private static long _frameCount = 0;
@@ -301,11 +301,11 @@ namespace Game
                 double averageFrameTime = _totalFrameTime / _frameCount;
                 double fps = 1.0 / averageFrameTime;
                 
-                Log($"📊 Performance Stats:");
-                Log($"   🎯 Entities: {_entityCount}");
-                Log($"   ⏱️  Frame Time: {averageFrameTime * 1000:F2}ms");
-                Log($"   📈 FPS: {fps:F1}");
-                Log($"   🔄 Total Frames: {_frameCount}");
+                // Log($"📊 Performance Stats:");
+                // Log($"   🎯 Entities: {_entityCount}");
+                // Log($"   ⏱️  Frame Time: {averageFrameTime * 1000:F2}ms");
+                // Log($"   📈 FPS: {fps:F1}");
+                // Log($"   🔄 Total Frames: {_frameCount}");
                 
                 // Reset counters for next measurement
                 _frameCount = 0;

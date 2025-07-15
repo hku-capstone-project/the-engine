@@ -1,7 +1,7 @@
 #include "RuntimeApplication.hpp"
 #include "Components.hpp"
 #include "window/Window.hpp"
-#include "window/KeyboardInfo.hpp"
+// #include "window/KeyboardInfo.hpp"
 
 #include <entt/entt.hpp>
 #include <functional>
@@ -46,7 +46,7 @@ void RuntimeApplication::start() {
 }
 
 void RuntimeApplication::update(float dt) {
-    printf("RuntimeApplication::update(dt=%f)\n", dt);
+    // printf("RuntimeApplication::update(dt=%f)\n", dt);
     for (auto &s : updateSystems) {
         s(dt);
     }

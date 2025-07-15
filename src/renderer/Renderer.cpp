@@ -1,10 +1,10 @@
 #include "Renderer.hpp"
 #include "ShaderSharedVariables.hpp"
-#include "dotnet/Components.hpp"
 #include "app-context/VulkanApplicationContext.hpp"
 #include "camera/Camera.hpp"
 #include "config-container/ConfigContainer.hpp"
 #include "config/RootDir.h"
+#include "dotnet/Components.hpp"
 #include "dotnet/RuntimeApplication.hpp"
 #include "dotnet/RuntimeBridge.hpp"
 #include "utils/logger/Logger.hpp"
@@ -17,6 +17,7 @@
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 #include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 #include "window/Window.hpp"
+
 
 Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
@@ -42,7 +43,8 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
 
     if (meshes.empty()) {
         _logger->warn("No meshes registered! Renderer will be created with empty mesh list.");
-        _logger->warn("This may cause rendering issues. Ensure mesh registration happens before Renderer creation.");
+        _logger->warn("This may cause rendering issues. Ensure mesh registration happens before "
+                      "Renderer creation.");
     } else {
         for (const auto &[meshId, meshPath] : meshes) {
             std::string fullPath = kPathToResourceFolder + meshPath;
@@ -135,8 +137,8 @@ void Renderer::_createBuffersAndBufferBundles() {
 
         // MaterialUBO 缓冲区
         _materialBufferBundles.push_back(std::make_unique<BufferBundle>(
-            _appContext, _framesInFlight, sizeof(S_MaterialInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            MemoryStyle::kHostVisible));
+            _appContext, _framesInFlight, sizeof(S_MaterialInfo),
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, MemoryStyle::kHostVisible));
     }
 }
 
@@ -252,11 +254,12 @@ void Renderer::_createRenderPass() {
 void Renderer::_createGraphicsPipeline() {
     DescriptorSetBundle *referenceDescriptorSet =
         _descriptorSetBundles.empty() ? nullptr : _descriptorSetBundles[0].get();
-    
+
     if (referenceDescriptorSet == nullptr) {
-        _logger->warn("No descriptor sets available, creating pipeline without descriptor reference");
+        _logger->warn(
+            "No descriptor sets available, creating pipeline without descriptor reference");
     }
-    
+
     _pipeline = std::make_unique<GfxPipeline>(_appContext, _logger,
                                               kPathToResourceFolder + "shaders/default",
                                               referenceDescriptorSet, _shaderCompiler, _renderPass);
@@ -404,20 +407,20 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
     _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
-void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
-                                  const glm::vec3& color, float metallic, float roughness,
-                                  float occlusion, const glm::vec3& emissive) {
+void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex, const glm::vec3 &color,
+                                   float metallic, float roughness, float occlusion,
+                                   const glm::vec3 &emissive) {
     if (modelIndex >= _materialBufferBundles.size()) {
         _logger->error("Invalid model index {} in _updateMaterialData", modelIndex);
         return;
     }
     S_MaterialInfo materialInfo{};
-    materialInfo.color      = color;
-    materialInfo.metallic   = metallic;
-    materialInfo.roughness  = roughness;
-    materialInfo.occlusion  = occlusion;
-    materialInfo.emissive   = emissive;
-    materialInfo.padding    = 0.0f; // 填充对齐
+    materialInfo.color     = color;
+    materialInfo.metallic  = metallic;
+    materialInfo.roughness = roughness;
+    materialInfo.occlusion = occlusion;
+    materialInfo.emissive  = emissive;
+    materialInfo.padding   = 0.0f; // 填充对齐
 
     _materialBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&materialInfo);
 }
@@ -425,21 +428,15 @@ void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
 void Renderer::updateCamera(const Transform &transform, const iCamera &camera) {
     // 更新摄像机位置
     _camera->setPosition(transform.position);
-    
+
     _camera->setRotation(transform.rotation);
 
     // 更新摄像机投影矩阵
     _camera->setFov(camera.fov);
     _camera->setNearPlane(camera.nearPlane);
     _camera->setFarPlane(camera.farPlane);
-    _camera->setAspectRatio(
-        static_cast<float>(_appContext->getSwapchainExtent().width) /
-        static_cast<float>(_appContext->getSwapchainExtent().height));
-    
-    _logger->info("Updated camera: Rotation ({}, {}, {}), FOV {}, Near {}, Far {}",
-                transform.rotation.x, transform.rotation.y, transform.rotation.z,
-                camera.fov, camera.nearPlane, camera.farPlane);
-    
+    _camera->setAspectRatio(static_cast<float>(_appContext->getSwapchainExtent().width) /
+                            static_cast<float>(_appContext->getSwapchainExtent().height));
 }
 
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
@@ -494,7 +491,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         vkEndCommandBuffer(cmdBuffer);
         return;
     }
-    
+
     for (const auto &component : entityRenderData) {
         // 验证modelId有效性
         int32_t modelId = component->mesh.modelId;
@@ -511,20 +508,16 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.x, glm::vec3(1, 0, 0));
         finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.y, glm::vec3(0, 1, 0));
         finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.z, glm::vec3(0, 0, 1));
-        
-        //缩放
+
+        // 缩放
         finalMatrix = glm::scale(finalMatrix, component->transform.scale);
 
         _updateBufferData(currentFrame, modelIndex, finalMatrix);
-        
-        // 更新 MaterialUBO
-        _updateMaterialData(currentFrame, modelIndex,
-                           component->material.color,
-                           component->material.metallic,
-                           component->material.roughness,
-                           component->material.occlusion,
-                           component->material.emissive);
 
+        // 更新 MaterialUBO
+        _updateMaterialData(currentFrame, modelIndex, component->material.color,
+                            component->material.metallic, component->material.roughness,
+                            component->material.occlusion, component->material.emissive);
 
         vkCmdBindDescriptorSets(
             cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1,
@@ -537,7 +530,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
                              VK_INDEX_TYPE_UINT32);
 
         vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, 1, 0, 0, 0);
-
     }
 
     vkCmdEndRenderPass(cmdBuffer);
