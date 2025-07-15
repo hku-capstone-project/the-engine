@@ -124,7 +124,8 @@ namespace Game
             {
                 new MeshDefinition { modelId = 0, modelPath = "models/blender-monkey/monkey.obj" },
                 new MeshDefinition { modelId = 1, modelPath = "models/sci_sword/sword.gltf" },
-                new MeshDefinition { modelId = 2, modelPath = "models/chest/Futuristic_Chest_1.gltf" }
+                new MeshDefinition { modelId = 2, modelPath = "models/chest/Futuristic_Chest_1.gltf" },
+                new MeshDefinition { modelId = 3, modelPath = "models/rat/rat_single.gltf" }
             };
 
             // Register each mesh with the native engine
@@ -182,7 +183,7 @@ namespace Game
             var velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(entityId, velocity);
 
-            int modelId = 2;
+            int modelId = 3;
             var mesh = new Mesh { modelId = modelId };
             EngineBindings.AddMesh(entityId, mesh);
 
