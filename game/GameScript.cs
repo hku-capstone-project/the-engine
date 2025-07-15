@@ -29,9 +29,7 @@ namespace Game
 
         // 吸血鬼幸存者游戏变量
         private static uint _playerId = 0;  // 玩家实体ID
-
         private static uint _cameraId = 0;  // 摄像机实体ID
-
         private static List<uint> _vampireIds = new List<uint>();  // 吸血鬼实体ID列表
         private static Vector3 _playerPosition = Vector3.Zero;  // 玩家位置（全局共享）
         private static Dictionary<uint, float> _vampireSpeeds = new Dictionary<uint, float>();  // 吸血鬼移动速度
@@ -39,11 +37,17 @@ namespace Game
         // 游戏状态
         private static bool _gameOver = false;  // 游戏是否结束
         
+        // 敌人生成变量
+        private static int _enemyCount = 10000;  // 敌人数量
+        private static float _enemySpawnRadius = 100.0f;  // 敌人生成半径（10x默认）
+        private static System.Diagnostics.Stopwatch _creationStopwatch = new System.Diagnostics.Stopwatch();
+        private static List<uint> _entitiesToDestroy = new List<uint>();  // 待销毁的实体列表
+        
         // 摄像机控制变量
         private static float _cameraYaw = 0f;     // 水平角度（绕Y轴旋转）
         private static float _cameraPitch = 0f;   // 俯仰角度（初始平视 = 0度）
         private static float _mouseSensitivity = 0.0005f;  // 鼠标灵敏度（降低敏感度）
-        private static float _cameraDistance = 8f;  // 摄像机距离玩家的距离
+        private static float _cameraDistance = 12f;  // 摄像机距离玩家的距离（增加距离）
         private static float _cameraFixedHeight = 2f;  // 摄像机固定高度
         
         [StartupSystem]
@@ -51,10 +55,14 @@ namespace Game
         {
             // Initialize logging system
             InitializeLogging();
+            Log("=== 🚀 Starting Vampire Survivor Game ====");
+            Log($"🎯 Creating {_enemyCount} enemy rats for enhanced gameplay...");
 
             // Register all meshes first
             RegisterAllMeshes();
 
+            // Start timing the entity creation
+            _creationStopwatch.Start();
 
             // === 创建玩家猴子实体 ===
             _playerId = EngineBindings.CreateEntity();
@@ -76,60 +84,32 @@ namespace Game
             // 初始化全局玩家位置
             _playerPosition = monkeyTransform.position;
             Log($"🎯 初始化玩家位置: ({_playerPosition.X:F1}, {_playerPosition.Y:F1}, {_playerPosition.Z:F1})");
-
             Log($"🐵 Created PLAYER monkey entity with ID {_playerId}");
 
-            // === 创建吸血鬼剑实体1 ===
-            uint vampire1Id = EngineBindings.CreateEntity();
-            var vampire1Transform = new Transform { position = new Vector3(5, 0, 5), scale = new Vector3(10) }; 
-            EngineBindings.AddTransform(vampire1Id, vampire1Transform);
-            var vampire1Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
-            EngineBindings.AddVelocity(vampire1Id, vampire1Velocity);
+            // === 创建大量敌人鼠实体 ===
+            for (int i = 0; i < _enemyCount; i++)
+            {
+                CreateEnemyRat(i);
+                
+                // Log progress every 1000 entities
+                if ((i + 1) % 1000 == 0)
+                {
+                    Log($"📊 Created {i + 1}/{_enemyCount} enemy rats...");
+                }
+            }
 
-            // 添加剑的Mesh和Material组件
-            var vampire1Mesh = new Mesh { modelId = 1 }; // 剑模型
-            EngineBindings.AddMesh(vampire1Id, vampire1Mesh);
-            var vampire1Material = new Material { color = new Vector3(0.8f, 0.1f, 0.1f), metallic = .9f, roughness = .1f, occlusion = .5f, emissive = new Vector3(.10f) }; // 血红色
-            EngineBindings.AddMaterial(vampire1Id, vampire1Material);
-
-            // 记录吸血鬼属性
-            _vampireIds.Add(vampire1Id);
-            _vampireSpeeds[vampire1Id] = 0.5f;  // 移动速度
-            Log($"🧛‍♀️ Created VAMPIRE 1 entity with ID {vampire1Id}");
-
-            // === 创建吸血鬼剑实体2 ===
-            uint vampire2Id = EngineBindings.CreateEntity();
-          
-            var vampire2Transform = new Transform { position = new Vector3(-4, 0, -4), scale = new Vector3(5) }; 
-
-            EngineBindings.AddTransform(vampire2Id, vampire2Transform);
-            var vampire2Velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
-            EngineBindings.AddVelocity(vampire2Id, vampire2Velocity);
-
-            // 添加剑的Mesh和Material组件
-            var vampire2Mesh = new Mesh { modelId = 2 }; // 剑模型
-            EngineBindings.AddMesh(vampire2Id, vampire2Mesh);
-            var vampire2Material = new Material { color = new Vector3(0.6f, 0.0f, 0.6f) }; // 紫红色
-            EngineBindings.AddMaterial(vampire2Id, vampire2Material);
+            _creationStopwatch.Stop();
+            Log($"✅ Enemy rat creation completed in {_creationStopwatch.ElapsedMilliseconds}ms");
+            Log($"⚡ Average time per enemy: {_creationStopwatch.ElapsedMilliseconds / (double)_enemyCount:F3}ms");
 
             // === 创建摄像机实体 ===
-            _cameraId = EngineBindings.CreateEntity();
-            EngineBindings.AddCamera(_cameraId, new iCamera { fov = 60.0f, nearPlane = 0.1f, farPlane = 1000.0f });
-            EngineBindings.AddTransform(_cameraId, new Transform { 
-                position = new Vector3(0, 10, -15),  // 摄像机在玩家后上方
-                rotation = new Vector3(0, 0, 0),     // 朝前看
-                scale = new Vector3(1) 
-            });
-
-            // 记录吸血鬼属性
-            _vampireIds.Add(vampire2Id);
-            _vampireSpeeds[vampire2Id] = 0.5f;  // 移动速度
-            Log($"🧛‍♀️ Created VAMPIRE 2 entity with ID {vampire2Id}");
+            CreateGameCamera();
 
             Log("=== 🎮 吸血鬼幸存者3D 游戏初始化完成 ===");
-            Log("🐵 玩家: 棕色猴子 - 使用WASD移动，空格跳跃");
-            Log("🧛‍♀️ 吸血鬼1: 血红色剑 - 会慢慢追踪玩家");
-            Log("🧛‍♀️ 吸血鬼2: 紫红色剑 - 会慢慢追踪玩家");
+            Log("🐵 玩家: 无敌棕色猴子 - 使用WASD移动，空格跳跃");
+            Log($"🐭 敌人: {_enemyCount} 只追踪玩家的老鼠 - 撞击玩家时会被销毁");
+            Log("💥 无敌模式: 玩家碰到老鼠时老鼠会被销毁");
+            Log("📈 高性能大规模实体管理测试");
         }
 
         private static void InitializeLogging()
@@ -183,23 +163,30 @@ namespace Game
         {
             Log("=== 🎯 Registering all meshes with the engine ===");
 
-            // Define all meshes that the game will use
+            // Define all meshes that the game will use (keeping all from Benchmark.cs for future reference)
             var meshDefinitions = new List<MeshDefinition>
             {
                 new MeshDefinition { modelId = 0, modelPath = "models/blender-monkey/monkey.obj" },
                 new MeshDefinition { modelId = 1, modelPath = "models/sci_sword/sword.gltf" },
-                new MeshDefinition { modelId = 2, modelPath = "models/sci_sword/sword.gltf" },
-                new MeshDefinition { modelId = 3, modelPath = "models/chest/Futuristic_Chest_1.gltf" }
+                new MeshDefinition { modelId = 2, modelPath = "models/chest/Futuristic_Chest_1.gltf" },
+                new MeshDefinition { modelId = 3, modelPath = "models/rat/rat_single.gltf" }
             };
 
             // Register each mesh with the native engine
             foreach (var meshDef in meshDefinitions)
             {
-                EngineBindings.RegisterMesh(meshDef.modelId, meshDef.modelPath);
-                Log($"📦 Registered mesh ID {meshDef.modelId}: {meshDef.modelPath}");
+                try
+                {
+                    EngineBindings.RegisterMesh(meshDef.modelId, meshDef.modelPath);
+                    Log($"Registered mesh ID {meshDef.modelId}: {meshDef.modelPath}");
+                }
+                catch (Exception ex)
+                {
+                    Log($"Failed to register mesh {meshDef.modelId}: {ex.Message}");
+                }
             }
 
-            Log("=== ✅ All meshes registered successfully ===");
+            Log("=== All meshes registered successfully ===");
         }
 
         // 玩家物理系统 - 只处理玩家的重力和碰撞
@@ -232,24 +219,24 @@ namespace Game
             }
         }
 
-        // 吸血鬼物理系统 - 只处理吸血鬼的移动（不受重力影响）
+        // 老鼠物理系统 - 只处理老鼠的移动（不受重力影响）
         [UpdateSystem]
         [Query(typeof(Transform), typeof(Velocity), typeof(Mesh))]
         public static void VampirePhysicsSystem(float dt, ref Transform transform, ref Velocity velocity, ref Mesh mesh)
         {
-            // 通过Model ID精确区分：0=玩家猴子，1&2=吸血鬼剑
+            // 通过Model ID精确区分：0=玩家猴子，3=老鼠
             if (mesh.modelId == 0)
             {
                 return; // 跳过玩家（猴子模型）
             }
 
-            // 只处理吸血鬼（剑模型ID为1或2）
-            if (mesh.modelId != 1 && mesh.modelId != 2)
+            // 只处理老鼠（模型ID为3）
+            if (mesh.modelId != 3)
             {
                 return; // 跳过其他实体
             }
 
-            // 吸血鬼不受重力影响，直接更新位置
+            // 老鼠不受重力影响，直接更新位置
             transform.position.X += velocity.velocity.X * dt;
             transform.position.Y += velocity.velocity.Y * dt;
             transform.position.Z += velocity.velocity.Z * dt;
@@ -262,32 +249,24 @@ namespace Game
             }
         }
 
-        // 吸血鬼AI系统 - 追踪玩家
+        // 老鼠AI系统 - 追踪玩家（无敌玩家版本）
         [UpdateSystem]
         [Query(typeof(Transform), typeof(Velocity), typeof(Mesh))]
         public static void VampireAISystem(float dt, ref Transform transform, ref Velocity velocity, ref Mesh mesh)
         {
-            // 游戏结束时停止吸血鬼AI
-            if (_gameOver)
-            {
-                velocity.velocity = Vector3.Zero;
-                return;
-            }
-            
-            // 通过Model ID精确区分：0=玩家猴子，1&2=吸血鬼剑
+            // 通过Model ID精确区分：0=玩家猴子，3=老鼠
             if (mesh.modelId == 0)
             {
                 return; // 跳过玩家（猴子模型）
             }
 
-            // 只处理吸血鬼（剑模型ID为1或2）
-            if (mesh.modelId != 1 && mesh.modelId != 2)
+            // 只处理老鼠（模型ID为3）
+            if (mesh.modelId != 3)
             {
                 return; // 跳过其他实体
             }
 
-            float vampireSpeed = 0.5f; // 统一的吸血鬼速度
-
+            float ratSpeed = 0.5f; // 统一的老鼠速度
 
             // 计算到玩家的距离和方向
             Vector3 toPlayer = _playerPosition - transform.position;
@@ -301,41 +280,34 @@ namespace Game
                 Vector3 direction = Vector3.Normalize(toPlayer);
 
                 // 设置朝向玩家的速度（只在水平面移动，保持高度）
-                velocity.velocity.X = direction.X * vampireSpeed;
-                velocity.velocity.Z = direction.Z * vampireSpeed;
+                velocity.velocity.X = direction.X * ratSpeed;
+                velocity.velocity.Z = direction.Z * ratSpeed;
                 velocity.velocity.Y = 0; // 保持高度恒定
+
+                // 计算老鼠应该面向的角度（绕Y轴旋转，加180度让头部朝向玩家）
+                float targetYaw = MathF.Atan2(direction.X, direction.Z) + MathF.PI;
+                transform.rotation = new Vector3(0, targetYaw, 0);
 
                 // 调试日志（降低频率）
                 if (_testTimer > 3.0f)
                 {
-                    Log($"🧛‍♀️ Vampire ID={mesh.modelId} at ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2}) " +
-                        $"chasing player at ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
+                    Log($"🐭 Rat at ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2}) " +
+                        $"chasing invincible player at ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
                 }
             }
             else if (distanceToPlayer <= 0.5f)
             {
-                // 太近了，停止移动
+                // 老鼠撞到无敌玩家 - 标记销毁！
+                Log($"💥 Rat destroyed by invincible player! Distance: {distanceToPlayer:F2}");
+                Log($"🐭 Player position: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
+                Log($"🐭 Rat position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
+                
+                // 将变换移动到很远的地方，让它在下一帧被处理
+                transform.position = new Vector3(99999f, -99999f, 99999f);
                 velocity.velocity = Vector3.Zero;
                 
-                // 触发游戏结束 - 将玩家变成红色！
-                if (!_gameOver)
-                {
-                    _gameOver = true;
-                    Log("💀💀💀 GAME OVER! 💀💀💀");
-                    Log($"🧛‍♀️ Vampire ID={mesh.modelId} caught player! Distance: {distanceToPlayer:F2}");
-                    Log($"🧛‍♀️ Player position: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
-                    Log($"🧛‍♀️ Vampire position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
-                    
-                    // 将玩家的颜色改为红色表示死亡
-                    var deadPlayerMaterial = new Material { 
-                        color = new Vector3(1.0f, 0.0f, 0.0f),  // 鲜红色
-                        metallic = 0.1f, 
-                        roughness = 0.9f, 
-                        occlusion = 0.5f, 
-                        emissive = new Vector3(0.3f, 0.0f, 0.0f)  // 红色发光效果
-                    };
-                    EngineBindings.AddMaterial(_playerId, deadPlayerMaterial);
-                }
+                // 缩放为0，使其不可见
+                transform.scale = Vector3.Zero;
             }
             else
             {
@@ -343,23 +315,17 @@ namespace Game
                 velocity.velocity = Vector3.Zero;
                 if (_testTimer > 5.0f)
                 {
-                    Log($"🧛‍♀️ Vampire out of range, distance: {distanceToPlayer:F2}");
+                    Log($"🐭 Rat out of range, distance: {distanceToPlayer:F2}");
                 }
             }
         }
 
-        // 玩家控制系统 - 处理输入和跳跃
+        // 玩家控制系统 - 处理输入和跳跃（无敌版本）
         [UpdateSystem]
         [Query(typeof(Transform), typeof(Velocity), typeof(Player))]
         public static void PlayerSystem(float dt, ref Transform transform, ref Velocity velocity, ref Player player)
         {
-            // 游戏结束时停止玩家控制
-            if (_gameOver)
-            {
-                velocity.velocity.X = 0;
-                velocity.velocity.Z = 0;
-                return;
-            }
+            // 无敌玩家，不需要游戏结束检查
             
             // 使用新的游戏输入系统 - 简洁可靠的按键检测
             bool spaceJustPressed = EngineBindings.IsKeyJustPressed(Keys.GLFW_KEY_SPACE);
@@ -445,17 +411,27 @@ namespace Game
                 _playerPosition.Z + horizontalOffset.Z
             );
             
-            // 摄像机朝向玩家位置（但看向玩家的固定高度）
-            Vector3 playerLookTarget = new Vector3(_playerPosition.X, _cameraFixedHeight, _playerPosition.Z);
-            Vector3 directionToPlayer = playerLookTarget - transform.position;
-            directionToPlayer = Vector3.Normalize(directionToPlayer);
+            // 摄像机始终朝向玩家的实际位置
+            Vector3 directionToPlayer = _playerPosition - transform.position;
+            float distanceToPlayer = directionToPlayer.Length();
             
-            // 转换为欧拉角
-            float lookYaw = MathF.Atan2(directionToPlayer.X, directionToPlayer.Z);
-            float lookPitch = _cameraPitch;  // 使用鼠标控制的俯仰角
-            
-            // 设置摄像机旋转
-            transform.rotation = new Vector3(lookYaw, lookPitch, 0);
+            // 避免除零错误
+            if (distanceToPlayer > 0.001f)
+            {
+                directionToPlayer = Vector3.Normalize(directionToPlayer);
+                
+                // 转换为欧拉角
+                float lookYaw = MathF.Atan2(directionToPlayer.X, directionToPlayer.Z);
+                float lookPitch = MathF.Asin(directionToPlayer.Y);
+                
+                // 限制俯仰角度范围，避免过于极端的角度
+                const float maxPitchUp = 0.7f;    // 约40度向上
+                const float maxPitchDown = -0.9f;  // 约52度向下
+                lookPitch = MathF.Max(maxPitchDown, MathF.Min(maxPitchUp, lookPitch));
+                
+                // 设置摄像机旋转，让玩家始终在屏幕中央
+                transform.rotation = new Vector3(lookYaw, lookPitch, 0);
+            }
             
             // 调试信息（降低频率）
             if (_testTimer > 4.0f)
@@ -468,6 +444,120 @@ namespace Game
         }
 
 
+
+        private static void CreateEnemyRat(int index)
+        {
+            // Create enemy rat entity
+            uint entityId = EngineBindings.CreateEntity();
+            _vampireIds.Add(entityId);
+
+            // Position entities randomly in a disk pattern
+            var random = new Random(index + 42); // Use index as seed for reproducible randomness
+            
+            // Generate random point in unit disk using rejection sampling
+            float x, z;
+            do
+            {
+                x = (float)random.NextDouble() * 2.0f - 1.0f; // [-1, 1]
+                z = (float)random.NextDouble() * 2.0f - 1.0f; // [-1, 1]
+            } while (x * x + z * z > 1.0f); // Reject points outside unit circle
+            
+            // Scale to desired spawn radius
+            x *= _enemySpawnRadius;
+            z *= _enemySpawnRadius;
+            float y = 0;
+
+            // Add Transform component
+            var transform = new Transform 
+            { 
+                position = new Vector3(x, y, z), 
+                scale = new Vector3(0.5f), 
+                rotation = new Vector3(0, 0, 0) 
+            };
+
+            EngineBindings.AddTransform(entityId, transform);
+
+            // Add Velocity component for movement
+            var velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
+            EngineBindings.AddVelocity(entityId, velocity);
+
+            // Add rat mesh (modelId = 3)
+            var mesh = new Mesh { modelId = 3 };
+            EngineBindings.AddMesh(entityId, mesh);
+
+            // Add Material component with rat-like colors
+            var material = CreateRatMaterial(index);
+            EngineBindings.AddMaterial(entityId, material);
+
+            // Record rat attributes
+            _vampireSpeeds[entityId] = 0.5f;
+        }
+
+        private static Material CreateRatMaterial(int index)
+        {
+            var random = new Random(index);
+            
+            // Create brownish/grayish rat colors with some variation
+            return new Material 
+            { 
+                color = new Vector3(0.4f, 0.3f, 0.2f) + new Vector3(
+                    (float)random.NextDouble() * 0.3f - 0.15f,
+                    (float)random.NextDouble() * 0.3f - 0.15f,
+                    (float)random.NextDouble() * 0.3f - 0.15f
+                ),
+                metallic = 0.1f,
+                roughness = 0.8f,
+                occlusion = 0.6f,
+                emissive = new Vector3(0.0f)
+            };
+        }
+
+        private static void CreateGameCamera()
+        {
+            // === 创建摄像机实体 ===
+            _cameraId = EngineBindings.CreateEntity();
+            EngineBindings.AddCamera(_cameraId, new iCamera 
+            { 
+                fov = 60.0f, 
+                nearPlane = 0.1f, 
+                farPlane = 1000.0f 
+            });
+            
+            // 初始摄像机位置
+            EngineBindings.AddTransform(_cameraId, new Transform 
+            { 
+                position = new Vector3(0, 10, -15),
+                rotation = new Vector3(0, 0, 0),
+                scale = new Vector3(1) 
+            });
+
+            Log("📹 Created game camera");
+        }
+
+        // 清理系统 - 清理被销毁的老鼠
+        [UpdateSystem]
+        [Query(typeof(Transform), typeof(Mesh))]
+        public static void CleanupSystem(float dt, ref Transform transform, ref Mesh mesh)
+        {
+            // 只处理老鼠（模型ID为3）
+            if (mesh.modelId != 3)
+            {
+                return;
+            }
+
+            // 如果老鼠被移动到很远的地方，说明它已经被"杀死"
+            if (transform.position.X > 99990f || transform.position.Y < -99990f)
+            {
+                // 进一步缩小缩放，确保不可见
+                transform.scale = Vector3.Zero;
+            }
+        }
+
+        private class MeshDefinition
+        {
+            public int modelId;
+            public string modelPath;
+        }
 
     }
 #endif

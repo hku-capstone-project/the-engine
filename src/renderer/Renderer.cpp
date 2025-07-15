@@ -96,26 +96,32 @@ void Renderer::_createModelImages() {
             meshId = meshes[i].first;
         }
 
-        if (meshId == 0) {
-            // Monkey model - no textures
-            modelImages.sharedSampler  = nullptr;
-            modelImages.baseColor      = nullptr;
-            modelImages.normalMap      = nullptr;
-            modelImages.metalRoughness = nullptr;
-        } else {
-            // Sword models - has textures
-            modelImages.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
+        // disable all textures for now
+        // if (meshId == 0) {
+        //     // Monkey model - no textures
+        //     modelImages.sharedSampler  = nullptr;
+        //     modelImages.baseColor      = nullptr;
+        //     modelImages.normalMap      = nullptr;
+        //     modelImages.metalRoughness = nullptr;
+        // } else {
+        //     // Sword models - has textures
+        //     modelImages.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
 
-            std::string texturePath =
-                kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png";
-            modelImages.baseColor = std::make_unique<Image>(
-                _appContext, _logger, texturePath,
-                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                modelImages.sharedSampler->getVkSampler());
+        //     std::string texturePath =
+        //         kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png";
+        //     modelImages.baseColor = std::make_unique<Image>(
+        //         _appContext, _logger, texturePath,
+        //         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        //         modelImages.sharedSampler->getVkSampler());
 
-            modelImages.normalMap      = nullptr;
-            modelImages.metalRoughness = nullptr;
-        }
+        //     modelImages.normalMap      = nullptr;
+        //     modelImages.metalRoughness = nullptr;
+        // }
+
+        modelImages.sharedSampler  = nullptr;
+        modelImages.baseColor      = nullptr;
+        modelImages.normalMap      = nullptr;
+        modelImages.metalRoughness = nullptr;
 
         _modelImages.push_back(std::move(modelImages));
     }
@@ -452,7 +458,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
                          const std::vector<std::unique_ptr<Components>> &entityRenderData) {
     auto frameStartTime = std::chrono::steady_clock::now();
     DrawFrameTimings timings{};
-    
+
     // Command buffer setup timing
     auto setupStart = std::chrono::steady_clock::now();
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
@@ -497,8 +503,8 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
     vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
-    
-    auto setupEnd = std::chrono::steady_clock::now();
+
+    auto setupEnd              = std::chrono::steady_clock::now();
     timings.commandBufferSetup = _getTimeInMilliseconds(setupStart, setupEnd);
 
     // 新的实体驱动渲染循环
@@ -515,24 +521,24 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
     // Entity grouping timing
     auto groupingStart = std::chrono::steady_clock::now();
     // Group entities by modelID
-    std::map<int32_t, std::vector<const Components*>> entitiesByModel;
+    std::map<int32_t, std::vector<const Components *>> entitiesByModel;
     for (const auto &component : entityRenderData) {
         int32_t modelId = component->mesh.modelId;
         if (modelId >= 0 && static_cast<size_t>(modelId) < _models.size()) {
             entitiesByModel[modelId].push_back(component.get());
         }
     }
-    
-    auto groupingEnd = std::chrono::steady_clock::now();
+
+    auto groupingEnd       = std::chrono::steady_clock::now();
     timings.entityGrouping = _getTimeInMilliseconds(groupingStart, groupingEnd);
 
     // Render each model type with instanced rendering
     auto instancePrepTime = 0.0;
     auto bufferUpdateTime = 0.0;
-    auto gpuCommandTime = 0.0;
-    
+    auto gpuCommandTime   = 0.0;
+
     for (const auto &[modelId, entities] : entitiesByModel) {
-        size_t modelIndex = static_cast<size_t>(modelId);
+        size_t modelIndex          = static_cast<size_t>(modelId);
         const size_t instanceCount = entities.size();
 
         if (instanceCount == 0) continue;
@@ -548,21 +554,24 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         // For material data, we'll use the first entity's material for all instances
         // (This assumes all instances of the same model use the same material)
         const auto &firstEntity = entities[0];
-        
+
         for (const auto &entity : entities) {
             glm::mat4 finalMatrix = glm::translate(glm::mat4(1.0f), entity->transform.position);
-            
+
             // 旋转
-            finalMatrix = glm::rotate(finalMatrix, entity->transform.rotation.x, glm::vec3(1, 0, 0));
-            finalMatrix = glm::rotate(finalMatrix, entity->transform.rotation.y, glm::vec3(0, 1, 0));
-            finalMatrix = glm::rotate(finalMatrix, entity->transform.rotation.z, glm::vec3(0, 0, 1));
-            
+            finalMatrix =
+                glm::rotate(finalMatrix, entity->transform.rotation.x, glm::vec3(1, 0, 0));
+            finalMatrix =
+                glm::rotate(finalMatrix, entity->transform.rotation.y, glm::vec3(0, 1, 0));
+            finalMatrix =
+                glm::rotate(finalMatrix, entity->transform.rotation.z, glm::vec3(0, 0, 1));
+
             // 缩放
             finalMatrix = glm::scale(finalMatrix, entity->transform.scale);
-            
+
             instanceMatrices.push_back(finalMatrix);
         }
-        
+
         auto instancePrepEnd = std::chrono::steady_clock::now();
         instancePrepTime += _getTimeInMilliseconds(instancePrepStart, instancePrepEnd);
 
@@ -573,11 +582,12 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         instanceBuffer->fillData(instanceMatrices.data());
 
         // Update camera and material data (shared across all instances)
-        _updateBufferData(currentFrame, modelIndex, glm::mat4(1.0f)); // Identity matrix since we use instance matrices
+        _updateBufferData(currentFrame, modelIndex,
+                          glm::mat4(1.0f)); // Identity matrix since we use instance matrices
         _updateMaterialData(currentFrame, modelIndex, firstEntity->material.color,
                             firstEntity->material.metallic, firstEntity->material.roughness,
                             firstEntity->material.occlusion, firstEntity->material.emissive);
-        
+
         auto bufferUpdateEnd = std::chrono::steady_clock::now();
         bufferUpdateTime += _getTimeInMilliseconds(bufferUpdateStart, bufferUpdateEnd);
 
@@ -589,25 +599,27 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
             &_descriptorSetBundles[modelIndex]->getDescriptorSet(currentFrame), 0, nullptr);
 
         // Bind vertex buffer and instance buffer
-        VkBuffer vertexBuffers[] = {_models[modelIndex]->vertexBuffer->getVkBuffer(), 
-                                   _instanceBufferBundles[modelIndex]->getBuffer(currentFrame)->getVkBuffer()};
+        VkBuffer vertexBuffers[] = {
+            _models[modelIndex]->vertexBuffer->getVkBuffer(),
+            _instanceBufferBundles[modelIndex]->getBuffer(currentFrame)->getVkBuffer()};
         VkDeviceSize offsets[] = {0, 0};
         vkCmdBindVertexBuffers(cmdBuffer, 0, 2, vertexBuffers, offsets);
-        
+
         // Bind index buffer
         vkCmdBindIndexBuffer(cmdBuffer, _models[modelIndex]->indexBuffer->getVkBuffer(), 0,
                              VK_INDEX_TYPE_UINT32);
 
         // Draw all instances with a single draw call
-        vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, static_cast<uint32_t>(instanceCount), 0, 0, 0);
-        
+        vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt,
+                         static_cast<uint32_t>(instanceCount), 0, 0, 0);
+
         auto gpuCommandEnd = std::chrono::steady_clock::now();
         gpuCommandTime += _getTimeInMilliseconds(gpuCommandStart, gpuCommandEnd);
     }
-    
+
     // Store accumulated timing data
-    timings.instanceDataPrep = instancePrepTime;
-    timings.bufferUpdates = bufferUpdateTime;
+    timings.instanceDataPrep    = instancePrepTime;
+    timings.bufferUpdates       = bufferUpdateTime;
     timings.gpuCommandRecording = gpuCommandTime;
 
     // Command buffer finish timing
@@ -615,15 +627,16 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
     vkCmdEndRenderPass(cmdBuffer);
     vkEndCommandBuffer(cmdBuffer);
     auto finishEnd = std::chrono::steady_clock::now();
-    
+
     timings.commandBufferFinish = _getTimeInMilliseconds(finishStart, finishEnd);
-    timings.totalDrawFrame = _getTimeInMilliseconds(frameStartTime, finishEnd);
-    
+    timings.totalDrawFrame      = _getTimeInMilliseconds(frameStartTime, finishEnd);
+
     // Store timing results
     _lastFrameTimings = timings;
 }
 
-double Renderer::_getTimeInMilliseconds(std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point end) const {
+double Renderer::_getTimeInMilliseconds(std::chrono::steady_clock::time_point start,
+                                        std::chrono::steady_clock::time_point end) const {
     return std::chrono::duration<double, std::milli>(end - start).count();
 }
 
