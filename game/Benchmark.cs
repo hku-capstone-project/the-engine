@@ -18,8 +18,6 @@ namespace Game
         private static int _entityCount = 100;
         private static Stopwatch _creationStopwatch = new Stopwatch();
         private static Stopwatch _frameStopwatch = new Stopwatch();
-        private static long _frameCount = 0;
-        private static double _totalFrameTime = 0;
         
         // 摄像机控制变量
         private static float _cameraYaw = 0f;
@@ -280,37 +278,6 @@ namespace Game
             });
 
             Log("📹 Created benchmark camera");
-        }
-
-        [UpdateSystem]
-        [Query(typeof(Transform), typeof(Velocity))]
-        public static void BenchmarkPerformanceSystem(float deltaTime, UIntPtr transformPtr, UIntPtr velocityPtr)
-        {
-            // Update frame timing
-            _frameCount++;
-            _totalFrameTime += deltaTime;
-
-            // Update test timer
-            _testTimer += deltaTime;
-
-            // Log performance stats every 5 seconds
-            if (_testTimer >= 5.0f)
-            {
-                _testTimer = 0;
-                
-                double averageFrameTime = _totalFrameTime / _frameCount;
-                double fps = 1.0 / averageFrameTime;
-                
-                // Log($"📊 Performance Stats:");
-                // Log($"   🎯 Entities: {_entityCount}");
-                // Log($"   ⏱️  Frame Time: {averageFrameTime * 1000:F2}ms");
-                // Log($"   📈 FPS: {fps:F1}");
-                // Log($"   🔄 Total Frames: {_frameCount}");
-                
-                // Reset counters for next measurement
-                _frameCount = 0;
-                _totalFrameTime = 0;
-            }
         }
 
         [UpdateSystem]
