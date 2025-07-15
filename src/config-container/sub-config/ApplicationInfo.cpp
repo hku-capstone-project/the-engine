@@ -5,4 +5,5 @@
 void ApplicationInfo::loadConfig(TomlConfigReader *tomlConfigReader) {
     framesInFlight     = tomlConfigReader->getConfig<uint32_t>("Application.framesInFlight");
     isFramerateLimited = tomlConfigReader->getConfig<bool>("Application.isFramerateLimited");
+    enableFrameTiming  = tomlConfigReader->getConfig<bool>("Application.enableFrameTiming");
 }

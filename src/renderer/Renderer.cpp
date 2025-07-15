@@ -450,6 +450,11 @@ void Renderer::updateCamera(const Transform &transform, const iCamera &camera) {
 
 void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
                          const std::vector<std::unique_ptr<Components>> &entityRenderData) {
+    auto frameStartTime = std::chrono::steady_clock::now();
+    DrawFrameTimings timings{};
+    
+    // Command buffer setup timing
+    auto setupStart = std::chrono::steady_clock::now();
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 
     // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
@@ -492,17 +497,23 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
     vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
     vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipeline());
+    
+    auto setupEnd = std::chrono::steady_clock::now();
+    timings.commandBufferSetup = _getTimeInMilliseconds(setupStart, setupEnd);
 
     // 新的实体驱动渲染循环
     if (_models.empty()) {
         // No models loaded, skip rendering
         vkCmdEndRenderPass(cmdBuffer);
         vkEndCommandBuffer(cmdBuffer);
+        _lastFrameTimings = timings;
         return;
     }
 
-    _logger->info("Rendering {} entities", entityRenderData.size());
+    // _logger->info("Rendering {} entities", entityRenderData.size());
 
+    // Entity grouping timing
+    auto groupingStart = std::chrono::steady_clock::now();
     // Group entities by modelID
     std::map<int32_t, std::vector<const Components*>> entitiesByModel;
     for (const auto &component : entityRenderData) {
@@ -511,16 +522,25 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
             entitiesByModel[modelId].push_back(component.get());
         }
     }
+    
+    auto groupingEnd = std::chrono::steady_clock::now();
+    timings.entityGrouping = _getTimeInMilliseconds(groupingStart, groupingEnd);
 
     // Render each model type with instanced rendering
+    auto instancePrepTime = 0.0;
+    auto bufferUpdateTime = 0.0;
+    auto gpuCommandTime = 0.0;
+    
     for (const auto &[modelId, entities] : entitiesByModel) {
         size_t modelIndex = static_cast<size_t>(modelId);
         const size_t instanceCount = entities.size();
 
         if (instanceCount == 0) continue;
 
-        _logger->info("Rendering {} instances of model {}", instanceCount, modelId);
+        // _logger->info("Rendering {} instances of model {}", instanceCount, modelId);
 
+        // Instance data preparation timing
+        auto instancePrepStart = std::chrono::steady_clock::now();
         // Prepare instance data (model matrices)
         std::vector<glm::mat4> instanceMatrices;
         instanceMatrices.reserve(instanceCount);
@@ -542,7 +562,12 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
             
             instanceMatrices.push_back(finalMatrix);
         }
+        
+        auto instancePrepEnd = std::chrono::steady_clock::now();
+        instancePrepTime += _getTimeInMilliseconds(instancePrepStart, instancePrepEnd);
 
+        // Buffer update timing
+        auto bufferUpdateStart = std::chrono::steady_clock::now();
         // Upload instance matrices to instance buffer
         auto instanceBuffer = _instanceBufferBundles[modelIndex]->getBuffer(currentFrame);
         instanceBuffer->fillData(instanceMatrices.data());
@@ -552,7 +577,12 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         _updateMaterialData(currentFrame, modelIndex, firstEntity->material.color,
                             firstEntity->material.metallic, firstEntity->material.roughness,
                             firstEntity->material.occlusion, firstEntity->material.emissive);
+        
+        auto bufferUpdateEnd = std::chrono::steady_clock::now();
+        bufferUpdateTime += _getTimeInMilliseconds(bufferUpdateStart, bufferUpdateEnd);
 
+        // GPU command recording timing
+        auto gpuCommandStart = std::chrono::steady_clock::now();
         // Bind descriptor sets
         vkCmdBindDescriptorSets(
             cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1,
@@ -570,10 +600,31 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
 
         // Draw all instances with a single draw call
         vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, static_cast<uint32_t>(instanceCount), 0, 0, 0);
+        
+        auto gpuCommandEnd = std::chrono::steady_clock::now();
+        gpuCommandTime += _getTimeInMilliseconds(gpuCommandStart, gpuCommandEnd);
     }
+    
+    // Store accumulated timing data
+    timings.instanceDataPrep = instancePrepTime;
+    timings.bufferUpdates = bufferUpdateTime;
+    timings.gpuCommandRecording = gpuCommandTime;
 
+    // Command buffer finish timing
+    auto finishStart = std::chrono::steady_clock::now();
     vkCmdEndRenderPass(cmdBuffer);
     vkEndCommandBuffer(cmdBuffer);
+    auto finishEnd = std::chrono::steady_clock::now();
+    
+    timings.commandBufferFinish = _getTimeInMilliseconds(finishStart, finishEnd);
+    timings.totalDrawFrame = _getTimeInMilliseconds(frameStartTime, finishEnd);
+    
+    // Store timing results
+    _lastFrameTimings = timings;
+}
+
+double Renderer::_getTimeInMilliseconds(std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point end) const {
+    return std::chrono::duration<double, std::milli>(end - start).count();
 }
 
 void Renderer::processInput(double deltaTime) { _camera->processInput(deltaTime); }

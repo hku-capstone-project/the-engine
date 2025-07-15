@@ -1,20 +1,19 @@
 #pragma once
 #define VK_NO_PROTOTYPES
 
-
+#include "dotnet/Components.hpp"
 #include "utils/vulkan-wrapper/pipeline/GfxPipeline.hpp"
 #include "vma/vk_mem_alloc.h"
 #include "volk.h"
-#include "dotnet/Components.hpp"
+
 
 #include "utils/incl/GlmIncl.hpp" // IWYU pragma: keep
+#include <chrono>
 #include <memory>
 #include <utility>
 #include <vector>
 
-
 class RuntimeApplication;
-
 
 class VulkanApplicationContext;
 class Logger;
@@ -29,6 +28,17 @@ class DescriptorSetBundle;
 class Camera;
 class Sampler;
 
+// Detailed timing measurements
+struct DrawFrameTimings {
+    double commandBufferSetup  = 0.0;
+    double entityGrouping      = 0.0;
+    double instanceDataPrep    = 0.0;
+    double bufferUpdates       = 0.0;
+    double gpuCommandRecording = 0.0;
+    double commandBufferFinish = 0.0;
+    double totalDrawFrame      = 0.0;
+};
+
 class Renderer {
   public:
     Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
@@ -41,13 +51,13 @@ class Renderer {
     Renderer(Renderer &&)                 = delete;
     Renderer &operator=(Renderer &&)      = delete;
 
-    //update camera position and projection matrix
-    void updateCamera(const Transform &transform, const iCamera &camera) ;
+    // update camera position and projection matrix
+    void updateCamera(const Transform &transform, const iCamera &camera);
 
     void drawFrame(size_t currentFrame, size_t imageIndex,
-                  const  std::vector<std::unique_ptr<Components>> &entityRenderData);
+                   const std::vector<std::unique_ptr<Components>> &entityRenderData);
     void processInput(double deltaTime);
-    
+
     void onSwapchainResize();
     [[nodiscard]] inline VkCommandBuffer getDrawingCommandBuffer(size_t currentFrame) {
         return _drawingCommandBuffers[currentFrame];
@@ -55,6 +65,11 @@ class Renderer {
 
     [[nodiscard]] inline VkCommandBuffer getDeliveryCommandBuffer(size_t imageIndex) {
         return _deliveryCommandBuffers[imageIndex];
+    }
+
+    // Get last frame's detailed timing results
+    [[nodiscard]] inline const DrawFrameTimings &getLastFrameTimings() const {
+        return _lastFrameTimings;
     }
 
   private:
@@ -98,6 +113,10 @@ class Renderer {
     std::vector<std::unique_ptr<BufferBundle>> _materialBufferBundles;
     std::vector<std::unique_ptr<BufferBundle>> _instanceBufferBundles;
 
+    mutable DrawFrameTimings _lastFrameTimings;
+    double _getTimeInMilliseconds(std::chrono::steady_clock::time_point start,
+                                  std::chrono::steady_clock::time_point end) const;
+
     void _recordDeliveryCommandBuffers();
     void _recordDrawingCommandBuffers();
     void _createRenderPass();
@@ -110,6 +129,6 @@ class Renderer {
     void _createBuffersAndBufferBundles();
     void _updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 model_matrix);
     void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
-                                  const glm::vec3& color, float metallic, float roughness,
-                                  float occlusion, const glm::vec3& emissive);
+                                       const glm::vec3 &color, float metallic, float roughness,
+                                       float occlusion, const glm::vec3 &emissive);
 };

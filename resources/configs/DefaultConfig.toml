@@ -6,6 +6,7 @@ title = "default config"
 [Application]
 framesInFlight = 2
 isFramerateLimited = false
+enableFrameTiming = false
 
 [Camera]
 initPosition = [ 0.0, 0.0, 0.0 ]
