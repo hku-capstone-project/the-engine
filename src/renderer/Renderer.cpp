@@ -138,15 +138,16 @@ void Renderer::_createBuffersAndBufferBundles() {
             _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             MemoryStyle::kHostVisible));
 
-        // MaterialUBO 缓冲区
+        // MaterialUBO 缓冲区 (now supports up to 64 materials)
+        const size_t MAX_MATERIALS = 64;
         _materialBufferBundles.push_back(std::make_unique<BufferBundle>(
-            _appContext, _framesInFlight, sizeof(S_MaterialInfo),
+            _appContext, _framesInFlight, sizeof(S_MaterialInfo) * MAX_MATERIALS,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, MemoryStyle::kHostVisible));
 
-        // Instance buffer for model matrices (assumes max 1000 instances per model)
+        // Instance buffer for model matrices + material indices (assumes max 1000 instances per model)
         const size_t MAX_INSTANCES = 1000;
         _instanceBufferBundles.push_back(std::make_unique<BufferBundle>(
-            _appContext, _framesInFlight, sizeof(glm::mat4) * MAX_INSTANCES,
+            _appContext, _framesInFlight, sizeof(S_InstanceData) * MAX_INSTANCES,
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, MemoryStyle::kHostVisible));
     }
 }
@@ -416,23 +417,6 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
     _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
-void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex, const glm::vec3 &color,
-                                   float metallic, float roughness, float occlusion,
-                                   const glm::vec3 &emissive) {
-    if (modelIndex >= _materialBufferBundles.size()) {
-        _logger->error("Invalid model index {} in _updateMaterialData", modelIndex);
-        return;
-    }
-    S_MaterialInfo materialInfo{};
-    materialInfo.color     = color;
-    materialInfo.metallic  = metallic;
-    materialInfo.roughness = roughness;
-    materialInfo.occlusion = occlusion;
-    materialInfo.emissive  = emissive;
-    materialInfo.padding   = 0.0f; // 填充对齐
-
-    _materialBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&materialInfo);
-}
 
 void Renderer::updateCamera(const Transform &transform, const iCamera &camera) {
     // 更新摄像机位置
@@ -512,22 +496,70 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         }
     }
 
+    // Build material cache for all entities
+    std::vector<S_MaterialInfo> materialCache;
+    std::map<Material, int32_t> materialIndexMap;
+    
+    // Always add a default material first to ensure index 0 is valid
+    S_MaterialInfo defaultMaterial{};
+    defaultMaterial.color = glm::vec3(1.0f, 1.0f, 1.0f);
+    defaultMaterial.metallic = 0.0f;
+    defaultMaterial.roughness = 0.5f;
+    defaultMaterial.occlusion = 1.0f;
+    defaultMaterial.emissive = glm::vec3(0.0f);
+    defaultMaterial.padding = 0.0f;
+    materialCache.push_back(defaultMaterial);
+    
+    const size_t MAX_MATERIALS = 64;
+    
+    auto getMaterialIndex = [&](const Material &material) -> int32_t {
+        // Create a lookup key for the material
+        auto it = materialIndexMap.find(material);
+        if (it != materialIndexMap.end()) {
+            return it->second;
+        }
+        
+        // Check if we've reached the material limit
+        if (materialCache.size() >= MAX_MATERIALS) {
+            _logger->error("Material cache exceeded maximum size of {}", MAX_MATERIALS);
+            return 0; // Return first material as fallback
+        }
+        
+        // Add new material to cache
+        S_MaterialInfo materialInfo{};
+        materialInfo.color = material.color;
+        materialInfo.metallic = material.metallic;
+        materialInfo.roughness = material.roughness;
+        materialInfo.occlusion = material.occlusion;
+        materialInfo.emissive = material.emissive;
+        materialInfo.padding = 0.0f;
+        
+        int32_t index = static_cast<int32_t>(materialCache.size());
+        materialCache.push_back(materialInfo);
+        materialIndexMap[material] = index;
+        
+        return index;
+    };
+
     // Render each model type with instanced rendering
     for (const auto &[modelId, entities] : entitiesByModel) {
         size_t modelIndex = static_cast<size_t>(modelId);
         const size_t instanceCount = entities.size();
 
         if (instanceCount == 0) continue;
+        
+        // Check instance count bounds
+        const size_t MAX_INSTANCES = 1000;
+        if (instanceCount > MAX_INSTANCES) {
+            _logger->error("Instance count {} exceeds maximum {} for model {}", instanceCount, MAX_INSTANCES, modelId);
+            continue;
+        }
 
         _logger->info("Rendering {} instances of model {}", instanceCount, modelId);
 
-        // Prepare instance data (model matrices)
-        std::vector<glm::mat4> instanceMatrices;
-        instanceMatrices.reserve(instanceCount);
-
-        // For material data, we'll use the first entity's material for all instances
-        // (This assumes all instances of the same model use the same material)
-        const auto &firstEntity = entities[0];
+        // Prepare instance data (model matrices + material indices)
+        std::vector<S_InstanceData> instanceData;
+        instanceData.reserve(instanceCount);
         
         for (const auto &entity : entities) {
             glm::mat4 finalMatrix = glm::translate(glm::mat4(1.0f), entity->transform.position);
@@ -540,18 +572,27 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
             // 缩放
             finalMatrix = glm::scale(finalMatrix, entity->transform.scale);
             
-            instanceMatrices.push_back(finalMatrix);
+            S_InstanceData instance{};
+            instance.modelMatrix = finalMatrix;
+            instance.materialIndex = getMaterialIndex(entity->material);
+            instance.padding1 = 0.0f;
+            instance.padding2 = 0.0f;
+            instance.padding3 = 0.0f;
+            
+            instanceData.push_back(instance);
         }
 
-        // Upload instance matrices to instance buffer
+        // Upload instance data to instance buffer
+        if (modelIndex >= _instanceBufferBundles.size()) {
+            _logger->error("Model index {} out of bounds for instance buffers", modelIndex);
+            continue;
+        }
+        
         auto instanceBuffer = _instanceBufferBundles[modelIndex]->getBuffer(currentFrame);
-        instanceBuffer->fillData(instanceMatrices.data());
+        instanceBuffer->fillData(instanceData.data());
 
-        // Update camera and material data (shared across all instances)
+        // Update camera data (no longer need per-model material data)
         _updateBufferData(currentFrame, modelIndex, glm::mat4(1.0f)); // Identity matrix since we use instance matrices
-        _updateMaterialData(currentFrame, modelIndex, firstEntity->material.color,
-                            firstEntity->material.metallic, firstEntity->material.roughness,
-                            firstEntity->material.occlusion, firstEntity->material.emissive);
 
         // Bind descriptor sets
         vkCmdBindDescriptorSets(
@@ -571,6 +612,27 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         // Draw all instances with a single draw call
         vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, static_cast<uint32_t>(instanceCount), 0, 0, 0);
     }
+    
+    // Upload material cache to all model material buffers
+    _logger->info("Uploading {} materials to material buffer", materialCache.size());
+    
+    // Material cache should always have at least the default material
+    if (materialCache.empty()) {
+        _logger->error("Material cache is unexpectedly empty!");
+        return;
+    }
+        
+        for (size_t modelIndex = 0; modelIndex < _models.size(); ++modelIndex) {
+            if (modelIndex >= _materialBufferBundles.size()) {
+                _logger->error("Model index {} out of bounds for material buffers", modelIndex);
+                continue;
+            }
+            
+            auto materialBuffer = _materialBufferBundles[modelIndex]->getBuffer(currentFrame);
+            size_t dataSize = materialCache.size() * sizeof(S_MaterialInfo);
+            _logger->info("Uploading {} bytes of material data for model {}", dataSize, modelIndex);
+            materialBuffer->fillData(materialCache.data());
+        }
 
     vkCmdEndRenderPass(cmdBuffer);
     vkEndCommandBuffer(cmdBuffer);

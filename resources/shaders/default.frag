@@ -7,6 +7,7 @@ layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragPos;
 layout(location = 3) in vec3 viewPos;
 layout(location = 4) in vec4 fragTangent;
+layout(location = 5) flat in int materialIndex;
 
 layout(location = 0) out vec4 outColor;
 
@@ -31,14 +32,18 @@ const PointLight lights[NUM_LIGHTS] = PointLight[](
 
 layout(set = 0, binding = 0) uniform U_RenderInfo { S_RenderInfo data; } renderInfo;
 layout(set = 0, binding = 1) uniform sampler2D baseColorSampler;
-layout(set = 0, binding = 2) uniform U_MaterialInfo { S_MaterialInfo data; } materialInfo;
+layout(set = 0, binding = 2) uniform U_MaterialBuffer { S_MaterialInfo materials[64]; } materialBuffer;
 
 void main() {
-    vec4 baseColor = vec4(materialInfo.data.color, 1.0);
-    float metallic = materialInfo.data.metallic;
-    float roughness = materialInfo.data.roughness;
-    float occlusion = materialInfo.data.occlusion;
-    vec3 emissive = materialInfo.data.emissive * emissiveStrength;
+    // Get material data using the material index with bounds checking
+    int safeIndex = clamp(materialIndex, 0, 63); // Ensure index is within bounds [0, 63]
+    S_MaterialInfo material = materialBuffer.materials[safeIndex];
+    
+    vec4 baseColor = vec4(material.color, 1.0);
+    float metallic = material.metallic;
+    float roughness = material.roughness;
+    float occlusion = material.occlusion;
+    vec3 emissive = material.emissive * emissiveStrength;
     
     vec2 flippedTexCoord = vec2(fragTexCoord.x, 1.0 - fragTexCoord.y);
     vec4 textureColor = texture(baseColorSampler, flippedTexCoord);

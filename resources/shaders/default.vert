@@ -6,14 +6,16 @@ layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec4 inTangent;
 
-// Instance data (model matrix)
+// Instance data (model matrix and material index)
 layout(location = 4) in mat4 instanceModelMatrix;
+layout(location = 8) in int instanceMaterialIndex;
 
 layout(location = 0) out vec2 fragTexCoord;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec3 fragPos;
 layout(location = 3) out vec3 viewPos;
 layout(location = 4) out vec4 fragTangent;
+layout(location = 5) flat out int materialIndex;
 
 #include "include/sharedVariables.glsl"
 
@@ -29,4 +31,5 @@ void main() {
     fragNormal = normalize(mat3(transpose(inverse(instanceModelMatrix))) * inNormal);
     viewPos = renderInfo.data.viewPos;
     fragTangent = inTangent;
+    materialIndex = instanceMaterialIndex;
 }

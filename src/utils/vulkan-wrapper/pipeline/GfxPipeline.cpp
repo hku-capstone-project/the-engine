@@ -73,17 +73,23 @@ void GfxPipeline::build() {
     // Instance binding description (binding index 1)
     VkVertexInputBindingDescription instanceBindingDescription{};
     instanceBindingDescription.binding   = 1;
-    instanceBindingDescription.stride    = sizeof(glm::mat4);
+    instanceBindingDescription.stride    = sizeof(glm::mat4) + sizeof(int32_t) + 3 * sizeof(float); // InstanceData size
     instanceBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-    // Instance attribute descriptions (for mat4, we need 4 vec4 locations)
-    std::array<VkVertexInputAttributeDescription, 4> instanceAttributeDescriptions{};
+    // Instance attribute descriptions (for mat4 + int, we need 4 vec4 locations + 1 int location)
+    std::array<VkVertexInputAttributeDescription, 5> instanceAttributeDescriptions{};
+    // Mat4 uses 4 consecutive locations (4, 5, 6, 7)
     for (int i = 0; i < 4; ++i) {
         instanceAttributeDescriptions[i].binding  = 1;
         instanceAttributeDescriptions[i].location = 4 + i; // locations 4, 5, 6, 7
         instanceAttributeDescriptions[i].format   = VK_FORMAT_R32G32B32A32_SFLOAT;
         instanceAttributeDescriptions[i].offset   = sizeof(glm::vec4) * i;
     }
+    // Material index at location 8
+    instanceAttributeDescriptions[4].binding  = 1;
+    instanceAttributeDescriptions[4].location = 8;
+    instanceAttributeDescriptions[4].format   = VK_FORMAT_R32_SINT;
+    instanceAttributeDescriptions[4].offset   = sizeof(glm::mat4);
 
     // Combine vertex and instance bindings
     std::array<VkVertexInputBindingDescription, 2> bindingDescriptions = {

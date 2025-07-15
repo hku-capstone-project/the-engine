@@ -18,4 +18,12 @@ struct S_MaterialInfo {
     float padding;        // offset 36, size 4 (填充到 16 字节对齐)
 };
 
+struct S_InstanceData {
+    mat4 modelMatrix;
+    int materialIndex;
+    float padding1;
+    float padding2;
+    float padding3;
+};
+
 #endif // SHARED_VARIABLES_GLSL

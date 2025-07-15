@@ -109,7 +109,4 @@ class Renderer {
     void _createModelImages();
     void _createBuffersAndBufferBundles();
     void _updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 model_matrix);
-    void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
-                                  const glm::vec3& color, float metallic, float roughness,
-                                  float occlusion, const glm::vec3& emissive);
 };

@@ -39,6 +39,27 @@ struct Material {
     float roughness    = 0.5;
     float occlusion    = 1.0;
     glm::vec3 emissive = glm::vec3(0.0f);
+    
+    // Comparison operator for map key
+    bool operator<(const Material& other) const {
+        if (color.x != other.color.x) return color.x < other.color.x;
+        if (color.y != other.color.y) return color.y < other.color.y;
+        if (color.z != other.color.z) return color.z < other.color.z;
+        if (metallic != other.metallic) return metallic < other.metallic;
+        if (roughness != other.roughness) return roughness < other.roughness;
+        if (occlusion != other.occlusion) return occlusion < other.occlusion;
+        if (emissive.x != other.emissive.x) return emissive.x < other.emissive.x;
+        if (emissive.y != other.emissive.y) return emissive.y < other.emissive.y;
+        return emissive.z < other.emissive.z;
+    }
+};
+
+struct InstanceData {
+    glm::mat4 modelMatrix;
+    int32_t materialIndex;
+    float padding1;
+    float padding2;
+    float padding3;
 };
 
 class Components {
