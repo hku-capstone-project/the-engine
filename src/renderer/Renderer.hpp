@@ -96,6 +96,7 @@ class Renderer {
     std::vector<std::unique_ptr<BufferBundle>> _renderInfoBufferBundles;
     std::vector<std::unique_ptr<DescriptorSetBundle>> _descriptorSetBundles;
     std::vector<std::unique_ptr<BufferBundle>> _materialBufferBundles;
+    std::vector<std::unique_ptr<BufferBundle>> _instanceBufferBundles;
 
     void _recordDeliveryCommandBuffers();
     void _recordDrawingCommandBuffers();

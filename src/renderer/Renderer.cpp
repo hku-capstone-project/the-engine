@@ -18,6 +18,8 @@
 #include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 #include "window/Window.hpp"
 
+#include <map>
+
 Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
     : _appContext(appContext), _logger(logger), _framesInFlight(framesInFlight),
@@ -122,6 +124,7 @@ void Renderer::_createModelImages() {
 void Renderer::_createBuffersAndBufferBundles() {
     _renderInfoBufferBundles.clear();
     _materialBufferBundles.clear();
+    _instanceBufferBundles.clear();
 
     if (_models.empty()) {
         _logger->warn("No models loaded, skipping buffer bundle creation");
@@ -139,6 +142,12 @@ void Renderer::_createBuffersAndBufferBundles() {
         _materialBufferBundles.push_back(std::make_unique<BufferBundle>(
             _appContext, _framesInFlight, sizeof(S_MaterialInfo),
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, MemoryStyle::kHostVisible));
+
+        // Instance buffer for model matrices (assumes max 1000 instances per model)
+        const size_t MAX_INSTANCES = 1000;
+        _instanceBufferBundles.push_back(std::make_unique<BufferBundle>(
+            _appContext, _framesInFlight, sizeof(glm::mat4) * MAX_INSTANCES,
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, MemoryStyle::kHostVisible));
     }
 }
 
@@ -494,44 +503,73 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
 
     _logger->info("Rendering {} entities", entityRenderData.size());
 
+    // Group entities by modelID
+    std::map<int32_t, std::vector<const Components*>> entitiesByModel;
     for (const auto &component : entityRenderData) {
-        _logger->info("Rendering entity: {}", component->mesh.modelId);
-
-        // 验证modelId有效性
         int32_t modelId = component->mesh.modelId;
-        if (modelId < 0 || static_cast<size_t>(modelId) >= _models.size()) {
-            continue; // 跳过无效的模型ID
+        if (modelId >= 0 && static_cast<size_t>(modelId) < _models.size()) {
+            entitiesByModel[modelId].push_back(component.get());
+        }
+    }
+
+    // Render each model type with instanced rendering
+    for (const auto &[modelId, entities] : entitiesByModel) {
+        size_t modelIndex = static_cast<size_t>(modelId);
+        const size_t instanceCount = entities.size();
+
+        if (instanceCount == 0) continue;
+
+        _logger->info("Rendering {} instances of model {}", instanceCount, modelId);
+
+        // Prepare instance data (model matrices)
+        std::vector<glm::mat4> instanceMatrices;
+        instanceMatrices.reserve(instanceCount);
+
+        // For material data, we'll use the first entity's material for all instances
+        // (This assumes all instances of the same model use the same material)
+        const auto &firstEntity = entities[0];
+        
+        for (const auto &entity : entities) {
+            glm::mat4 finalMatrix = glm::translate(glm::mat4(1.0f), entity->transform.position);
+            
+            // 旋转
+            finalMatrix = glm::rotate(finalMatrix, entity->transform.rotation.x, glm::vec3(1, 0, 0));
+            finalMatrix = glm::rotate(finalMatrix, entity->transform.rotation.y, glm::vec3(0, 1, 0));
+            finalMatrix = glm::rotate(finalMatrix, entity->transform.rotation.z, glm::vec3(0, 0, 1));
+            
+            // 缩放
+            finalMatrix = glm::scale(finalMatrix, entity->transform.scale);
+            
+            instanceMatrices.push_back(finalMatrix);
         }
 
-        size_t modelIndex = static_cast<size_t>(modelId);
+        // Upload instance matrices to instance buffer
+        auto instanceBuffer = _instanceBufferBundles[modelIndex]->getBuffer(currentFrame);
+        instanceBuffer->fillData(instanceMatrices.data());
 
-        glm::mat4 finalMatrix = glm::translate(glm::mat4(1.0f), component->transform.position);
+        // Update camera and material data (shared across all instances)
+        _updateBufferData(currentFrame, modelIndex, glm::mat4(1.0f)); // Identity matrix since we use instance matrices
+        _updateMaterialData(currentFrame, modelIndex, firstEntity->material.color,
+                            firstEntity->material.metallic, firstEntity->material.roughness,
+                            firstEntity->material.occlusion, firstEntity->material.emissive);
 
-        // 旋转
-        // 注意：glm::rotate的角度是弧度制
-        finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.x, glm::vec3(1, 0, 0));
-        finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.y, glm::vec3(0, 1, 0));
-        finalMatrix = glm::rotate(finalMatrix, component->transform.rotation.z, glm::vec3(0, 0, 1));
-
-        // 缩放
-        finalMatrix = glm::scale(finalMatrix, component->transform.scale);
-
-        _updateBufferData(currentFrame, modelIndex, finalMatrix);
-        _updateMaterialData(currentFrame, modelIndex, component->material.color,
-                            component->material.metallic, component->material.roughness,
-                            component->material.occlusion, component->material.emissive);
-
+        // Bind descriptor sets
         vkCmdBindDescriptorSets(
             cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1,
             &_descriptorSetBundles[modelIndex]->getDescriptorSet(currentFrame), 0, nullptr);
 
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &_models[modelIndex]->vertexBuffer->getVkBuffer(),
-                               offsets);
+        // Bind vertex buffer and instance buffer
+        VkBuffer vertexBuffers[] = {_models[modelIndex]->vertexBuffer->getVkBuffer(), 
+                                   _instanceBufferBundles[modelIndex]->getBuffer(currentFrame)->getVkBuffer()};
+        VkDeviceSize offsets[] = {0, 0};
+        vkCmdBindVertexBuffers(cmdBuffer, 0, 2, vertexBuffers, offsets);
+        
+        // Bind index buffer
         vkCmdBindIndexBuffer(cmdBuffer, _models[modelIndex]->indexBuffer->getVkBuffer(), 0,
                              VK_INDEX_TYPE_UINT32);
 
-        vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, 1, 0, 0, 0);
+        // Draw all instances with a single draw call
+        vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt, static_cast<uint32_t>(instanceCount), 0, 0, 0);
     }
 
     vkCmdEndRenderPass(cmdBuffer);

@@ -1,7 +1,6 @@
 #include "RuntimeApplication.hpp"
 #include "Components.hpp"
 #include "window/Window.hpp"
-// #include "window/KeyboardInfo.hpp"
 
 #include <entt/entt.hpp>
 #include <functional>
@@ -56,7 +55,7 @@ bool RuntimeApplication::isKeyPressed(int keyCode) const {
     if (_window == nullptr) {
         return false;
     }
-    
+
     return _window->isKeyPressed(keyCode);
 }
 
@@ -64,7 +63,7 @@ bool RuntimeApplication::isKeyJustPressed(int keyCode) const {
     if (_window == nullptr) {
         return false;
     }
-    
+
     return _window->isKeyJustPressed(keyCode);
 }
 
@@ -72,7 +71,7 @@ bool RuntimeApplication::isKeyJustReleased(int keyCode) const {
     if (_window == nullptr) {
         return false;
     }
-    
+
     return _window->isKeyJustReleased(keyCode);
 }
 
@@ -80,7 +79,7 @@ std::pair<float, float> RuntimeApplication::getMousePosition() const {
     if (_window == nullptr) {
         return {0.0f, 0.0f};
     }
-    
+
     int x = _window->getCursorXPos();
     int y = _window->getCursorYPos();
     return {static_cast<float>(x), static_cast<float>(y)};
@@ -90,20 +89,20 @@ std::pair<float, float> RuntimeApplication::getMouseDelta() const {
     if (_window == nullptr) {
         return {0.0f, 0.0f};
     }
-    
+
     auto cursorInfo = _window->getCursorInfo();
-    return {static_cast<float>(cursorInfo.cursorMoveInfo.dx), 
+    return {static_cast<float>(cursorInfo.cursorMoveInfo.dx),
             static_cast<float>(cursorInfo.cursorMoveInfo.dy)};
 }
 
-void RuntimeApplication::registerMesh(int meshId, const std::string& meshPath) {
+void RuntimeApplication::registerMesh(int meshId, const std::string &meshPath) {
     meshRegistry[meshId] = meshPath;
     printf("Registered mesh: ID=%d, Path=%s\n", meshId, meshPath.c_str());
 }
 
 std::vector<std::pair<int, std::string>> RuntimeApplication::getAllMeshes() const {
     std::vector<std::pair<int, std::string>> meshes;
-    for (const auto& [id, path] : meshRegistry) {
+    for (const auto &[id, path] : meshRegistry) {
         meshes.push_back({id, path});
     }
     return meshes;

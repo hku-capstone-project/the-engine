@@ -7,6 +7,8 @@
 #include "utils/vulkan-wrapper/descriptor-set/DescriptorSetBundle.hpp"
 #include "utils/vulkan-wrapper/memory/Model.hpp"
 
+#include <vector>
+
 GfxPipeline::GfxPipeline(VulkanApplicationContext *appContext, Logger *logger,
                          std::string fullPathToShaderSourceCode,
                          DescriptorSetBundle *descriptorSetBundle, ShaderCompiler *shaderCompiler,
@@ -65,14 +67,43 @@ void GfxPipeline::build() {
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    auto bindingDescription    = Vertex::GetBindingDescription();
-    auto attributeDescriptions = Vertex::GetAttributeDescriptions();
+    auto vertexBindingDescription    = Vertex::GetBindingDescription();
+    auto vertexAttributeDescriptions = Vertex::GetAttributeDescriptions();
 
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.vertexAttributeDescriptionCount =
-        static_cast<uint32_t>(attributeDescriptions.size());
-    vertexInputInfo.pVertexBindingDescriptions   = &bindingDescription;
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+    // Instance binding description (binding index 1)
+    VkVertexInputBindingDescription instanceBindingDescription{};
+    instanceBindingDescription.binding   = 1;
+    instanceBindingDescription.stride    = sizeof(glm::mat4);
+    instanceBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+    // Instance attribute descriptions (for mat4, we need 4 vec4 locations)
+    std::array<VkVertexInputAttributeDescription, 4> instanceAttributeDescriptions{};
+    for (int i = 0; i < 4; ++i) {
+        instanceAttributeDescriptions[i].binding  = 1;
+        instanceAttributeDescriptions[i].location = 4 + i; // locations 4, 5, 6, 7
+        instanceAttributeDescriptions[i].format   = VK_FORMAT_R32G32B32A32_SFLOAT;
+        instanceAttributeDescriptions[i].offset   = sizeof(glm::vec4) * i;
+    }
+
+    // Combine vertex and instance bindings
+    std::array<VkVertexInputBindingDescription, 2> bindingDescriptions = {
+        vertexBindingDescription, instanceBindingDescription
+    };
+
+    // Combine vertex and instance attributes
+    std::vector<VkVertexInputAttributeDescription> allAttributeDescriptions;
+    allAttributeDescriptions.reserve(vertexAttributeDescriptions.size() + instanceAttributeDescriptions.size());
+    allAttributeDescriptions.insert(allAttributeDescriptions.end(), 
+                                   vertexAttributeDescriptions.begin(), 
+                                   vertexAttributeDescriptions.end());
+    allAttributeDescriptions.insert(allAttributeDescriptions.end(), 
+                                   instanceAttributeDescriptions.begin(), 
+                                   instanceAttributeDescriptions.end());
+
+    vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(allAttributeDescriptions.size());
+    vertexInputInfo.pVertexBindingDescriptions   = bindingDescriptions.data();
+    vertexInputInfo.pVertexAttributeDescriptions = allAttributeDescriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
