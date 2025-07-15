@@ -4,10 +4,15 @@ setlocal EnableDelayedExpansion
 REM default to debug build instead of release
 set BUILD_TYPE=debug
 set WITH_PORTABLE_RESOURCES=OFF
+set GAME_MAIN=GameScript
 
 FOR %%a IN (%*) DO (
     REM switch to release only when --release is explicitly passed
     if [%%a] == [--release] set BUILD_TYPE=release
+    
+    REM check if this is a game main parameter
+    if [%%a] == [GameScript] set GAME_MAIN=GameScript
+    if [%%a] == [Benchmark] set GAME_MAIN=Benchmark
 )
 
 set BINARY_DIR=build/%BUILD_TYPE%/
@@ -18,7 +23,7 @@ if exist build\Game rd /s /q build\Game
 
 REM publish the game project in cs
 pushd game
-dotnet publish -c Release -r win-x64 --self-contained false -o ../build/Game
+dotnet publish -c Release -r win-x64 --self-contained false -o ../build/Game -p:DefineConstants=%GAME_MAIN%
 if %ERRORLEVEL% neq 0 (
     echo [Error] dotnet publish failed. Aborting.
     popd

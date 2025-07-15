@@ -21,6 +21,7 @@ namespace Game
         public const int GLFW_KEY_ESCAPE = 256;
     }
 
+#if GameScript
     public static class GameSystems
     {
         private static float _testTimer = 0;  // 用于降低日志频率
@@ -469,5 +470,6 @@ namespace Game
 
 
     }
+#endif
 }
 
