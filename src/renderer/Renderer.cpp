@@ -18,7 +18,6 @@
 #include "utils/vulkan-wrapper/sampler/Sampler.hpp"
 #include "window/Window.hpp"
 
-
 Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t framesInFlight,
                    ShaderCompiler *shaderCompiler, Window *window, ConfigContainer *configContainer)
     : _appContext(appContext), _logger(logger), _framesInFlight(framesInFlight),
@@ -129,6 +128,7 @@ void Renderer::_createBuffersAndBufferBundles() {
         return;
     }
 
+    // create one buffer bundle per model
     for (size_t i = 0; i < _models.size(); ++i) {
         // S_RenderInfo 缓冲区
         _renderInfoBufferBundles.push_back(std::make_unique<BufferBundle>(
@@ -492,7 +492,11 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         return;
     }
 
+    _logger->info("Rendering {} entities", entityRenderData.size());
+
     for (const auto &component : entityRenderData) {
+        _logger->info("Rendering entity: {}", component->mesh.modelId);
+
         // 验证modelId有效性
         int32_t modelId = component->mesh.modelId;
         if (modelId < 0 || static_cast<size_t>(modelId) >= _models.size()) {
@@ -513,8 +517,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         finalMatrix = glm::scale(finalMatrix, component->transform.scale);
 
         _updateBufferData(currentFrame, modelIndex, finalMatrix);
-
-        // 更新 MaterialUBO
         _updateMaterialData(currentFrame, modelIndex, component->material.color,
                             component->material.metallic, component->material.roughness,
                             component->material.occlusion, component->material.emissive);

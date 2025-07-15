@@ -15,7 +15,8 @@ namespace Game
         // 基准测试变量
         private static List<uint> _benchmarkEntityIds = new List<uint>();
         private static uint _cameraId = 0;
-        private static int _entityCount = 100;
+        private static int _entityCount = 10;
+        private static float _diskRadius = 10.0f;  // Configurable disk radius for entity placement
         private static Stopwatch _creationStopwatch = new Stopwatch();
         private static Stopwatch _frameStopwatch = new Stopwatch();
         
@@ -149,11 +150,20 @@ namespace Game
             uint entityId = EngineBindings.CreateEntity();
             _benchmarkEntityIds.Add(entityId);
 
-            // Position entities in a grid pattern
-            int gridSize = (int)Math.Sqrt(_entityCount);
-            float spacing = 2.0f;
-            float x = (index % gridSize) * spacing - (gridSize * spacing / 2);
-            float z = (index / gridSize) * spacing - (gridSize * spacing / 2);
+            // Position entities randomly in a disk pattern
+            var random = new Random(index + 42); // Use index as seed for reproducible randomness
+            
+            // Generate random point in unit disk using rejection sampling
+            float x, z;
+            do
+            {
+                x = (float)random.NextDouble() * 2.0f - 1.0f; // [-1, 1]
+                z = (float)random.NextDouble() * 2.0f - 1.0f; // [-1, 1]
+            } while (x * x + z * z > 1.0f); // Reject points outside unit circle
+            
+            // Scale to desired disk radius
+            x *= _diskRadius;
+            z *= _diskRadius;
             float y = 0;
 
             // Add Transform component
@@ -163,6 +173,9 @@ namespace Game
                 scale = new Vector3(0.5f), 
                 rotation = new Vector3(0, 0, 0) 
             };
+            
+            Log($"Adding transform: {transform.position}, {transform.scale}, {transform.rotation}");
+
             EngineBindings.AddTransform(entityId, transform);
 
             // Add Velocity component for potential movement
@@ -212,21 +225,7 @@ namespace Game
                         emissive = new Vector3(0.1f, 0.0f, 0.0f)
                     };
                 
-                case 2: // Sword - purple colors
-                    return new Material 
-                    { 
-                        color = new Vector3(0.6f, 0.0f, 0.6f) + new Vector3(
-                            (float)random.NextDouble() * 0.2f - 0.1f,
-                            (float)random.NextDouble() * 0.2f - 0.1f,
-                            (float)random.NextDouble() * 0.2f - 0.1f
-                        ),
-                        metallic = 0.7f,
-                        roughness = 0.3f,
-                        occlusion = 0.5f,
-                        emissive = new Vector3(0.05f, 0.0f, 0.05f)
-                    };
-                
-                case 3: // Chest - golden colors
+                case 2: 
                     return new Material 
                     { 
                         color = new Vector3(0.8f, 0.7f, 0.2f) + new Vector3(
