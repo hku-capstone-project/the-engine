@@ -41,6 +41,11 @@ struct Material {
     glm::vec3 emissive = glm::vec3(0.0f);
 };
 
+struct GameStats {
+    int32_t killCount;   // 击杀数量
+    float gameTime;      // 游戏时间（秒）
+};
+
 class Components {
   public:
     Transform transform;
@@ -48,5 +53,6 @@ class Components {
     Player player;
     Mesh mesh;
     Material material;
+    GameStats gameStats;
     // 可以添加更多组件
 };

@@ -67,5 +67,12 @@ namespace Game
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string modelPath;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GameStats
+    {
+        public int killCount;   // 击杀数量
+        public float gameTime;  // 游戏时间（秒）
+    }
     
 }

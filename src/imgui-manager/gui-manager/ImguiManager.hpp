@@ -9,6 +9,7 @@
 struct ConfigContainer;
 
 class FpsGui;
+class GameStatsGui;
 class VulkanApplicationContext;
 class Window;
 class Logger;
@@ -48,6 +49,7 @@ class ImguiManager {
     bool _showFpsGraph = false;
 
     std::unique_ptr<FpsGui> _fpsGui;
+    std::unique_ptr<GameStatsGui> _gameStatsGui;
 
     VkDescriptorPool _guiDescriptorPool = VK_NULL_HANDLE;
     VkRenderPass _guiPass               = VK_NULL_HANDLE;

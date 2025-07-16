@@ -1,5 +1,6 @@
 add_library(src-imgui-manager STATIC
         gui-elements/FpsGui.cpp
+        gui-elements/GameStatsGui.cpp
         gui-manager/ImguiManager.cpp
         imgui-backends/imgui_impl_glfw.cpp
         imgui-backends/imgui_impl_vulkan.cpp

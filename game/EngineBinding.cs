@@ -20,6 +20,8 @@ namespace Game
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void AddMaterialDel(uint e, Material mat);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void AddGameStatsDel(uint e, GameStats stats);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void RemoveComponentDel(uint entityId);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void DestroyEntityDel(uint entityId);
@@ -39,11 +41,13 @@ namespace Game
         public static AddPlayerDel AddPlayer = null!;
         public static AddMeshDel AddMesh = null!;
         public static AddMaterialDel AddMaterial = null!;
+        public static AddGameStatsDel AddGameStats = null!;
         public static RemoveComponentDel RemoveTransform = null!;
         public static RemoveComponentDel RemoveVelocity = null!;
         public static RemoveComponentDel RemovePlayer = null!;
         public static RemoveComponentDel RemoveMesh = null!;
         public static RemoveComponentDel RemoveMaterial = null!;
+        public static RemoveComponentDel RemoveGameStats = null!;
         public static DestroyEntityDel DestroyEntity = null!;
         public static IsKeyPressedDel IsKeyPressed = null!;
         public static IsKeyPressedDel IsKeyJustPressed = null!;
@@ -68,6 +72,8 @@ namespace Game
                                 getProc("AddMesh"));
             AddMaterial = Marshal.GetDelegateForFunctionPointer<AddMaterialDel>(
                                 getProc("AddMaterial"));
+            AddGameStats = Marshal.GetDelegateForFunctionPointer<AddGameStatsDel>(
+                                getProc("AddGameStats"));
             RemoveTransform = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
                                 getProc("HostRemoveComponentTransform"));
             RemoveVelocity = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
@@ -78,6 +84,8 @@ namespace Game
                                 getProc("HostRemoveComponentMesh"));
             RemoveMaterial = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
                                 getProc("HostRemoveComponentMaterial"));
+            RemoveGameStats = Marshal.GetDelegateForFunctionPointer<RemoveComponentDel>(
+                                getProc("HostRemoveComponentGameStats"));
             DestroyEntity = Marshal.GetDelegateForFunctionPointer<DestroyEntityDel>(
                                 getProc("HostDestroyEntity"));
             IsKeyPressed = Marshal.GetDelegateForFunctionPointer<IsKeyPressedDel>(

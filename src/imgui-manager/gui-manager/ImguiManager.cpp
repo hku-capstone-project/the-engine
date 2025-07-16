@@ -4,6 +4,7 @@
 #include "implot.h"
 
 #include "../gui-elements/FpsGui.hpp"
+#include "../gui-elements/GameStatsGui.hpp"
 #include "../imgui-backends/imgui_impl_glfw.h"
 #include "../imgui-backends/imgui_impl_vulkan.h"
 #include "app-context/VulkanApplicationContext.hpp"
@@ -54,6 +55,7 @@ void ImguiManager::onSwapchainResize() {
 
 void ImguiManager::init() {
     _fpsGui = std::make_unique<FpsGui>(_logger, _configContainer, _window);
+    _gameStatsGui = std::make_unique<GameStatsGui>(_logger, _configContainer, _window);
 
     _createGuiCommandBuffers();
     _createGuiRenderPass();
@@ -312,6 +314,9 @@ void ImguiManager::draw(FpsSink *fpsSink) {
     if (_showFpsGraph) {
         _fpsGui->update(_appContext, filteredFps);
     }
+
+    // 总是显示游戏统计信息
+    _gameStatsGui->update(_appContext);
 
     ImGui::Render();
 }

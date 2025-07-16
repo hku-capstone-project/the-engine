@@ -116,6 +116,7 @@ static const std::unordered_map<std::string, GetterFn> g_getters = {
     {"Player", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Player>(e); }},
     {"Mesh", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Mesh>(e); }},
     {"Material", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<Material>(e); }},
+    {"GameStats", +[](entt::registry &r, entt::entity e) -> void * { return &r.get<GameStats>(e); }},
 };
 
 static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
@@ -142,6 +143,10 @@ static const std::unordered_map<std::string, IteratorFn> g_storage_iterators = {
     {"Material",
      [](entt::runtime_view &view) {
          view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<Material>());
+     }},
+    {"GameStats",
+     [](entt::runtime_view &view) {
+         view.iterate(RuntimeBridge::getRuntimeApplication().registry.storage<GameStats>());
      }},
 };
 
@@ -179,6 +184,10 @@ void AddMaterial(uint32_t e, Material m) {
     RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<Material>(entt::entity{e},
                                                                                  m);
 }
+void AddGameStats(uint32_t e, GameStats g) {
+    RuntimeBridge::getRuntimeApplication().registry.emplace_or_replace<GameStats>(entt::entity{e},
+                                                                                 g);
+}
 
 void HostRemoveComponentTransform(uint32_t entityId) {
     RuntimeBridge::getRuntimeApplication().registry.remove<Transform>(entt::entity{entityId});
@@ -199,6 +208,9 @@ void HostRemoveComponentMesh(uint32_t entityId) {
 }
 void HostRemoveComponentMaterial(uint32_t entityId) {
     RuntimeBridge::getRuntimeApplication().registry.remove<Material>(entt::entity{entityId});
+}
+void HostRemoveComponentGameStats(uint32_t entityId) {
+    RuntimeBridge::getRuntimeApplication().registry.remove<GameStats>(entt::entity{entityId});
 }
 void HostDestroyEntity(uint32_t entityId) {
     RuntimeBridge::getRuntimeApplication().registry.destroy(entt::entity{entityId});
@@ -285,6 +297,7 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "AddPlayer") == 0) return (void *)&AddPlayer;
     if (std::strcmp(name, "AddMesh") == 0) return (void *)&AddMesh;
     if (std::strcmp(name, "AddMaterial") == 0) return (void *)&AddMaterial;
+    if (std::strcmp(name, "AddGameStats") == 0) return (void *)&AddGameStats;
     if (std::strcmp(name, "HostRemoveComponentTransform") == 0)
         return (void *)&HostRemoveComponentTransform;
     if (std::strcmp(name, "HostRemoveComponentCamera") == 0)
@@ -296,6 +309,8 @@ __declspec(dllexport) __declspec(dllexport) void *__cdecl HostGetProcAddress(cha
     if (std::strcmp(name, "HostRemoveComponentMesh") == 0) return (void *)&HostRemoveComponentMesh;
     if (std::strcmp(name, "HostRemoveComponentMaterial") == 0)
         return (void *)&HostRemoveComponentMaterial;
+    if (std::strcmp(name, "HostRemoveComponentGameStats") == 0)
+        return (void *)&HostRemoveComponentGameStats;
     if (std::strcmp(name, "HostDestroyEntity") == 0) return (void *)&HostDestroyEntity;
     if (std::strcmp(name, "HostRegisterPerEntityUpdate") == 0)
         return (void *)&HostRegisterPerEntityUpdate;

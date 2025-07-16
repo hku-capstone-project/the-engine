@@ -30,12 +30,14 @@ namespace Game
         // 吸血鬼幸存者游戏变量
         private static uint _playerId = 0;  // 玩家实体ID
         private static uint _cameraId = 0;  // 摄像机实体ID
+        private static uint _gameStatsId = 0;  // 游戏统计实体ID
         private static List<uint> _vampireIds = new List<uint>();  // 吸血鬼实体ID列表
         private static Vector3 _playerPosition = Vector3.Zero;  // 玩家位置（全局共享）
         private static Dictionary<uint, float> _vampireSpeeds = new Dictionary<uint, float>();  // 吸血鬼移动速度
         
         // 游戏状态
-        private static bool _gameOver = false;  // 游戏是否结束
+        private static float _gameStartTime = 0f;  // 游戏开始时间
+        private static int _killCount = 0;  // 全局击杀计数器
         
         // 敌人生成变量
         private static int _enemyCount = 10000;  // 敌人数量
@@ -104,6 +106,9 @@ namespace Game
 
             // === 创建摄像机实体 ===
             CreateGameCamera();
+
+            // === 创建游戏统计实体 ===
+            CreateGameStats();
 
             Log("=== 🎮 吸血鬼幸存者3D 游戏初始化完成 ===");
             Log("🐵 玩家: 无敌棕色猴子 - 使用WASD移动，空格跳跃");
@@ -301,6 +306,9 @@ namespace Game
                 Log($"💥 Rat destroyed by invincible player! Distance: {distanceToPlayer:F2}");
                 Log($"🐭 Player position: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
                 Log($"🐭 Rat position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
+                
+                // 增加击杀数
+                _killCount++;
                 
                 // 将变换移动到很远的地方，让它在下一帧被处理
                 transform.position = new Vector3(99999f, -99999f, 99999f);
@@ -532,6 +540,38 @@ namespace Game
             });
 
             Log("📹 Created game camera");
+        }
+
+        private static void CreateGameStats()
+        {
+            // === 创建游戏统计实体 ===
+            _gameStatsId = EngineBindings.CreateEntity();
+            
+            // 初始化游戏统计数据
+            var gameStats = new GameStats
+            {
+                killCount = 0,
+                gameTime = 0f
+            };
+            
+            EngineBindings.AddGameStats(_gameStatsId, gameStats);
+            
+            // 记录游戏开始时间
+            _gameStartTime = Environment.TickCount / 1000.0f;
+            
+            Log("📊 Created game statistics entity");
+        }
+
+        // 游戏统计系统 - 更新游戏时间和击杀数
+        [UpdateSystem]
+        [Query(typeof(GameStats))]
+        public static void GameStatsSystem(float dt, ref GameStats gameStats)
+        {
+            // 更新游戏时间
+            gameStats.gameTime = (Environment.TickCount / 1000.0f) - _gameStartTime;
+            
+            // 更新击杀数
+            gameStats.killCount = _killCount;
         }
 
         // 清理系统 - 清理被销毁的老鼠
