@@ -279,7 +279,7 @@ namespace Game
             const float detectionRange = 15.0f; // 增大探测范围
 
             // 如果在探测范围内，追踪玩家
-            if (distanceToPlayer <= detectionRange && distanceToPlayer > 0.5f) // 增加碰撞距离
+            if (distanceToPlayer <= detectionRange && distanceToPlayer > 0.1f) // 碰撞距离
             {
                 // 标准化方向向量
                 Vector3 direction = Vector3.Normalize(toPlayer);
@@ -300,7 +300,7 @@ namespace Game
                         $"chasing invincible player at ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
                 }
             }
-            else if (distanceToPlayer <= 0.5f)
+            else if (distanceToPlayer <= 0.1f)
             {
                 // 老鼠撞到无敌玩家 - 标记销毁！
                 Log($"💥 Rat destroyed by invincible player! Distance: {distanceToPlayer:F2}");
