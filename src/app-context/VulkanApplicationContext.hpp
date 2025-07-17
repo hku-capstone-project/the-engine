@@ -55,7 +55,7 @@ class VulkanApplicationContext {
     [[nodiscard]] inline const std::vector<VkImageView> &getSwapchainImageViews() const {
         return _swapchainImageViews;
     }
-    [[nodiscard]] inline size_t getSwapchainImagesCount() const { return _swapchainImages.size(); }
+    [[nodiscard]] size_t getSwapchainImagesCount() const { return _swapchainImages.size(); }
     [[nodiscard]] inline const VkFormat &getSwapchainImageFormat() const {
         return _swapchainSurfaceFormat.format;
     }
@@ -78,6 +78,9 @@ class VulkanApplicationContext {
 
     [[nodiscard]] const VkSampleCountFlagBits &getMsaaSample() const { return _msaaSamples; }
     [[nodiscard]] const VkFormat &getDepthFormat() const { return _depthFormat; }
+
+    [[nodiscard]] VkCommandBuffer beginSingleTimeCommands() const;
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer) const;
 
   private:
     // stores the indices of each queue family, they might not overlap

@@ -92,8 +92,15 @@ class Renderer {
         std::unique_ptr<Image> baseColor;
         std::unique_ptr<Image> normalMap;
         std::unique_ptr<Image> metalRoughness;
+        std::unique_ptr<Image> emissive;
     };
-    std::vector<ModelImages> _modelImages{};
+    std::vector<std::vector<ModelImages>> _modelImages{};  // per model per mesh
+
+    std::unique_ptr<Sampler> _defaultSampler = nullptr;
+    std::unique_ptr<Image> _defaultBaseColorTexture = nullptr;
+    std::unique_ptr<Image> _defaultNormalTexture = nullptr;
+    std::unique_ptr<Image> _defaultMetalRoughnessTexture = nullptr;
+    std::unique_ptr<Image> _defaultEmissiveTexture = nullptr;
 
     VkRenderPass _renderPass;
 
@@ -109,7 +116,7 @@ class Renderer {
 
     // buffers
     std::vector<std::unique_ptr<BufferBundle>> _renderInfoBufferBundles;
-    std::vector<std::unique_ptr<DescriptorSetBundle>> _descriptorSetBundles;
+    std::vector<std::vector<std::unique_ptr<DescriptorSetBundle>>> _descriptorSetBundles;
     std::vector<std::unique_ptr<BufferBundle>> _materialBufferBundles;
     std::vector<std::unique_ptr<BufferBundle>> _instanceBufferBundles;
 
@@ -128,7 +135,9 @@ class Renderer {
     void _createModelImages();
     void _createBuffersAndBufferBundles();
     void _updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 model_matrix);
-    void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex,
+    void _updateMaterialData(uint32_t currentFrame, size_t modelIndex,
                                        const glm::vec3 &color, float metallic, float roughness,
                                        float occlusion, const glm::vec3 &emissive);
+    void _createDefaultTextures();
+    void _uploadTextureData(Image *image, const void *pixelData);  // 新增helper上传像素
 };

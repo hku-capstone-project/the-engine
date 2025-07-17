@@ -16,6 +16,10 @@ struct S_MaterialInfo {
     float occlusion;      // offset 20, size 4
     vec3 emissive;   // offset 24, size 12
     float padding;        // offset 36, size 4 (填充到 16 字节对齐)
+    int hasBaseColorTex;
+    int hasNormalTex;
+    int hasMetalRoughnessTex;
+    int hasEmissiveTex;
 };
 
 #endif // SHARED_VARIABLES_GLSL

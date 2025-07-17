@@ -1,3 +1,4 @@
+// ModelLoader.cpp
 #include "ModelLoader.hpp"
 
 #include "utils/incl/GlmIncl.hpp" // IWYU pragma: export
@@ -8,33 +9,29 @@
 #include "assimp/scene.h"
 #include <functional> // For std::function
 
-// The return type is changed to std::optional<ModelAttributes>
 std::optional<ModelAttributes> ModelLoader::loadModelFromPath(const std::string &filePath,
                                                               Logger *logger) {
     Assimp::Importer importer;
-    // Added more robust post-processing flags, common for real-time rendering.
     const unsigned int flags = aiProcess_Triangulate | aiProcess_GenNormals |
                                aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices |
                                aiProcess_SortByPType;
 
     const aiScene *scene = importer.ReadFile(filePath, flags);
 
-    // Check for errors: scene is null, root node is null, or scene is marked incomplete.
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        // Log the specific error message from Assimp.
         logger->error("Failed to load model from path: {}. Assimp error: {}", filePath,
                       importer.GetErrorString());
-        return std::nullopt; // Return an empty optional to indicate failure.
+        return std::nullopt;
     }
 
     ModelAttributes model;
     std::function<void(aiNode *)> processNode = [&](aiNode *node) {
-        // Process all the node's meshes
         for (uint32_t i = 0; i < node->mNumMeshes; i++) {
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-            // Reserve space in advance to avoid multiple reallocations
-            model.vertices.reserve(model.vertices.size() + mesh->mNumVertices);
-            model.indices.reserve(model.indices.size() + mesh->mNumFaces * 3);
+            MeshAttribute meshAttr;
+            uint32_t vertexStart = static_cast<uint32_t>(meshAttr.vertices.size());
+            meshAttr.vertices.reserve(meshAttr.vertices.size() + mesh->mNumVertices);
+            meshAttr.indices.reserve(meshAttr.indices.size() + mesh->mNumFaces * 3);
 
             for (uint32_t j = 0; j < mesh->mNumVertices; j++) {
                 Vertex vertex{};
@@ -44,29 +41,51 @@ std::optional<ModelAttributes> ModelLoader::loadModelFromPath(const std::string 
                     vertex.normal = {mesh->mNormals[j].x, mesh->mNormals[j].y, mesh->mNormals[j].z};
                 }
 
-                // Check if the mesh has texture coordinates
                 if (mesh->mTextureCoords[0]) {
                     vertex.texCoord = {mesh->mTextureCoords[0][j].x, mesh->mTextureCoords[0][j].y};
-                    // Also check for tangents, which are needed for normal mapping
                     if (mesh->HasTangentsAndBitangents()) {
-                        vertex.tangent = {mesh->mTangents[j].x, mesh->mTangents[j].y,
-                                          mesh->mTangents[j].z, 1.0f};
+                        glm::vec3 t = {mesh->mTangents[j].x, mesh->mTangents[j].y, mesh->mTangents[j].z};
+                        glm::vec3 b = {mesh->mBitangents[j].x, mesh->mBitangents[j].y, mesh->mBitangents[j].z};
+                        glm::vec3 n = vertex.normal;
+                        float handedness = glm::dot(glm::cross(n, t), b) < 0.0f ? -1.0f : 1.0f;
+                        vertex.tangent = {t.x, t.y, t.z, handedness};
                     }
                 } else {
                     vertex.texCoord = {0.0f, 0.0f};
                 }
-                model.vertices.push_back(vertex);
+                meshAttr.vertices.push_back(vertex);
             }
 
-            // Process indices
             for (uint32_t j = 0; j < mesh->mNumFaces; j++) {
                 aiFace face = mesh->mFaces[j];
                 for (uint32_t k = 0; k < face.mNumIndices; k++) {
-                    model.indices.push_back(face.mIndices[k]);
+                    meshAttr.indices.push_back(face.mIndices[k] + vertexStart);
                 }
             }
+
+            // Extract texture paths for this mesh's material
+            aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
+            std::string directory = filePath.substr(0, filePath.find_last_of('/')) + "/";
+            aiString aiPath;
+
+            if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &aiPath) == AI_SUCCESS) {
+                meshAttr.baseColorTexturePath = directory + aiPath.data;
+            }
+
+            if (mat->GetTexture(aiTextureType_NORMALS, 0, &aiPath) == AI_SUCCESS) {
+                meshAttr.normalTexturePath = directory + aiPath.data;
+            }
+
+            if (mat->GetTexture(aiTextureType_UNKNOWN, 0, &aiPath) == AI_SUCCESS) {
+                meshAttr.metallicRoughnessTexturePath = directory + aiPath.data;
+            }
+
+            if (mat->GetTexture(aiTextureType_EMISSIVE, 0, &aiPath) == AI_SUCCESS) {
+                meshAttr.emissiveTexturePath = directory + aiPath.data;
+            }
+
+            model.meshes.push_back(meshAttr);
         }
-        // Recursively process each of the children nodes
         for (uint32_t i = 0; i < node->mNumChildren; i++) {
             processNode(node->mChildren[i]);
         }
@@ -74,10 +93,8 @@ std::optional<ModelAttributes> ModelLoader::loadModelFromPath(const std::string 
 
     processNode(scene->mRootNode);
 
-    logger->info("New Model Loaded: {}", filePath);
-    logger->info("Vertices size: {}", model.vertices.size());
-    logger->info("Indices size: {}", model.indices.size());
+    logger->info("New Scene Model Loaded: {}", filePath);
+    logger->info("Meshes count: {}", model.meshes.size());
 
-    // On success, return the populated model attributes, automatically wrapped in std::optional.
     return model;
 }

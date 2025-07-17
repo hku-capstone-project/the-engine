@@ -1,35 +1,42 @@
+// Model.cpp
 #include "Model.hpp"
+
 #include "app-context/VulkanApplicationContext.hpp"
 #include "utils/logger/Logger.hpp"
 
-#include <string>
-
 Model::Model(VulkanApplicationContext *appContext, Logger *logger, const std::string &filePath)
     : _appContext(appContext), _logger(logger) {
-    std::optional<ModelAttributes> attr = ModelLoader::loadModelFromPath(filePath, _logger);
-    if (!attr) {
-        _logger->error("Failed to load model from path: {}", filePath);
+    auto attrsOpt = ModelLoader::loadModelFromPath(filePath, logger);
+    if (!attrsOpt.has_value()) {
+        logger->error("Failed to load model: {}", filePath);
         return;
     }
-    vertices                = attr->vertices;
-    indices                 = attr->indices;
-    vertCnt                 = static_cast<uint32_t>(vertices.size());
-    size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
-    vertexBuffer            = std::make_shared<Buffer>(_appContext, vertexBufferSize,
-                                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                                                           VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                                       MemoryStyle::kDedicated);
-    vertexBuffer->fillData(vertices.data());
-    idxCnt                 = static_cast<uint32_t>(indices.size());
-    size_t indexBufferSize = indices.size() * sizeof(uint32_t);
-    indexBuffer            = std::make_shared<Buffer>(_appContext, indexBufferSize,
-                                                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                                                          VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                                      MemoryStyle::kDedicated);
-    indexBuffer->fillData(indices.data());
+    auto attrs = attrsOpt.value();
+
+    for (const auto& mesh : attrs.meshes) {
+        vertices.push_back(mesh.vertices);
+        indices.push_back(mesh.indices);
+
+        auto vb = std::make_shared<Buffer>(appContext, mesh.vertices.size() * sizeof(Vertex),
+                                           VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, MemoryStyle::kDedicated);
+        vb->fillData(mesh.vertices.data());
+        vertexBuffers.push_back(vb);
+
+        auto ib = std::make_shared<Buffer>(appContext, mesh.indices.size() * sizeof(uint32_t),
+                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT, MemoryStyle::kDedicated);
+        ib->fillData(mesh.indices.data());
+        indexBuffers.push_back(ib);
+
+        vertCnts.push_back(static_cast<uint32_t>(mesh.vertices.size()));
+        idxCnts.push_back(static_cast<uint32_t>(mesh.indices.size()));
+
+        baseColorTexturePaths.push_back(mesh.baseColorTexturePath);
+        normalTexturePaths.push_back(mesh.normalTexturePath);
+        metallicRoughnessTexturePaths.push_back(mesh.metallicRoughnessTexturePath);
+        emissiveTexturePaths.push_back(mesh.emissiveTexturePath);
+    }
 }
 
 Model::~Model() {
-    vertexBuffer = nullptr;
-    indexBuffer  = nullptr;
+    // Cleanup if necessary
 }

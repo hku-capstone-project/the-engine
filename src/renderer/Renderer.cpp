@@ -54,6 +54,7 @@ Renderer::Renderer(VulkanApplicationContext *appContext, Logger *logger, size_t 
         }
     }
 
+    _createDefaultTextures();
     _createModelImages();
     _createBuffersAndBufferBundles();
     _createDescriptorSetBundles();
@@ -85,45 +86,126 @@ void Renderer::_createModelImages() {
         Sampler::AddressMode::kClampToEdge  // W
     };
 
-    auto meshes = RuntimeBridge::getRuntimeApplication().getAllMeshes();
-
     for (size_t i = 0; i < _models.size(); ++i) {
-        ModelImages modelImages;
+        std::vector<ModelImages> modelMeshesImages;
+        auto &model = *_models[i];
 
-        // Get the mesh ID for this model index
-        int meshId = -1;
-        if (i < meshes.size()) {
-            meshId = meshes[i].first;
+        for (size_t j = 0; j < model.baseColorTexturePaths.size(); ++j) {
+            ModelImages images;
+            images.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
+
+            // baseColor
+            const std::string &path = model.baseColorTexturePaths[j];
+            if (!path.empty()) {
+                auto tempImage = std::make_unique<Image>(_appContext, _logger, path,
+                                                         VK_IMAGE_USAGE_SAMPLED_BIT |
+                                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                                         images.sharedSampler->getVkSampler());
+                if (tempImage->getVkImage() != VK_NULL_HANDLE) {
+                    images.baseColor = std::move(tempImage);
+                } else {
+                    _logger->warn("Failed to load baseColor texture: {}, using default", path);
+                    images.baseColor = std::make_unique<Image>(
+                        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_SRGB,
+                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                        images.sharedSampler->getVkSampler());
+                    std::array<uint8_t, 4> pixel = {255, 255, 255, 255};
+                    _uploadTextureData(images.baseColor.get(), pixel.data());
+                }
+            } else {
+                images.baseColor = std::make_unique<Image>(
+                    _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_SRGB,
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                    images.sharedSampler->getVkSampler());
+                std::array<uint8_t, 4> pixel = {255, 255, 255, 255};
+                _uploadTextureData(images.baseColor.get(), pixel.data());
+            }
+
+            // normalMap
+            const std::string &normalPath = model.normalTexturePaths[j];
+            if (!normalPath.empty()) {
+                auto tempImage = std::make_unique<Image>(_appContext, _logger, normalPath,
+                                                         VK_IMAGE_USAGE_SAMPLED_BIT |
+                                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                                         images.sharedSampler->getVkSampler());
+                if (tempImage->getVkImage() != VK_NULL_HANDLE) {
+                    images.normalMap = std::move(tempImage);
+                } else {
+                    _logger->warn("Failed to load normal texture: {}, using default", normalPath);
+                    images.normalMap = std::make_unique<Image>(
+                        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
+                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                        images.sharedSampler->getVkSampler());
+                    std::array<uint8_t, 4> pixel = {128, 128, 255, 255};
+                    _uploadTextureData(images.normalMap.get(), pixel.data());
+                }
+            } else {
+                images.normalMap = std::make_unique<Image>(
+                    _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                    images.sharedSampler->getVkSampler());
+                std::array<uint8_t, 4> pixel = {128, 128, 255, 255};
+                _uploadTextureData(images.normalMap.get(), pixel.data());
+            }
+
+            // metalRoughness
+            const std::string &mrPath = model.metallicRoughnessTexturePaths[j];
+            if (!mrPath.empty()) {
+                auto tempImage = std::make_unique<Image>(_appContext, _logger, mrPath,
+                                                         VK_IMAGE_USAGE_SAMPLED_BIT |
+                                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                                         images.sharedSampler->getVkSampler());
+                if (tempImage->getVkImage() != VK_NULL_HANDLE) {
+                    images.metalRoughness = std::move(tempImage);
+                } else {
+                    _logger->warn("Failed to load metalRoughness texture: {}, using default",
+                                  mrPath);
+                    images.metalRoughness = std::make_unique<Image>(
+                        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
+                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                        images.sharedSampler->getVkSampler());
+                    std::array<uint8_t, 4> pixel = {0, 255, 0, 255};
+                    _uploadTextureData(images.metalRoughness.get(), pixel.data());
+                }
+            } else {
+                images.metalRoughness = std::make_unique<Image>(
+                    _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                    images.sharedSampler->getVkSampler());
+                std::array<uint8_t, 4> pixel = {0, 255, 0, 255};
+                _uploadTextureData(images.metalRoughness.get(), pixel.data());
+            }
+
+            // emissive
+            const std::string &emPath = model.emissiveTexturePaths[j];
+            if (!emPath.empty()) {
+                auto tempImage = std::make_unique<Image>(_appContext, _logger, emPath,
+                                                         VK_IMAGE_USAGE_SAMPLED_BIT |
+                                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                                         images.sharedSampler->getVkSampler());
+                if (tempImage->getVkImage() != VK_NULL_HANDLE) {
+                    images.emissive = std::move(tempImage);
+                } else {
+                    _logger->warn("Failed to load emissive texture: {}, using default", emPath);
+                    images.emissive = std::make_unique<Image>(
+                        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_SRGB,
+                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                        images.sharedSampler->getVkSampler());
+                    std::array<uint8_t, 4> pixel = {0, 0, 0, 255};
+                    _uploadTextureData(images.emissive.get(), pixel.data());
+                }
+            } else {
+                images.emissive = std::make_unique<Image>(
+                    _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_SRGB,
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                    images.sharedSampler->getVkSampler());
+                std::array<uint8_t, 4> pixel = {0, 0, 0, 255};
+                _uploadTextureData(images.emissive.get(), pixel.data());
+            }
+
+            modelMeshesImages.push_back(std::move(images));
         }
-
-        // disable all textures for now
-        // if (meshId == 0) {
-        //     // Monkey model - no textures
-        //     modelImages.sharedSampler  = nullptr;
-        //     modelImages.baseColor      = nullptr;
-        //     modelImages.normalMap      = nullptr;
-        //     modelImages.metalRoughness = nullptr;
-        // } else {
-        //     // Sword models - has textures
-        //     modelImages.sharedSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
-
-        //     std::string texturePath =
-        //         kPathToResourceFolder + "models/sci_sword/textures/blade_baseColor.png";
-        //     modelImages.baseColor = std::make_unique<Image>(
-        //         _appContext, _logger, texturePath,
-        //         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        //         modelImages.sharedSampler->getVkSampler());
-
-        //     modelImages.normalMap      = nullptr;
-        //     modelImages.metalRoughness = nullptr;
-        // }
-
-        modelImages.sharedSampler  = nullptr;
-        modelImages.baseColor      = nullptr;
-        modelImages.normalMap      = nullptr;
-        modelImages.metalRoughness = nullptr;
-
-        _modelImages.push_back(std::move(modelImages));
+        _modelImages.push_back(std::move(modelMeshesImages));
     }
 }
 
@@ -165,29 +247,24 @@ void Renderer::_createDescriptorSetBundles() {
         return;
     }
 
-    Image *defaultTexture = nullptr;
-    for (size_t i = 0; i < _modelImages.size(); ++i) {
-        if (_modelImages[i].baseColor != nullptr) {
-            defaultTexture = _modelImages[i].baseColor.get();
-            break;
-        }
-    }
-
     for (size_t i = 0; i < _models.size(); ++i) {
-        auto descriptorSetBundle = std::make_unique<DescriptorSetBundle>(
-            _appContext, _framesInFlight,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-        descriptorSetBundle->bindUniformBufferBundle(0, _renderInfoBufferBundles[i].get());
-        descriptorSetBundle->bindUniformBufferBundle(2, _materialBufferBundles[i].get());
+        std::vector<std::unique_ptr<DescriptorSetBundle>> modelDescBundles;
+        for (size_t j = 0; j < _modelImages[i].size(); ++j) {
+            auto descBundle = std::make_unique<DescriptorSetBundle>(
+                _appContext, _framesInFlight,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+            descBundle->bindUniformBufferBundle(0, _renderInfoBufferBundles[i].get());
+            descBundle->bindUniformBufferBundle(2, _materialBufferBundles[i].get());
 
-        if (_modelImages[i].baseColor != nullptr) {
-            descriptorSetBundle->bindImageSampler(1, _modelImages[i].baseColor.get());
-        } else if (defaultTexture != nullptr) {
-            descriptorSetBundle->bindImageSampler(1, defaultTexture);
+            descBundle->bindImageSampler(1, _modelImages[i][j].baseColor.get());
+            descBundle->bindImageSampler(3, _modelImages[i][j].normalMap.get());
+            descBundle->bindImageSampler(4, _modelImages[i][j].metalRoughness.get());
+            descBundle->bindImageSampler(5, _modelImages[i][j].emissive.get());
+
+            descBundle->create();
+            modelDescBundles.push_back(std::move(descBundle));
         }
-
-        descriptorSetBundle->create();
-        _descriptorSetBundles.push_back(std::move(descriptorSetBundle));
+        _descriptorSetBundles.push_back(std::move(modelDescBundles));
     }
 }
 
@@ -268,7 +345,7 @@ void Renderer::_createRenderPass() {
 
 void Renderer::_createGraphicsPipeline() {
     DescriptorSetBundle *referenceDescriptorSet =
-        _descriptorSetBundles.empty() ? nullptr : _descriptorSetBundles[0].get();
+        _descriptorSetBundles.empty() ? nullptr : _descriptorSetBundles[0][0].get();
 
     if (referenceDescriptorSet == nullptr) {
         _logger->warn(
@@ -437,6 +514,12 @@ void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex, con
     materialInfo.emissive  = emissive;
     materialInfo.padding   = 0.0f; // 填充对齐
 
+    auto &model                  = *_models[modelIndex];
+    materialInfo.hasBaseColorTex = !model.baseColorTexturePaths.empty() ? 1 : 0; // 假设共享flags
+    materialInfo.hasNormalTex    = !model.normalTexturePaths.empty() ? 1 : 0;
+    materialInfo.hasMetalRoughnessTex = !model.metallicRoughnessTexturePaths.empty() ? 1 : 0;
+    materialInfo.hasEmissiveTex       = !model.emissiveTexturePaths.empty() ? 1 : 0;
+
     _materialBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&materialInfo);
 }
 
@@ -463,7 +546,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
     auto setupStart = std::chrono::steady_clock::now();
     auto &cmdBuffer = _drawingCommandBuffers[currentFrame];
 
-    // ImageDimensions imgDimensions = _renderTargetImage->getDimensions();
     VkExtent2D currentSwapchainExtent = _appContext->getSwapchainExtent();
 
     VkCommandBufferBeginInfo cmdBufferBeginInfo{};
@@ -472,8 +554,8 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
     cmdBufferBeginInfo.pInheritanceInfo = nullptr;
 
     std::array<VkClearValue, 2> clear_vals = {};
-    clear_vals[0].color        = {{0.1f, 0.1f, 0.1f, 1.0f}}; // 稍微亮一点的背景色
-    clear_vals[1].depthStencil = {1.0f, 0};
+    clear_vals[0].color                    = {{0.1f, 0.1f, 0.1f, 1.0f}}; // 稍微亮一点的背景色
+    clear_vals[1].depthStencil             = {1.0f, 0};
 
     VkRenderPassBeginInfo rdrPassBeginInfo{};
     rdrPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -516,8 +598,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         return;
     }
 
-    // _logger->info("Rendering {} entities", entityRenderData.size());
-
     // Entity grouping timing
     auto groupingStart = std::chrono::steady_clock::now();
     // Group entities by modelID
@@ -542,8 +622,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         const size_t instanceCount = entities.size();
 
         if (instanceCount == 0) continue;
-
-        // _logger->info("Rendering {} instances of model {}", instanceCount, modelId);
 
         // Instance data preparation timing
         auto instancePrepStart = std::chrono::steady_clock::now();
@@ -591,27 +669,34 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         auto bufferUpdateEnd = std::chrono::steady_clock::now();
         bufferUpdateTime += _getTimeInMilliseconds(bufferUpdateStart, bufferUpdateEnd);
 
-        // GPU command recording timing
         auto gpuCommandStart = std::chrono::steady_clock::now();
-        // Bind descriptor sets
-        vkCmdBindDescriptorSets(
-            cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1,
-            &_descriptorSetBundles[modelIndex]->getDescriptorSet(currentFrame), 0, nullptr);
+        // Bind descriptor sets - but since per mesh, moved inside mesh loop
 
-        // Bind vertex buffer and instance buffer
-        VkBuffer vertexBuffers[] = {
-            _models[modelIndex]->vertexBuffer->getVkBuffer(),
+        // Bind instance buffer (binding 1 for instance data)
+        VkBuffer instanceBuffers[] = {
             _instanceBufferBundles[modelIndex]->getBuffer(currentFrame)->getVkBuffer()};
-        VkDeviceSize offsets[] = {0, 0};
-        vkCmdBindVertexBuffers(cmdBuffer, 0, 2, vertexBuffers, offsets);
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuffer, 1, 1, instanceBuffers, offsets);
 
-        // Bind index buffer
-        vkCmdBindIndexBuffer(cmdBuffer, _models[modelIndex]->indexBuffer->getVkBuffer(), 0,
-                             VK_INDEX_TYPE_UINT32);
+        // Loop over meshes in the model
+        auto &model = *_models[modelIndex];
+        for (size_t meshIdx = 0; meshIdx < model.idxCnts.size(); ++meshIdx) {
+            // Bind per mesh descriptor set
+            vkCmdBindDescriptorSets(
+                cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline->getPipelineLayout(), 0, 1,
+                &_descriptorSetBundles[modelIndex][meshIdx]->getDescriptorSet(currentFrame), 0,
+                nullptr);
 
-        // Draw all instances with a single draw call
-        vkCmdDrawIndexed(cmdBuffer, _models[modelIndex]->idxCnt,
-                         static_cast<uint32_t>(instanceCount), 0, 0, 0);
+            // Bind vertex buffer (binding 0 for vertex data)
+            VkBuffer vertexBuffers[] = {model.vertexBuffers[meshIdx]->getVkBuffer()};
+            vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
+
+            vkCmdBindIndexBuffer(cmdBuffer, model.indexBuffers[meshIdx]->getVkBuffer(), 0,
+                                 VK_INDEX_TYPE_UINT32);
+
+            vkCmdDrawIndexed(cmdBuffer, model.idxCnts[meshIdx],
+                             static_cast<uint32_t>(instanceCount), 0, 0, 0);
+        }
 
         auto gpuCommandEnd = std::chrono::steady_clock::now();
         gpuCommandTime += _getTimeInMilliseconds(gpuCommandStart, gpuCommandEnd);
@@ -685,8 +770,8 @@ void Renderer::_recordDeliveryCommandBuffers() {
         // 转换图像布局
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-        barrier.newLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.image                           = _appContext->getSwapchainImages()[i];
@@ -695,13 +780,107 @@ void Renderer::_recordDeliveryCommandBuffers() {
         barrier.subresourceRange.levelCount     = 1;
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount     = 1;
-        barrier.srcAccessMask                   = 0;
-        barrier.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstAccessMask                   = 0;
 
-        vkCmdPipelineBarrier(_deliveryCommandBuffers[i], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0,
+        vkCmdPipelineBarrier(_deliveryCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0,
                              nullptr, 1, &barrier);
 
         vkEndCommandBuffer(_deliveryCommandBuffers[i]);
     }
+}
+
+void Renderer::_createDefaultTextures() {
+    auto samplerSettings = Sampler::Settings{
+        Sampler::AddressMode::kClampToEdge, // U
+        Sampler::AddressMode::kClampToEdge, // V
+        Sampler::AddressMode::kClampToEdge  // W
+    };
+    _defaultSampler = std::make_unique<Sampler>(_appContext, samplerSettings);
+
+    // 默认baseColor: 白色
+    _defaultBaseColorTexture = std::make_unique<Image>(
+        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_SRGB,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        _defaultSampler->getVkSampler());
+    std::array<uint8_t, 4> whitePixel = {255, 255, 255, 255};
+    _uploadTextureData(_defaultBaseColorTexture.get(), whitePixel.data());
+
+    // 默认normal: (0.5, 0.5, 1.0)
+    _defaultNormalTexture = std::make_unique<Image>(
+        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        _defaultSampler->getVkSampler());
+    std::array<uint8_t, 4> normalPixel = {128, 128, 255, 255};
+    _uploadTextureData(_defaultNormalTexture.get(), normalPixel.data());
+
+    // 默认metalRoughness: (0, 1, 0, 1) - 非金属、粗糙
+    _defaultMetalRoughnessTexture = std::make_unique<Image>(
+        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        _defaultSampler->getVkSampler());
+    std::array<uint8_t, 4> mrPixel = {0, 255, 0, 255};
+    _uploadTextureData(_defaultMetalRoughnessTexture.get(), mrPixel.data());
+
+    // 默认emissive: 黑色
+    _defaultEmissiveTexture = std::make_unique<Image>(
+        _appContext, _logger, ImageDimensions{1, 1, 1}, VK_FORMAT_R8G8B8A8_SRGB,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        _defaultSampler->getVkSampler());
+    std::array<uint8_t, 4> blackPixel = {0, 0, 0, 255};
+    _uploadTextureData(_defaultEmissiveTexture.get(), blackPixel.data());
+}
+
+void Renderer::_uploadTextureData(Image *image, const void *pixelData) {
+    if (image->getVkImage() == VK_NULL_HANDLE) return;
+    // 创建staging buffer
+    Buffer stagingBuffer(_appContext, 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                         MemoryStyle::kHostVisible);
+    stagingBuffer.fillData(pixelData);
+
+    // 用命令缓冲区复制到image（假设用单次命令缓冲区）
+    VkCommandBuffer cmd = _appContext->beginSingleTimeCommands();
+
+    VkBufferImageCopy copyRegion{};
+    copyRegion.bufferOffset                    = 0;
+    copyRegion.bufferRowLength                 = 0;
+    copyRegion.bufferImageHeight               = 0;
+    copyRegion.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.mipLevel       = 0;
+    copyRegion.imageSubresource.baseArrayLayer = 0;
+    copyRegion.imageSubresource.layerCount     = 1;
+    copyRegion.imageOffset                     = {0, 0, 0};
+    copyRegion.imageExtent                     = {1, 1, 1};
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image                           = image->getVkImage();
+    barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel   = 0;
+    barrier.subresourceRange.levelCount     = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount     = 1;
+    barrier.srcAccessMask                   = 0;
+    barrier.dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                         0, nullptr, 0, nullptr, 1, &barrier);
+
+    vkCmdCopyBufferToImage(cmd, stagingBuffer.getVkBuffer(), image->getVkImage(),
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+    barrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    _appContext->endSingleTimeCommands(cmd);
 }

@@ -40,8 +40,8 @@ namespace Game
         private static int _killCount = 0;  // 全局击杀计数器
         
         // 敌人生成变量
-        private static int _enemyCount = 10000;  // 敌人数量
-        private static float _enemySpawnRadius = 100.0f;  // 敌人生成半径（10x默认）
+        private static int _enemyCount = 10;  // 敌人数量
+        private static float _enemySpawnRadius = 10.0f;  // 敌人生成半径（10x默认）
         private static System.Diagnostics.Stopwatch _creationStopwatch = new System.Diagnostics.Stopwatch();
         private static List<uint> _entitiesToDestroy = new List<uint>();  // 待销毁的实体列表
         
@@ -103,6 +103,17 @@ namespace Game
             _creationStopwatch.Stop();
             Log($"✅ Enemy rat creation completed in {_creationStopwatch.ElapsedMilliseconds}ms");
             Log($"⚡ Average time per enemy: {_creationStopwatch.ElapsedMilliseconds / (double)_enemyCount:F3}ms");
+
+            // === 创建场景实体 ===
+            uint sceneId = EngineBindings.CreateEntity();
+            var sceneTransform = new Transform { position = new Vector3(1.0f, 1.0f, 1.0f),rotation = new Vector3(3.14f/2.0f,0f,0f), scale = new Vector3(10f) };
+            EngineBindings.AddTransform(sceneId, sceneTransform);
+            var sceneMesh = new Mesh { modelId = 2 };
+            EngineBindings.AddMesh(sceneId, sceneMesh);
+            // 添加默认材质（根据需要调整）
+            var sceneMaterial = new Material { color = new Vector3(1.0f, 1.0f, 1.0f)*.5f, metallic = 0.0f, roughness = 1.0f, occlusion = 0.0f, emissive = new Vector3(0.0f) };
+            EngineBindings.AddMaterial(sceneId, sceneMaterial);
+            Log($"🌆 Created SCENE entity with ID {sceneId} using modelId 4");
 
             // === 创建摄像机实体 ===
             CreateGameCamera();
@@ -172,9 +183,8 @@ namespace Game
             var meshDefinitions = new List<MeshDefinition>
             {
                 new MeshDefinition { modelId = 0, modelPath = "models/blender-monkey/monkey.obj" },
-                new MeshDefinition { modelId = 1, modelPath = "models/sci_sword/sword.gltf" },
-                new MeshDefinition { modelId = 2, modelPath = "models/chest/Futuristic_Chest_1.gltf" },
-                new MeshDefinition { modelId = 3, modelPath = "models/rat/rat_single.gltf" }
+                new MeshDefinition { modelId = 1, modelPath = "models/rat/rat_single.gltf" },
+                new MeshDefinition { modelId = 2, modelPath = "models/sci_sword/sword.gltf" }
             };
 
             // Register each mesh with the native engine
@@ -220,7 +230,7 @@ namespace Game
             // 玩家位置调试日志（降低频率）
             if (_testTimer > 2.0f)
             {
-                Log($"🐵 Player - Position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
+                // Log($"🐵 Player - Position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
             }
         }
 
@@ -230,13 +240,13 @@ namespace Game
         public static void VampirePhysicsSystem(float dt, ref Transform transform, ref Velocity velocity, ref Mesh mesh)
         {
             // 通过Model ID精确区分：0=玩家猴子，3=老鼠
-            if (mesh.modelId == 0)
+            if (mesh.modelId == 0 )
             {
                 return; // 跳过玩家（猴子模型）
             }
 
             // 只处理老鼠（模型ID为3）
-            if (mesh.modelId != 3)
+            if (mesh.modelId != 1)
             {
                 return; // 跳过其他实体
             }
@@ -266,7 +276,7 @@ namespace Game
             }
 
             // 只处理老鼠（模型ID为3）
-            if (mesh.modelId != 3)
+            if (mesh.modelId != 1)
             {
                 return; // 跳过其他实体
             }
@@ -296,16 +306,16 @@ namespace Game
                 // 调试日志（降低频率）
                 if (_testTimer > 3.0f)
                 {
-                    Log($"🐭 Rat at ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2}) " +
-                        $"chasing invincible player at ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
+                    // Log($"🐭 Rat at ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2}) " +
+                    //     $"chasing invincible player at ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2}), distance: {distanceToPlayer:F2}");
                 }
             }
             else if (distanceToPlayer <= 0.1f)
             {
                 // 老鼠撞到无敌玩家 - 标记销毁！
-                Log($"💥 Rat destroyed by invincible player! Distance: {distanceToPlayer:F2}");
-                Log($"🐭 Player position: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
-                Log($"🐭 Rat position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
+                // Log($"💥 Rat destroyed by invincible player! Distance: {distanceToPlayer:F2}");
+                // Log($"🐭 Player position: ({_playerPosition.X:F2}, {_playerPosition.Y:F2}, {_playerPosition.Z:F2})");
+                // Log($"🐭 Rat position: ({transform.position.X:F2}, {transform.position.Y:F2}, {transform.position.Z:F2})");
                 
                 // 增加击杀数
                 _killCount++;
@@ -489,8 +499,8 @@ namespace Game
             var velocity = new Velocity { velocity = new Vector3(0, 0, 0) };
             EngineBindings.AddVelocity(entityId, velocity);
 
-            // Add rat mesh (modelId = 3)
-            var mesh = new Mesh { modelId = 3 };
+            // Add rat mesh (modelId = 1)
+            var mesh = new Mesh { modelId = 1 };
             EngineBindings.AddMesh(entityId, mesh);
 
             // Add Material component with rat-like colors
@@ -580,7 +590,7 @@ namespace Game
         public static void CleanupSystem(float dt, ref Transform transform, ref Mesh mesh)
         {
             // 只处理老鼠（模型ID为3）
-            if (mesh.modelId != 3)
+            if (mesh.modelId != 1)
             {
                 return;
             }

@@ -1,3 +1,4 @@
+// ModelLoader.hpp
 #pragma once
 
 #include <array>
@@ -52,12 +53,19 @@ struct Vertex {
     }
 };
 
-struct ModelAttributes {
+struct MeshAttribute {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
+    std::string baseColorTexturePath;
+    std::string normalTexturePath;
+    std::string metallicRoughnessTexturePath;
+    std::string emissiveTexturePath;
+};
+
+struct ModelAttributes {
+    std::vector<MeshAttribute> meshes;
 };
 
 namespace ModelLoader {
-// The function now returns an optional, which will be empty if loading fails.
 std::optional<ModelAttributes> loadModelFromPath(const std::string &filePath, Logger *logger);
 }; // namespace ModelLoader

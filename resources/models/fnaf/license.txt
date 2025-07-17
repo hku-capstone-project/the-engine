@@ -1,0 +1,11 @@
+Model Information:
+* title:	Fnaf Scene (thas)
+* source:	https://sketchfab.com/3d-models/fnaf-scene-thas-9c334bf8c6084e3c92a486534797953a
+* author:	Stepanaan (https://sketchfab.com/Stepanaan)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Fnaf Scene (thas)" (https://sketchfab.com/3d-models/fnaf-scene-thas-9c334bf8c6084e3c92a486534797953a) by Stepanaan (https://sketchfab.com/Stepanaan) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
