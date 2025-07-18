@@ -10,11 +10,13 @@ layout(location = 4) in vec4 fragTangent;
 
 layout(location = 0) out vec4 outColor;
 
-const float ambientStrength = 0.62;
-const float emissiveStrength = 0.5;
+const float ambientStrength = 0.1;
+const float PI = 3.14159265359;
+const float RECIPROCAL_PI = 1.0 / PI;
 
 #include "include/sharedVariables.glsl"
 
+// 纹理绑定
 layout(set = 0, binding = 0) uniform U_RenderInfo { S_RenderInfo data; } renderInfo;
 layout(set = 0, binding = 1) uniform sampler2D baseColorSampler;
 layout(set = 0, binding = 3) uniform sampler2D normalSampler;
@@ -22,57 +24,93 @@ layout(set = 0, binding = 4) uniform sampler2D metalRoughnessSampler;
 layout(set = 0, binding = 5) uniform sampler2D emissiveSampler;
 layout(set = 0, binding = 2) uniform U_MaterialInfo { S_MaterialInfo data; } materialInfo;
 
-// 定义多个点光源
-struct PointLight {
-    vec3 position;
-    vec3 color;
-    float intensity;
-};
+// PBR BRDF函数
+float DistributionGGX(vec3 N, vec3 H, float roughness) {
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
 
-#define NUM_LIGHTS 3
-const PointLight lights[NUM_LIGHTS] = PointLight[](
-    PointLight(vec3(5.0, 5.0, 5.0), vec3(1.0, 0.95, 0.9), 1.0),
-    PointLight(vec3(-5.0, 3.0, -2.0), vec3(0.8, 0.8, 1.0), 0.8),
-    PointLight(vec3(0.0, -4.0, 3.0), vec3(1.0, 0.7, 0.7), 0.6)
-);
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
 
-const vec3 period = vec3(20.0, 20.0, 20.0);
+    return nom / denom;
+}
 
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
 
-// Hemisphere light function for sky light simulation
-vec3 hemisphere_light(vec3 normal, vec3 sky, vec3 ground, float scaleSky, float scaleGround) {
-    float t = dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;  // Remap dot product to 0-1
-    return mix(ground * scaleGround, sky * scaleSky, smoothstep(0.0, 1.0, t)); // 使用smoothstep使过渡更柔和
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// 修改后的天空光函数，增加albedo参数
+vec3 calculateSkyLight(vec3 normal, vec3 viewDir, vec3 F0, float roughness, float metallic, vec3 albedo) {
+    // 天空颜色梯度 (从地平线到天顶)
+    vec3 horizonColor = vec3(0.5, 0.7, 1.0);
+    vec3 zenithColor = vec3(0.1, 0.3, 0.8);
+    float horizonBlend = pow(1.0 - abs(normal.y), 2.0);
+    vec3 skyColor = mix(zenithColor, horizonColor, horizonBlend);
+    
+    // 基于物理的环境光照
+    vec3 irradiance = skyColor * (0.5 + 0.5 * normal.y);
+    
+    // 漫反射部分
+    vec3 kS = fresnelSchlick(max(dot(normal, viewDir), 0.0), F0);
+    vec3 kD = (1.0 - kS) * (1.0 - metallic);
+    vec3 diffuse = kD * irradiance * albedo * RECIPROCAL_PI;
+    
+    // 粗糙度相关的环境镜面反射 (简化版)
+    float smoothness = 1.0 - roughness;
+    vec3 reflectVec = reflect(-viewDir, normal);
+    vec3 specular = skyColor * pow(max(dot(reflectVec, normal), 0.0), 8.0) * smoothness;
+    
+    return (diffuse + specular) * ambientStrength;
 }
 
 void main() {
+    // 材质参数获取
     vec4 baseColor = vec4(materialInfo.data.color, 1.0);
     float metallic = materialInfo.data.metallic;
     float roughness = materialInfo.data.roughness;
     float occlusion = materialInfo.data.occlusion;
-    vec3 emissive = materialInfo.data.emissive * emissiveStrength;
+    vec3 emissive = materialInfo.data.emissive;
 
     vec2 flippedTexCoord = vec2(fragTexCoord.x, 1.0 - fragTexCoord.y);
 
+    // 纹理采样
     if (materialInfo.data.hasBaseColorTex == 1) {
         baseColor = texture(baseColorSampler, flippedTexCoord);
     }
 
     if (materialInfo.data.hasMetalRoughnessTex == 1) {
         vec3 mr = texture(metalRoughnessSampler, flippedTexCoord).rgb;
-        occlusion = mr.r;
         roughness = mr.g;
         metallic = mr.b;
-    } else {
-        occlusion = 1.0;
-        roughness = 1.0;
-        metallic = 0.0;
     }
 
     if (materialInfo.data.hasEmissiveTex == 1) {
-        emissive = texture(emissiveSampler, flippedTexCoord).rgb * emissiveStrength;
+        emissive = texture(emissiveSampler, flippedTexCoord).rgb;
     }
 
+    // 法线计算
     vec3 normal = normalize(fragNormal);
     if (materialInfo.data.hasNormalTex == 1) {
         vec3 tangentNormal = texture(normalSampler, flippedTexCoord).xyz * 2.0 - 1.0;
@@ -80,68 +118,42 @@ void main() {
         vec3 B = normalize(cross(normal, T) * fragTangent.w);
         mat3 TBN = mat3(T, B, normal);
         normal = normalize(TBN * tangentNormal);
-    } 
+    }
 
     vec3 viewDir = normalize(viewPos - fragPos);
+    vec3 F0 = mix(vec3(0.04), baseColor.rgb, metallic);
 
-    // Sky light parameters (clear screen color simulation)
-    vec3 skyColor = vec3(0.3, 0.6, 0.8);  // Deeper blue sky
-    vec3 groundColor = vec3(0.3, 0.5, 0.2);  // Greenish ground
+    // 修正后的天空光照调用
+    vec3 ambient = calculateSkyLight(normal, viewDir, F0, roughness, metallic, baseColor.rgb) * occlusion;
 
-    // Hemisphere sky light as ambient + diffuse
-    vec3 skyLight = hemisphere_light(normal, skyColor, groundColor, 1.0, 0.5);
-    vec3 ambient = ambientStrength * baseColor.rgb * (1.0 - metallic) * occlusion * skyLight;
-
-    vec3 diffuse = vec3(0.0);
-    vec3 specular = vec3(0.0);
-
-    // Fresnel (Schlick approximation) - keep for specular if needed, but no directional light, so specular minimal
-    vec3 F0 = mix(vec3(0.04), baseColor.rgb, clamp(metallic, 0.0, 1.0));
-    float cosTheta = max(dot(viewDir, normal), 0.0);
-    vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-
-    // Simulate a soft directional light from sky for diffuse and specular
-    vec3 lightDir = normalize(vec3(0.0, 1.0, 0.5));  // Upward biased for sky
-    vec3 halfwayDir = normalize(lightDir + viewDir);
-
-    float diff = max(dot(normal, lightDir), 0.0);
-    diffuse += diff * baseColor.rgb * skyColor * (1.0 - metallic);
-
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0 * (1.0 - roughness)); // 降低shininess使specular更柔和
-    specular += fresnel * spec * skyColor * 0.5; // 降低specular强度
+    // 直接光照计算 (太阳)
+    vec3 Lo = vec3(0.0);
+    vec3 lightDir = normalize(vec3(0.5, 1.0, 0.5));
+    vec3 lightColor = vec3(1.0, 0.95, 0.9);
+    float lightIntensity = 5.0;
     
-    // 多光源计算（无限网格分布，只计算每个类型最近的一个）
-    vec3 half_period = period * 0.5;
-    for (int i = 0; i < NUM_LIGHTS; ++i) {
-        vec3 vec_to_base = lights[i].position - fragPos;
-        vec3 wrapped_vec_to_light = mod(vec_to_base + half_period, period) - half_period;
-        float dist = length(wrapped_vec_to_light);
-        if (dist < 0.01) continue; // 避免除零
-        vec3 lightDir = normalize(wrapped_vec_to_light);  // 修正方向，从frag到light
-        float atten = 1.0 / (1.0 + 0.1 * dist + 0.01 * dist * dist); // 添加柔和衰减，避免过亮或黑边
-        vec3 halfwayDir = normalize(lightDir + viewDir);
-
-        // 漫反射
-        float diff = max(dot(normal, lightDir), 0.0);
-        diffuse += diff * baseColor.rgb * lights[i].color * lights[i].intensity * atten * (1.0 - metallic);
-
-        // 镜面反射
-        float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0 * (1.0 - roughness)); // 降低shininess
-        specular += fresnel * spec * lights[i].color * lights[i].intensity * atten * 0.5; // 降低强度
-    }
+    // BRDF计算
+    vec3 H = normalize(viewDir + lightDir);
+    float NDF = DistributionGGX(normal, H, roughness);        
+    float G = GeometrySmith(normal, viewDir, lightDir, roughness);      
+    vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
     
-    // 加入太阳光（directional light）
-    vec3 sun_dir = normalize(vec3(0.5, 1.0, 0.3));  // 太阳方向
-    vec3 sun_color = vec3(1.0, 0.95, 0.9);
-    float sun_intensity = 1.2;
-    vec3 sun_light_dir = sun_dir;
-    vec3 sun_halfway_dir = normalize(sun_light_dir + viewDir);
-    float sun_diff = max(dot(normal, sun_light_dir), 0.0);
-    diffuse += sun_diff * baseColor.rgb * sun_color * sun_intensity * (1.0 - metallic);
-    float sun_spec = pow(max(dot(normal, sun_halfway_dir), 0.0), 32.0 * (1.0 - roughness)); // 降低shininess
-    specular += fresnel * sun_spec * sun_color * sun_intensity * 0.5; // 降低强度
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(normal, viewDir), 0.0) * max(dot(normal, lightDir), 0.0) + 0.0001;
+    vec3 specular = numerator / denominator;
     
-    // Final color
-    vec3 color = ambient + diffuse + specular + emissive;
+    vec3 kS = F;
+    vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+    
+    float NdotL = max(dot(normal, lightDir), 0.0);        
+    Lo += (kD * baseColor.rgb * RECIPROCAL_PI + specular) * lightColor * lightIntensity * NdotL;
+
+    // 最终颜色合成
+    vec3 color = ambient + Lo + emissive;
+    
+    // 色调映射和伽马校正
+    color = color / (color + vec3(1.0));
+    color = pow(color, vec3(1.0/2.2));
+    
     outColor = vec4(color, baseColor.a);
 }

@@ -226,16 +226,21 @@ void Renderer::_createBuffersAndBufferBundles() {
             _appContext, _framesInFlight, sizeof(S_RenderInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             MemoryStyle::kHostVisible));
 
-        // MaterialUBO 缓冲区
-        _materialBufferBundles.push_back(std::make_unique<BufferBundle>(
-            _appContext, _framesInFlight, sizeof(S_MaterialInfo),
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, MemoryStyle::kHostVisible));
-
         // Instance buffer for model matrices (assumes max 1000 instances per model)
         const size_t MAX_INSTANCES = 1000;
         _instanceBufferBundles.push_back(std::make_unique<BufferBundle>(
             _appContext, _framesInFlight, sizeof(glm::mat4) * MAX_INSTANCES,
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, MemoryStyle::kHostVisible));
+
+        // MaterialUBO 缓冲区 per mesh
+        std::vector<std::unique_ptr<BufferBundle>> modelMaterialBundles;
+        auto &model = *_models[i];
+        for (size_t j = 0; j < model.baseColorTexturePaths.size(); ++j) {
+            modelMaterialBundles.push_back(std::make_unique<BufferBundle>(
+                _appContext, _framesInFlight, sizeof(S_MaterialInfo),
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, MemoryStyle::kHostVisible));
+        }
+        _materialBufferBundles.push_back(std::move(modelMaterialBundles));
     }
 }
 
@@ -254,8 +259,9 @@ void Renderer::_createDescriptorSetBundles() {
                 _appContext, _framesInFlight,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
             descBundle->bindUniformBufferBundle(0, _renderInfoBufferBundles[i].get());
-            descBundle->bindUniformBufferBundle(2, _materialBufferBundles[i].get());
-
+            descBundle->bindUniformBufferBundle(2, _materialBufferBundles[i][j].get());
+            
+           
             descBundle->bindImageSampler(1, _modelImages[i][j].baseColor.get());
             descBundle->bindImageSampler(3, _modelImages[i][j].normalMap.get());
             descBundle->bindImageSampler(4, _modelImages[i][j].metalRoughness.get());
@@ -296,7 +302,7 @@ void Renderer::_createRenderPass() {
     attachments[2].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[2].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[2].finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    attachments[2].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     // Attachment Reference
     VkAttachmentReference colorAttachmentRef{};
@@ -499,11 +505,13 @@ void Renderer::_updateBufferData(size_t currentFrame, size_t modelIndex, glm::ma
     _renderInfoBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&renderInfo);
 }
 
-void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex, const glm::vec3 &color,
-                                   float metallic, float roughness, float occlusion,
-                                   const glm::vec3 &emissive) {
-    if (modelIndex >= _materialBufferBundles.size()) {
-        _logger->error("Invalid model index {} in _updateMaterialData", modelIndex);
+void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex, size_t meshIndex,
+                                   const glm::vec3 &color, float metallic, float roughness,
+                                   float occlusion, const glm::vec3 &emissive) {
+    if (modelIndex >= _materialBufferBundles.size() ||
+        meshIndex >= _materialBufferBundles[modelIndex].size()) {
+        _logger->error("Invalid model index {} or mesh index {} in _updateMaterialData", modelIndex,
+                       meshIndex);
         return;
     }
     S_MaterialInfo materialInfo{};
@@ -515,12 +523,13 @@ void Renderer::_updateMaterialData(uint32_t currentFrame, size_t modelIndex, con
     materialInfo.padding   = 0.0f; // 填充对齐
 
     auto &model                  = *_models[modelIndex];
-    materialInfo.hasBaseColorTex = !model.baseColorTexturePaths.empty() ? 1 : 0; // 假设共享flags
-    materialInfo.hasNormalTex    = !model.normalTexturePaths.empty() ? 1 : 0;
-    materialInfo.hasMetalRoughnessTex = !model.metallicRoughnessTexturePaths.empty() ? 1 : 0;
-    materialInfo.hasEmissiveTex       = !model.emissiveTexturePaths.empty() ? 1 : 0;
+    materialInfo.hasBaseColorTex = !model.baseColorTexturePaths[meshIndex].empty() ? 1 : 0;
+    materialInfo.hasNormalTex    = !model.normalTexturePaths[meshIndex].empty() ? 1 : 0;
+    materialInfo.hasMetalRoughnessTex =
+        !model.metallicRoughnessTexturePaths[meshIndex].empty() ? 1 : 0;
+    materialInfo.hasEmissiveTex = !model.emissiveTexturePaths[meshIndex].empty() ? 1 : 0;
 
-    _materialBufferBundles[modelIndex]->getBuffer(currentFrame)->fillData(&materialInfo);
+    _materialBufferBundles[modelIndex][meshIndex]->getBuffer(currentFrame)->fillData(&materialInfo);
 }
 
 void Renderer::updateCamera(const Transform &transform, const iCamera &camera) {
@@ -646,6 +655,7 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
 
             // 缩放
             finalMatrix = glm::scale(finalMatrix, entity->transform.scale);
+            // 缩放
 
             instanceMatrices.push_back(finalMatrix);
         }
@@ -662,9 +672,14 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         // Update camera and material data (shared across all instances)
         _updateBufferData(currentFrame, modelIndex,
                           glm::mat4(1.0f)); // Identity matrix since we use instance matrices
-        _updateMaterialData(currentFrame, modelIndex, firstEntity->material.color,
-                            firstEntity->material.metallic, firstEntity->material.roughness,
-                            firstEntity->material.occlusion, firstEntity->material.emissive);
+
+        // Update material data per mesh
+        auto &model = *_models[modelIndex];
+        for (size_t meshIdx = 0; meshIdx < model.idxCnts.size(); ++meshIdx) {
+            _updateMaterialData(currentFrame, modelIndex, meshIdx, firstEntity->material.color,
+                                firstEntity->material.metallic, firstEntity->material.roughness,
+                                firstEntity->material.occlusion, firstEntity->material.emissive);
+        }
 
         auto bufferUpdateEnd = std::chrono::steady_clock::now();
         bufferUpdateTime += _getTimeInMilliseconds(bufferUpdateStart, bufferUpdateEnd);
@@ -679,7 +694,6 @@ void Renderer::drawFrame(size_t currentFrame, size_t imageIndex,
         vkCmdBindVertexBuffers(cmdBuffer, 1, 1, instanceBuffers, offsets);
 
         // Loop over meshes in the model
-        auto &model = *_models[modelIndex];
         for (size_t meshIdx = 0; meshIdx < model.idxCnts.size(); ++meshIdx) {
             // Bind per mesh descriptor set
             vkCmdBindDescriptorSets(
@@ -770,7 +784,7 @@ void Renderer::_recordDeliveryCommandBuffers() {
         // 转换图像布局
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
         barrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
@@ -783,9 +797,9 @@ void Renderer::_recordDeliveryCommandBuffers() {
         barrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         barrier.dstAccessMask                   = 0;
 
-        vkCmdPipelineBarrier(_deliveryCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0,
-                             nullptr, 1, &barrier);
+        vkCmdPipelineBarrier(
+            _deliveryCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
         vkEndCommandBuffer(_deliveryCommandBuffers[i]);
     }

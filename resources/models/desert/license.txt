@@ -1,0 +1,11 @@
+Model Information:
+* title:	Rocky Desert - Terrain
+* source:	https://sketchfab.com/3d-models/rocky-desert-terrain-0abbd5ee9c404913bc815b7d59a505e3
+* author:	artfromheath (https://sketchfab.com/artfromheath)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Rocky Desert - Terrain" (https://sketchfab.com/3d-models/rocky-desert-terrain-0abbd5ee9c404913bc815b7d59a505e3) by artfromheath (https://sketchfab.com/artfromheath) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

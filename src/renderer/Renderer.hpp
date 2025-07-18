@@ -117,7 +117,7 @@ class Renderer {
     // buffers
     std::vector<std::unique_ptr<BufferBundle>> _renderInfoBufferBundles;
     std::vector<std::vector<std::unique_ptr<DescriptorSetBundle>>> _descriptorSetBundles;
-    std::vector<std::unique_ptr<BufferBundle>> _materialBufferBundles;
+    std::vector<std::vector<std::unique_ptr<BufferBundle>>> _materialBufferBundles;
     std::vector<std::unique_ptr<BufferBundle>> _instanceBufferBundles;
 
     mutable DrawFrameTimings _lastFrameTimings;
@@ -135,7 +135,7 @@ class Renderer {
     void _createModelImages();
     void _createBuffersAndBufferBundles();
     void _updateBufferData(size_t currentFrame, size_t modelIndex, glm::mat4 model_matrix);
-    void _updateMaterialData(uint32_t currentFrame, size_t modelIndex,
+    void _updateMaterialData(uint32_t currentFrame, size_t modelIndex, size_t meshIndex,
                                        const glm::vec3 &color, float metallic, float roughness,
                                        float occlusion, const glm::vec3 &emissive);
     void _createDefaultTextures();

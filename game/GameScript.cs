@@ -40,8 +40,8 @@ namespace Game
         private static int _killCount = 0;  // 全局击杀计数器
         
         // 敌人生成变量
-        private static int _enemyCount = 10;  // 敌人数量
-        private static float _enemySpawnRadius = 10.0f;  // 敌人生成半径（10x默认）
+        private static int _enemyCount = 30;  // 敌人数量
+        private static float _enemySpawnRadius = 30.0f;  // 敌人生成半径（10x默认）
         private static System.Diagnostics.Stopwatch _creationStopwatch = new System.Diagnostics.Stopwatch();
         private static List<uint> _entitiesToDestroy = new List<uint>();  // 待销毁的实体列表
         
@@ -49,8 +49,8 @@ namespace Game
         private static float _cameraYaw = 0f;     // 水平角度（绕Y轴旋转）
         private static float _cameraPitch = 0f;   // 俯仰角度（初始平视 = 0度）
         private static float _mouseSensitivity = 0.0005f;  // 鼠标灵敏度（降低敏感度）
-        private static float _cameraDistance = 12f;  // 摄像机距离玩家的距离（增加距离）
-        private static float _cameraFixedHeight = 2f;  // 摄像机固定高度
+        private static float _cameraDistance = 19f;  // 摄像机距离玩家的距离（增加距离）
+        private static float _cameraFixedHeight = 4f;  // 摄像机固定高度
         
         [StartupSystem]
         public static void CreateTestEntities()
@@ -106,12 +106,12 @@ namespace Game
 
             // === 创建场景实体 ===
             uint sceneId = EngineBindings.CreateEntity();
-            var sceneTransform = new Transform { position = new Vector3(1.0f, 1.0f, 1.0f),rotation = new Vector3(3.14f/2.0f,0f,0f), scale = new Vector3(10f) };
+            var sceneTransform = new Transform { position = new Vector3(0f, -4.94f,0f), rotation = new Vector3(-3.14f/2f,0f,0f), scale = new Vector3(4f) };
             EngineBindings.AddTransform(sceneId, sceneTransform);
             var sceneMesh = new Mesh { modelId = 2 };
             EngineBindings.AddMesh(sceneId, sceneMesh);
             // 添加默认材质（根据需要调整）
-            var sceneMaterial = new Material { color = new Vector3(1.0f, 1.0f, 1.0f)*.5f, metallic = 0.0f, roughness = 1.0f, occlusion = 0.0f, emissive = new Vector3(0.0f) };
+            var sceneMaterial = new Material { color = new Vector3(1.0f, 1.0f, 1.0f)*.5f, metallic = 0.10f, roughness = 0.90f, occlusion = 1.0f, emissive = new Vector3(.0f) };
             EngineBindings.AddMaterial(sceneId, sceneMaterial);
             Log($"🌆 Created SCENE entity with ID {sceneId} using modelId 4");
 
@@ -184,7 +184,7 @@ namespace Game
             {
                 new MeshDefinition { modelId = 0, modelPath = "models/blender-monkey/monkey.obj" },
                 new MeshDefinition { modelId = 1, modelPath = "models/rat/rat_single.gltf" },
-                new MeshDefinition { modelId = 2, modelPath = "models/sci_sword/sword.gltf" }
+                new MeshDefinition { modelId = 2, modelPath = "models/arena/scene.gltf" }
             };
 
             // Register each mesh with the native engine
@@ -416,18 +416,14 @@ namespace Game
             float sinPitch = MathF.Sin(_cameraPitch);
             
             // 计算摄像机相对于玩家的水平偏移量
-            Vector3 horizontalOffset = new Vector3(
+            Vector3 Offset = new Vector3(
                 _cameraDistance * cosPitch * sinYaw,    // X轴偏移
-                0,                                      // 不使用Y轴偏移
+                _cameraDistance * sinPitch,                                      // 不使用Y轴偏移
                 _cameraDistance * cosPitch * cosYaw     // Z轴偏移
             );
             
             // 设置摄像机位置（使用玩家的X、Z坐标，但固定高度）
-            transform.position = new Vector3(
-                _playerPosition.X + horizontalOffset.X,
-                _cameraFixedHeight,  // 固定高度，不跟随玩家
-                _playerPosition.Z + horizontalOffset.Z
-            );
+            transform.position = _playerPosition+ Offset;
             
             // 摄像机始终朝向玩家的实际位置
             Vector3 directionToPlayer = _playerPosition - transform.position;

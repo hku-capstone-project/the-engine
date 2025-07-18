@@ -172,7 +172,7 @@ void DescriptorSetBundle::_createDescriptorSet(uint32_t descriptorSetIndex) {
     std::vector<VkDescriptorImageInfo> storageImageInfos{};
     storageImageInfos.reserve(_storageImages.size());
     for (auto const &[_, storageImage] : _storageImages) {
-        storageImageInfos.push_back(storageImage->getDescriptorInfo(VK_IMAGE_LAYOUT_GENERAL));
+        storageImageInfos.push_back(storageImage->getDescriptorInfo(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
     }
     for (uint32_t i = 0; i < _storageImages.size(); i++) {
         auto const &[bindingNo, storageImage] = _storageImages[i];
@@ -190,7 +190,7 @@ void DescriptorSetBundle::_createDescriptorSet(uint32_t descriptorSetIndex) {
     imageSamplerInfos.reserve(_imageSamplers.size());
     for (auto const &[_, storageImage] : _imageSamplers) {
         // or VK_IMAGE_LAYOUT_GENERAL TODO: check
-        imageSamplerInfos.push_back(storageImage->getDescriptorInfo(VK_IMAGE_LAYOUT_GENERAL));
+        imageSamplerInfos.push_back(storageImage->getDescriptorInfo(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
     }
     for (uint32_t i = 0; i < _imageSamplers.size(); i++) {
         auto const &[bindingNo, storageImage] = _imageSamplers[i];
